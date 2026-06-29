@@ -24,6 +24,12 @@ impl HttpResolver {
     }
 }
 
+impl Default for HttpResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ProfileResolver for HttpResolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {

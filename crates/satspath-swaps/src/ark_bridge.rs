@@ -19,7 +19,8 @@ struct RpcRequest<T> {
 
 #[derive(Deserialize, Debug)]
 struct RpcResponse<T> {
-    id: serde_json::Value,
+    #[serde(rename = "id")]
+    _id: serde_json::Value,
     result: Option<T>,
     error: Option<RpcError>,
 }
@@ -72,6 +73,81 @@ pub struct OnReceiveVtxoResult {
     pub success: bool,
     pub diagnostics: Vec<String>,
     pub error: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GetReceivePubkeyResult {
+    pub pubkey: String,
+    pub server: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct SignArkChallengeParams {
+    pub alias: String,
+    pub server: String,
+    pub receiver_pubkey: String,
+    pub nonce: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SignArkChallengeResult {
+    pub message: String,
+    pub signature: String,
+    pub pubkey: String,
+    pub expires_at: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct CreateReceiveVtxoParams {
+    pub amount_sats: u64,
+    pub receiver_pubkey: String,
+    pub server: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateReceiveVtxoResult {
+    pub request_id: String,
+    pub receiver_pubkey: String,
+    pub server: String,
+    pub expires_at: i64,
+}
+
+#[derive(Serialize)]
+pub struct SendVtxoParams {
+    pub amount_sats: u64,
+    pub receiver_pubkey: String,
+    pub server: String,
+    pub vtxo_pointer: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SendVtxoResult {
+    pub intent_id: String,
+    pub txid: Option<String>,
+    pub status: String,
+}
+
+#[derive(Serialize)]
+pub struct ListVtxosParams {
+    pub server: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ListVtxosResult {
+    pub vtxos: Vec<serde_json::Value>,
+}
+
+#[derive(Serialize)]
+pub struct EstimateArkFeeParams {
+    pub route_kind: String,
+    pub amount_sats: u64,
+    pub server: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct EstimateArkFeeResult {
+    pub fee_sats: u64,
+    pub diagnostics: Vec<String>,
 }
 
 // ─── Bridge Client ────────────────────────────────────────────────────────────
@@ -141,17 +217,14 @@ impl ArkBridge {
             stdout.read_line(&mut line).map_err(SwapError::Io)?;
         }
 
-        let resp: RpcResponse<R> = serde_json::from_str(&line).map_err(|e| SwapError::Json(e))?;
+        let resp: RpcResponse<R> = serde_json::from_str(&line).map_err(SwapError::Json)?;
 
         if let Some(err) = resp.error {
-            return Err(SwapError::Key(format!(
-                "ARK bridge error ({}): {}",
-                err.code, err.message
-            )));
+            return Err(map_ark_bridge_error(err));
         }
 
         resp.result
-            .ok_or_else(|| SwapError::Key(format!("ARK bridge returned neither result nor error")))
+            .ok_or_else(|| SwapError::Key("ARK bridge returned neither result nor error".into()))
     }
 
     // ─── API Wrapper ──────────────────────────────────────────────────────────
@@ -175,6 +248,44 @@ impl ArkBridge {
 
     pub fn on_receive_vtxo(&self, params: OnReceiveVtxoParams) -> Result<OnReceiveVtxoResult> {
         self.call("onReceiveVtxo", params)
+    }
+
+    pub fn get_receive_pubkey(&self) -> Result<GetReceivePubkeyResult> {
+        self.call("getReceivePubkey", serde_json::json!({}))
+    }
+
+    pub fn sign_ownership_challenge(
+        &self,
+        params: SignArkChallengeParams,
+    ) -> Result<SignArkChallengeResult> {
+        self.call("signOwnershipChallenge", params)
+    }
+
+    pub fn create_receive_vtxo_request(
+        &self,
+        params: CreateReceiveVtxoParams,
+    ) -> Result<CreateReceiveVtxoResult> {
+        self.call("createReceiveVtxoRequest", params)
+    }
+
+    pub fn send_vtxo(&self, params: SendVtxoParams) -> Result<SendVtxoResult> {
+        self.call("sendVtxo", params)
+    }
+
+    pub fn list_vtxos(&self, params: ListVtxosParams) -> Result<ListVtxosResult> {
+        self.call("listVtxos", params)
+    }
+
+    pub fn estimate_ark_fee(&self, params: EstimateArkFeeParams) -> Result<EstimateArkFeeResult> {
+        self.call("estimateArkFee", params)
+    }
+}
+
+fn map_ark_bridge_error(err: RpcError) -> SwapError {
+    if err.code == -32601 || err.message.to_ascii_lowercase().contains("not implemented") {
+        SwapError::Key("Ark method not implemented by bridge".into())
+    } else {
+        SwapError::Key(format!("ARK bridge error ({}): {}", err.code, err.message))
     }
 }
 

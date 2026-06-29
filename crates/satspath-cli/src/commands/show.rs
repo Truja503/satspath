@@ -81,12 +81,25 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
                 server,
                 pubkey,
                 vtxo_pointer,
+                proof,
+                expires_at,
             } => {
                 println!("  - {} [Ark]", label);
                 println!("      Server: {}", mask_address(server));
                 println!("      Pubkey: {}", mask_pubkey(pubkey));
                 if vtxo_pointer.is_some() {
                     println!("      VTXO pointer: present");
+                }
+                println!(
+                    "      Ownership proof: {}",
+                    if proof.is_some() {
+                        "claimed"
+                    } else {
+                        "not provided"
+                    }
+                );
+                if let Some(expires_at) = expires_at {
+                    println!("      Expires at: {}", expires_at);
                 }
             }
         }

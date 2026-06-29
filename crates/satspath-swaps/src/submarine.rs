@@ -1,6 +1,4 @@
-use rand::RngCore;
 use secp256k1::{Secp256k1, SecretKey};
-use sha2::{Digest, Sha256};
 use std::time::Duration;
 
 use crate::boltz_client::{BoltzClient, SubmarineSwapRequest};
@@ -205,18 +203,19 @@ async fn attempt_submarine_refund(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rand::RngCore;
+    use sha2::{Digest, Sha256};
 
     #[test]
     fn preimage_hash_is_sha256() {
         // Verify the preimage → hash relationship we'll use for Reverse swaps
         let mut preimage = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut preimage);
-        let hash: [u8; 32] = Sha256::digest(&preimage).into();
+        let hash: [u8; 32] = Sha256::digest(preimage).into();
         // Hash must be different from preimage
         assert_ne!(preimage, hash);
         // Re-hashing the hash should be different again
-        let double_hash: [u8; 32] = Sha256::digest(&hash).into();
+        let double_hash: [u8; 32] = Sha256::digest(hash).into();
         assert_ne!(hash, double_hash);
     }
 }

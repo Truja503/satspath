@@ -19,6 +19,12 @@ impl Bip353Resolver {
     }
 }
 
+impl Default for Bip353Resolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ProfileResolver for Bip353Resolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
