@@ -1,6 +1,9 @@
 use anyhow::Result;
 
-use satspath_core::codec::{decode_payment_request, encode_payment_request};
+use satspath_core::{
+    codec::{decode_payment_request, encode_payment_request},
+    privacy::mask_identifier,
+};
 
 pub fn cmd_encode(alias: &str, amount_sats: u64, memo: Option<&str>) -> Result<()> {
     let uri = encode_payment_request(alias, Some(amount_sats), memo)?;
@@ -13,7 +16,7 @@ pub fn cmd_decode(uri: &str) -> Result<()> {
     let req = decode_payment_request(uri)?;
     println!("Decoded payment request:");
     println!("  Version:     {}", req.version);
-    println!("  Alias:       {}", req.alias);
+    println!("  Alias:       {}", mask_identifier(&req.alias));
     println!(
         "  Amount:      {}",
         req.amount_sats

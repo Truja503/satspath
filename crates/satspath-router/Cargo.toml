@@ -18,3 +18,5 @@ lightning-invoice = { workspace = true }
 
 [dev-dependencies]
 mockito = "1"
+secp256k1 = { workspace = true }
+bitcoin = { workspace = true }

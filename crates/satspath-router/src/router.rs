@@ -246,7 +246,7 @@ mod tests {
     use super::*;
     use satspath_core::{
         crypto::{generate_identity_keypair, sign_profile},
-        PaymentMethod, PaymentProfile,
+        BitcoinNetwork, PaymentMethod, PaymentProfile,
     };
 
     fn low_fees() -> FeeEstimate {
@@ -278,6 +278,7 @@ mod tests {
             methods,
             updated_at: 1_700_000_000,
             expires_at: None,
+            method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }
@@ -286,9 +287,10 @@ mod tests {
     fn chooses_lightning_for_small_amount() {
         let signed = make_profile(vec![PaymentMethod::Lightning {
             label: "LN".into(),
-            lnurl: None,
             lightning_address: Some("test@example.com".into()),
+            lnurl: None,
             bolt12: None,
+            receiver_pubkey: None,
         }]);
         let req = RouteRequest {
             alias: "test@example.com".into(),
@@ -304,9 +306,10 @@ mod tests {
         // Even with extreme fees, Lightning for small amounts must still win.
         let signed = make_profile(vec![PaymentMethod::Lightning {
             label: "LN".into(),
-            lnurl: None,
             lightning_address: Some("test@example.com".into()),
+            lnurl: None,
             bolt12: None,
+            receiver_pubkey: None,
         }]);
         let extreme_fees = FeeEstimate {
             fastest_fee: 500,
@@ -328,8 +331,10 @@ mod tests {
     fn chooses_onchain_for_large_amount_low_fees() {
         let signed = make_profile(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
+            network: BitcoinNetwork::Mainnet,
             address: "bc1q...".into(),
             pubkey_hint: None,
+            descriptor_hint: None,
         }]);
         let req = RouteRequest {
             alias: "test@example.com".into(),
@@ -346,13 +351,16 @@ mod tests {
         let signed = make_profile(vec![
             PaymentMethod::Onchain {
                 label: "BTC".into(),
+                network: BitcoinNetwork::Mainnet,
                 address: "bc1q...".into(),
                 pubkey_hint: None,
+                descriptor_hint: None,
             },
             PaymentMethod::Ark {
                 label: "Ark".into(),
                 server: "ark.example.com".into(),
                 pubkey: "aabbcc".into(),
+                vtxo_pointer: None,
             },
         ]);
         let req = RouteRequest {
@@ -383,8 +391,10 @@ mod tests {
     fn onchain_boundary_at_20_sat_vb() {
         let signed = make_profile(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
+            network: BitcoinNetwork::Mainnet,
             address: "bc1q...".into(),
             pubkey_hint: None,
+            descriptor_hint: None,
         }]);
         let req = RouteRequest {
             alias: "test@example.com".into(),
@@ -416,4 +426,5 @@ mod tests {
             SatsPathError::NoRouteFound(_)
         ));
     }
+
 }

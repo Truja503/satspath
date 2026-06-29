@@ -120,9 +120,11 @@ mod tests {
                 lnurl: None,
                 lightning_address: Some(alias.to_string()),
                 bolt12: None,
+                receiver_pubkey: None,
             }],
             updated_at: 1_700_000_000,
             expires_at,
+            method_verifications: vec![],
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

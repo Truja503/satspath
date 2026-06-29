@@ -1,28 +1,13 @@
-## Description
-
-Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context.
-
-Fixes # (issue)
-
-## Type of change
-
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Security fix
-
-## How Has This Been Tested?
-
-Please describe the tests that you ran to verify your changes. 
-- [ ] Unit tests pass (`cargo test --workspace`)
-- [ ] Clippy warnings resolved (`cargo clippy --workspace -- -D warnings`)
-- [ ] End-to-end simulated demo works (`cargo run -p satspath-cli -- demo`)
+## Pull Request Summary
+Please provide a short description of the changes in this PR.
 
 ## Checklist
+- [ ] Code compiles successfully (`cargo check`)
+- [ ] Tests pass (`cargo test`)
+- [ ] Lints pass (`cargo clippy -- -D warnings`)
+- [ ] Formatting is correct (`cargo fmt --all -- --check`)
+- [ ] No private keys or sensitive information introduced
+- [ ] Backward compatibility maintained for identifiers
 
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
+## Related Issues
+Closes #<issue_number>

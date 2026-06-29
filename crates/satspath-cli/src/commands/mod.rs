@@ -34,7 +34,9 @@ pub(crate) fn open_registry() -> Result<Registry> {
 }
 
 use satspath_core::resolver::ChainResolver;
+use satspath_core::resolvers::bip353::Bip353Resolver;
 use satspath_core::resolvers::http::HttpResolver;
+use satspath_core::resolvers::nostr::NostrResolver;
 
 pub(crate) fn get_resolver() -> Result<ChainResolver> {
     let mut chain = ChainResolver::new();
@@ -44,8 +46,11 @@ pub(crate) fn get_resolver() -> Result<ChainResolver> {
         chain = chain.push(reg);
     }
 
+    chain = chain.push(Bip353Resolver::new());
+
     // Add public HTTP resolver fallback
     chain = chain.push(HttpResolver::new());
+    chain = chain.push(NostrResolver);
 
     Ok(chain)
 }

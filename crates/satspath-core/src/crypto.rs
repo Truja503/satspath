@@ -96,6 +96,46 @@ pub fn fingerprint_pubkey(pubkey_hex: &str) -> Result<String> {
     Ok(hex::encode(&digest[..4]))
 }
 
+/// Sign an arbitrary UTF-8 message with a secret key, returning a hex DER signature.
+///
+/// The message is hashed with SHA-256 before signing, matching the profile-signing
+/// convention. Callers supply a domain-separated message (e.g. an ownership-proof
+/// challenge) so signatures cannot be replayed across contexts.
+///
+/// The secret key is borrowed transiently and never persisted by SatsPath.
+pub fn sign_message(message: &str, secret_key: &SecretKey) -> String {
+    let secp = Secp256k1::new();
+    let digest = Sha256::digest(message.as_bytes());
+    let sig = secp.sign_ecdsa(&Message::from_digest(digest.into()), secret_key);
+    hex::encode(sig.serialize_der())
+}
+
+/// Verify a hex DER ECDSA signature over an arbitrary UTF-8 message against a
+/// compressed secp256k1 public key (hex). Returns `Ok(true)` only if the
+/// signature is structurally valid *and* verifies.
+pub fn verify_message_signature(
+    message: &str,
+    signature_hex: &str,
+    pubkey_hex: &str,
+) -> Result<bool> {
+    let secp = Secp256k1::new();
+
+    let pubkey_bytes =
+        hex::decode(pubkey_hex).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+    let public_key = PublicKey::from_slice(&pubkey_bytes)
+        .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+
+    let sig_bytes =
+        hex::decode(signature_hex).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+    let sig = secp256k1::ecdsa::Signature::from_der(&sig_bytes)
+        .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+
+    let digest = Sha256::digest(message.as_bytes());
+    let msg = Message::from_digest(digest.into());
+
+    Ok(secp.verify_ecdsa(&msg, &sig, &public_key).is_ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,12 +147,14 @@ mod tests {
             identity_pubkey: pubkey_hex.into(),
             methods: vec![PaymentMethod::Lightning {
                 label: "Lightning".into(),
-                lnurl: None,
                 lightning_address: Some("test@example.com".into()),
+                lnurl: None,
                 bolt12: None,
+                receiver_pubkey: None,
             }],
             updated_at: 1_700_000_000,
             expires_at: None,
+            method_verifications: Vec::new(),
         }
     }
 
@@ -207,5 +249,30 @@ mod tests {
         if let Err(e) = result {
             assert!(e.to_string().contains("expired"));
         }
+    }
+
+    #[test]
+    fn message_signature_roundtrip() {
+        let kp = generate_identity_keypair();
+        let pubkey_hex = hex::encode(kp.public_key.serialize());
+        let sig = sign_message("hello ownership", &kp.secret_key);
+        assert!(verify_message_signature("hello ownership", &sig, &pubkey_hex).unwrap());
+    }
+
+    #[test]
+    fn message_signature_rejects_wrong_message() {
+        let kp = generate_identity_keypair();
+        let pubkey_hex = hex::encode(kp.public_key.serialize());
+        let sig = sign_message("original", &kp.secret_key);
+        assert!(!verify_message_signature("tampered", &sig, &pubkey_hex).unwrap());
+    }
+
+    #[test]
+    fn message_signature_rejects_wrong_key() {
+        let kp = generate_identity_keypair();
+        let other = generate_identity_keypair();
+        let other_pubkey = hex::encode(other.public_key.serialize());
+        let sig = sign_message("msg", &kp.secret_key);
+        assert!(!verify_message_signature("msg", &sig, &other_pubkey).unwrap());
     }
 }

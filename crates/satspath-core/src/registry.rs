@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::{Result, SatsPathError};
+use crate::privacy::{canonical_identifier, identifier_hash};
 use crate::profile::SignedPaymentProfile;
 
 const REGISTRY_FILE: &str = "registry.json";
@@ -48,32 +49,40 @@ impl Registry {
 
     /// Register a signed profile. Fails if the alias is already taken.
     pub fn register_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
-        let alias = signed.profile.alias.clone();
-        if self.data.profiles.contains_key(&alias) {
+        let alias = canonical_identifier(&signed.profile.alias);
+        let key = identifier_hash(&alias);
+        if self.data.profiles.contains_key(&key) || self.data.profiles.contains_key(&alias) {
             return Err(SatsPathError::AliasAlreadyRegistered(alias));
         }
-        self.data.profiles.insert(alias, signed);
+        self.data.profiles.insert(key, signed);
         self.save()
     }
 
     /// Update (overwrite) an existing profile entry.
     pub fn update_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
-        let alias = signed.profile.alias.clone();
-        self.data.profiles.insert(alias, signed);
+        let alias = canonical_identifier(&signed.profile.alias);
+        self.data.profiles.insert(identifier_hash(&alias), signed);
         self.save()
     }
 
     /// Resolve an alias to its signed profile.
     pub fn resolve_alias(&self, alias: &str) -> Result<&SignedPaymentProfile> {
+        let canonical = canonical_identifier(alias);
+        let key = identifier_hash(&canonical);
         self.data
             .profiles
-            .get(alias)
-            .ok_or_else(|| SatsPathError::AliasNotFound(alias.to_string()))
+            .get(&key)
+            .or_else(|| self.data.profiles.get(&canonical))
+            .ok_or_else(|| SatsPathError::AliasNotFound(canonical))
     }
 
     /// Check whether an alias is already registered.
     pub fn is_registered(&self, alias: &str) -> bool {
-        self.data.profiles.contains_key(alias)
+        let canonical = canonical_identifier(alias);
+        self.data
+            .profiles
+            .contains_key(&identifier_hash(&canonical))
+            || self.data.profiles.contains_key(&canonical)
     }
 
     /// Return all registered aliases.
@@ -110,12 +119,14 @@ mod tests {
             identity_pubkey: pubkey_hex,
             methods: vec![PaymentMethod::Lightning {
                 label: "LN".into(),
-                lnurl: None,
                 lightning_address: Some(alias.to_string()),
+                lnurl: None,
                 bolt12: None,
+                receiver_pubkey: None,
             }],
             updated_at: 1_700_000_000,
             expires_at: None,
+            method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

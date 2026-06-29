@@ -44,25 +44,16 @@ impl Default for ChainResolver {
 #[async_trait]
 impl ProfileResolver for ChainResolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
-        let mut last_error = None;
-
         for resolver in &self.resolvers {
             match resolver.resolve_alias(alias).await {
                 Ok(profile) => return Ok(profile),
                 Err(SatsPathError::AliasNotFound(_)) => continue,
-                Err(e) => {
-                    // Save the error, but keep trying the next resolver
-                    last_error = Some(e);
-                    continue;
-                }
+                Err(SatsPathError::NetworkError(_)) => continue,
+                Err(e) => return Err(e),
             }
         }
 
-        if let Some(e) = last_error {
-            Err(e)
-        } else {
-            Err(SatsPathError::AliasNotFound(alias.to_string()))
-        }
+        Err(SatsPathError::AliasNotFound(alias.to_string()))
     }
 }
 
@@ -87,12 +78,14 @@ mod tests {
                     identity_pubkey: pubkey_hex,
                     methods: vec![PaymentMethod::Lightning {
                         label: "LN".into(),
-                        lnurl: None,
                         lightning_address: Some(alias.to_string()),
+                        lnurl: None,
                         bolt12: None,
+                        receiver_pubkey: None,
                     }],
                     updated_at: 1_700_000_000,
                     expires_at: None,
+                    method_verifications: Vec::new(),
                 };
                 Ok(sign_profile(profile, &kp.secret_key).unwrap())
             } else {

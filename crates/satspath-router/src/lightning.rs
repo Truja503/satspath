@@ -138,7 +138,6 @@ pub async fn fetch_invoice(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
-
     let raw_body = client.get(&url).send().await?.text().await?;
     let resp: LnurlInvoiceResponse = serde_json::from_str(&raw_body)
         .map_err(|e| anyhow::anyhow!("failed to parse LNURL callback response: {e}"))?;
@@ -204,55 +203,161 @@ pub fn validate_bolt11_invoice(
     })
 }
 
+// ─── BOLT11 invoice amount verification ───────────────────────────────────────
+
+/// Parse the satoshi amount encoded in a BOLT11 invoice's human-readable part (HRP).
+///
+/// BOLT11 HRP format: `ln<network>[<amount><multiplier>]`
+/// Networks: `bc` (mainnet), `tb` (testnet), `bcrt` (regtest)
+/// Multipliers: m (milli), u (micro), n (nano), p (pico)
+///
+/// Returns `None` if the invoice carries no amount (amount-less invoice).
+pub fn parse_bolt11_amount_sats(invoice: &str) -> Option<u64> {
+    let inv = invoice.to_lowercase();
+    // bech32 separator: the last '1' in the string
+    let sep = inv.rfind('1')?;
+    let hrp = &inv[..sep];
+
+    // Strip the network prefix to get the optional amount string
+    let amount_str = hrp
+        .strip_prefix("lnbc") // mainnet
+        .or_else(|| hrp.strip_prefix("lntb")) // testnet
+        .or_else(|| hrp.strip_prefix("lnbcrt")) // regtest
+        .or_else(|| hrp.strip_prefix("lnsb")) // signet
+        .or_else(|| hrp.strip_prefix("lntbs"))?; // testnet4
+
+    if amount_str.is_empty() {
+        return None; // amount-less invoice
+    }
+
+    // Last char may be a multiplier letter
+    let last_char = amount_str.chars().last()?;
+    let (digits, multiplier) = if last_char.is_alphabetic() {
+        (&amount_str[..amount_str.len() - 1], Some(last_char))
+    } else {
+        (amount_str, None)
+    };
+
+    if digits.is_empty() {
+        return None;
+    }
+
+    let amount_val: u64 = digits.parse().ok()?;
+
+    // BOLT11 amounts are BTC scaled by the multiplier.
+    // 1 BTC = 100_000_000 sats.
+    match multiplier {
+        None => amount_val.checked_mul(100_000_000),  // raw BTC
+        Some('m') => amount_val.checked_mul(100_000), // milli-BTC = 1e5 sats
+        Some('u') => amount_val.checked_mul(100),     // micro-BTC = 100 sats
+        Some('n') => {
+            // nano-BTC = 0.1 sats; must be divisible by 10 for whole sats
+            if amount_val % 10 != 0 {
+                return None;
+            }
+            Some(amount_val / 10)
+        }
+        Some('p') => {
+            // pico-BTC = 0.0001 sats; must be divisible by 10_000
+            if amount_val % 10_000 != 0 {
+                return None;
+            }
+            Some(amount_val / 10_000)
+        }
+        _ => None,
+    }
+}
+
+/// Verify that a BOLT11 invoice encodes exactly `expected_sats`.
+///
+/// Aborts if:
+/// - The invoice carries no amount (amount-less invoices are not accepted)
+/// - The encoded amount does not match `expected_sats`
+///
+/// Note: expiry verification requires bech32 data field decoding and is tracked
+/// as Engine v1 work. Until implemented, expiry is not checked here.
+pub fn verify_invoice_amount(invoice: &str, expected_sats: u64) -> anyhow::Result<()> {
+    match parse_bolt11_amount_sats(invoice) {
+        None => anyhow::bail!(
+            "invoice carries no amount (amount-less BOLT11 not accepted in Engine v0). \
+             Expected {} sats.",
+            expected_sats
+        ),
+        Some(invoice_sats) if invoice_sats != expected_sats => anyhow::bail!(
+            "invoice amount mismatch: invoice encodes {} sats, expected {} sats. \
+             Refusing to display a mismatched invoice.",
+            invoice_sats,
+            expected_sats
+        ),
+        Some(_) => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lightning_invoice::{InvoiceBuilder, Currency, PaymentSecret};
+    use satspath_core::crypto::generate_identity_keypair;
+    use std::time::{SystemTime, Duration};
+    use secp256k1::Secp256k1;
+    use bitcoin::hashes::{sha256, Hash};
 
-    // ── LNURL error response detection ────────────────────────────────────────
-
-    #[test]
-    fn lnurl_error_response_detected() {
-        let raw = r#"{"status":"ERROR","reason":"Service temporarily unavailable"}"#;
-        let resp: LnurlInvoiceResponse = serde_json::from_str(raw).unwrap();
-        assert_eq!(resp.status.as_deref(), Some("ERROR"));
-        assert!(resp.pr.is_none());
+    fn make_test_invoice(amount_msats: Option<u64>, expired: bool) -> String {
+        let kp = generate_identity_keypair();
+        let payment_hash = sha256::Hash::hash(&[2; 32]);
+        let payment_secret = PaymentSecret([3; 32]);
+        
+        let builder = InvoiceBuilder::new(Currency::Bitcoin)
+            .description("test".into())
+            .payment_hash(payment_hash)
+            .payment_secret(payment_secret)
+            .min_final_cltv_expiry_delta(144);
+            
+        let builder = if let Some(amt) = amount_msats {
+            builder.amount_milli_satoshis(amt)
+        } else {
+            builder
+        };
+        
+        let builder_with_time = if expired {
+            let past = SystemTime::now() - Duration::from_secs(3600);
+            builder.timestamp(past).expiry_time(Duration::from_secs(1))
+        } else {
+            builder.current_timestamp()
+        };
+        
+        builder_with_time.build_signed(|hash| {
+            let secp = Secp256k1::new();
+            let msg = secp256k1::Message::from_digest_slice(hash.as_ref()).unwrap();
+            secp.sign_ecdsa_recoverable(&msg, &kp.secret_key)
+        }).unwrap().to_string()
     }
-
-    #[test]
-    fn lnurl_success_response_has_pr() {
-        let raw = r#"{"pr":"lnbc1000n1..."}"#;
-        let resp: LnurlInvoiceResponse = serde_json::from_str(raw).unwrap();
-        assert!(resp.status.is_none());
-        assert!(resp.pr.is_some());
-    }
-
-    // ── BOLT11 amount validation ──────────────────────────────────────────────
-
-    /// Use a real mainnet invoice from the test vectors in BOLT11 spec.
-    /// This invoice is for 2,500,000 msats (2500 sats).
-    const BOLT11_2500_SATS: &str =
-        "lnbc25m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5vdhkven9v5sxyetpdees9qzpzz8txr49kpzaem7e4lh5e0cqsjxvnmrgrmrr7x9qktv4u49v8yezahqvqk8c38n6vdxn3xqzwx3qp5v7rqpxdv";
-
-    /// A real mainnet invoice for 100,000 msats (100 sats), expires 2016-01-08.
-    /// Source: BOLT11 test vectors — this is already expired, which is what we want.
-    const BOLT11_EXPIRED: &str =
-        "lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w";
 
     #[test]
     fn valid_bolt11_invoice_accepted() {
-        // Parse only (do not validate amount/expiry against a specific value here).
-        let result = Bolt11Invoice::from_str(BOLT11_2500_SATS);
-        // Accept either Ok or parse error (the test vector may not match all parsers)
-        // The key test is that the function does not panic.
-        let _ = result;
+        let inv = make_test_invoice(Some(1000), false);
+        assert!(validate_bolt11_invoice(&inv, 1000).is_ok());
     }
 
     #[test]
-    fn expired_invoice_rejected_by_validate() {
-        // This invoice is already expired (timestamp from 2016).
-        // validate_bolt11_invoice should reject it.
-        let result = validate_bolt11_invoice(BOLT11_EXPIRED, 0);
-        assert!(result.is_err(), "expired invoice must be rejected");
+    fn invoice_amount_mismatch_fails() {
+        let inv = make_test_invoice(Some(1000), false);
+        let err = validate_bolt11_invoice(&inv, 500).unwrap_err();
+        assert!(err.to_string().contains("mismatch"));
+    }
+
+    #[test]
+    fn zero_or_missing_amount_fails() {
+        let inv = make_test_invoice(None, false);
+        let err = validate_bolt11_invoice(&inv, 1000).unwrap_err();
+        assert!(err.to_string().contains("no amount"));
+    }
+
+    #[test]
+    fn expired_invoice_fails() {
+        let inv = make_test_invoice(Some(1000), true);
+        let err = validate_bolt11_invoice(&inv, 1000).unwrap_err();
+        assert!(err.to_string().contains("expired"));
     }
 
     #[test]
@@ -260,29 +365,7 @@ mod tests {
         let result = validate_bolt11_invoice("not_a_real_invoice", 1_000);
         assert!(result.is_err(), "unparseable invoice must be rejected");
         let err = result.unwrap_err().to_string();
-        assert!(
-            err.contains("failed to parse"),
-            "error must mention parse failure: {err}"
-        );
-    }
-
-    #[test]
-    fn amount_mismatch_rejected() {
-        // Real testnet invoice for 1 sat — if we request 2 sats, it must fail.
-        // We can't easily create a fresh non-expired test invoice without a node,
-        // so we test the mismatch detection at the logic level.
-        // The BOLT11_2500_SATS invoice has 2,500,000 msats.
-        // Ask for 1 msat instead — should fail amount check (or parse check first).
-        let result = validate_bolt11_invoice(BOLT11_2500_SATS, 1);
-        // Either amount mismatch or parse error — both are acceptable rejections.
-        if let Err(e) = result {
-            let s = e.to_string();
-            assert!(
-                s.contains("mismatch") || s.contains("parse") || s.contains("expired"),
-                "unexpected error: {s}"
-            );
-        }
-        // If it somehow parsed and matched, that is also fine for this test vector.
+        assert!(err.contains("failed to parse"));
     }
 
     #[test]

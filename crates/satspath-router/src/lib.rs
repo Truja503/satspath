@@ -3,6 +3,7 @@ pub mod fees;
 pub mod lightning;
 pub mod onchain;
 pub mod router;
+pub mod scoring;
 
 pub use lightning::{
     fetch_invoice, fetch_lnurl_metadata, validate_bolt11_invoice, LnurlPayMetadata,
@@ -10,4 +11,7 @@ pub use lightning::{
 };
 pub use router::{
     select_route, select_route_with_fees, FeeRateSnapshot, RouteQuote, RouteRequest, SwapDirective,
+};
+pub use scoring::{
+    score_routes, FeeSnapshot, PaymentRail, RouteCandidate, RouteDecision, RoutePreferences,
 };
