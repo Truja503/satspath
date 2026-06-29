@@ -18,7 +18,7 @@ pub use init::cmd_init;
 pub use invite::cmd_invite;
 pub use pay::cmd_pay;
 pub use proofs::{cmd_attach_proof, cmd_prove};
-pub use quote::cmd_quote;
+pub use quote::{cmd_quote, cmd_quote_json};
 pub use register::cmd_register;
 pub use show::cmd_show;
 

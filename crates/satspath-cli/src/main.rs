@@ -95,7 +95,13 @@ enum Command {
     Decode { uri: String },
 
     /// Show routing decision with live mempool fees + scannable QR
-    Quote { alias: String, amount_sats: u64 },
+    Quote {
+        alias: String,
+        amount_sats: u64,
+        /// Emit the machine-readable QuoteResponse as JSON (and nothing else)
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Resolve, route, and build a public QR preview. No funds move by default.
     Pay {
@@ -236,7 +242,17 @@ async fn main() -> Result<()> {
             memo,
         } => commands::cmd_encode(&alias, amount_sats, memo.as_deref())?,
         Command::Decode { uri } => commands::cmd_decode(&uri)?,
-        Command::Quote { alias, amount_sats } => commands::cmd_quote(&alias, amount_sats).await?,
+        Command::Quote {
+            alias,
+            amount_sats,
+            json,
+        } => {
+            if json {
+                commands::cmd_quote_json(&alias, amount_sats).await?
+            } else {
+                commands::cmd_quote(&alias, amount_sats).await?
+            }
+        }
         Command::Pay {
             alias,
             amount_sats,
