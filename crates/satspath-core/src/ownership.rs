@@ -893,6 +893,65 @@ pub fn evaluate_method_trust(
     }
 }
 
+/// Evaluate a method's trust within its profile, unifying both ownership
+/// mechanisms under one [`MethodTrust`]:
+///   * the general `profile.method_verifications` (on-chain / Ark / domain / manual), and
+///   * the Ark-pointer-local inline proof carried on `PaymentMethod::Ark` itself.
+///
+/// `method_verifications` take precedence; an inline Ark proof is consulted only
+/// when no `method_verifications` entry covers the method. This lets a resolver
+/// rely on a single trust signal regardless of which path populated the proof.
+pub fn evaluate_method_trust_for_profile(
+    profile: &crate::profile::PaymentProfile,
+    method: &PaymentMethod,
+    now: i64,
+    well_known_body: Option<&str>,
+) -> MethodTrust {
+    let base = evaluate_method_trust(
+        method,
+        &profile.identity_pubkey,
+        &profile.method_verifications,
+        now,
+        well_known_body,
+    );
+    if !matches!(base, MethodTrust::Unverified) {
+        return base;
+    }
+
+    // No general attestation covers this method — fall back to an inline Ark
+    // pointer proof, if present, so it surfaces through the same trust lens.
+    if let PaymentMethod::Ark {
+        server,
+        pubkey,
+        vtxo_pointer,
+        proof: Some(_),
+        expires_at,
+        ..
+    } = method
+    {
+        let pointer = crate::ark::ArkReceivePointer {
+            server: server.clone(),
+            receiver_pubkey: pubkey.clone(),
+            vtxo_pointer: vtxo_pointer.clone(),
+            proof: match method {
+                PaymentMethod::Ark { proof, .. } => proof.clone(),
+                _ => None,
+            },
+            expires_at: *expires_at,
+        };
+        return match crate::ark::verify_ark_ownership_proof(&profile.alias, &pointer, now) {
+            Ok(true) => MethodTrust::Verified(TrustTier::Cryptographic),
+            Ok(false) => MethodTrust::Unverified,
+            Err(SatsPathError::InvalidPaymentPointer(m)) if m.contains("expired") => {
+                MethodTrust::Expired
+            }
+            Err(e) => MethodTrust::Invalid(e.to_string()),
+        };
+    }
+
+    base
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1813,5 +1872,111 @@ mod tests {
         // pre-existing signature over them — are unchanged.
         let json = serde_json::to_string(&profile).unwrap();
         assert!(!json.contains("method_verifications"));
+    }
+
+    // ── Unified trust: inline Ark proof ↔ method_verifications (FASE 5) ────────
+
+    const ARK_SERVER: &str = "https://ark.example.com";
+    const ARK_ALIAS: &str = "alice@example.com";
+
+    fn ark_method_with_inline_proof(expires_at: Option<i64>, tamper: bool) -> PaymentMethod {
+        let k = key();
+        let message =
+            crate::ark::ark_ownership_challenge(ARK_ALIAS, ARK_SERVER, &k.pubkey_hex, "n1");
+        let signature = sign_message(&message, &k.secret);
+        let proof = crate::ark::ArkOwnershipProof {
+            message,
+            signature,
+            // Tampering: claim a different pubkey than the one that signed.
+            pubkey: if tamper {
+                "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into()
+            } else {
+                k.pubkey_hex.clone()
+            },
+        };
+        PaymentMethod::Ark {
+            label: "Ark".into(),
+            server: ARK_SERVER.into(),
+            pubkey: k.pubkey_hex,
+            vtxo_pointer: None,
+            proof: Some(proof),
+            expires_at,
+        }
+    }
+
+    fn profile_with(methods: Vec<PaymentMethod>) -> crate::profile::PaymentProfile {
+        crate::profile::PaymentProfile {
+            alias: ARK_ALIAS.into(),
+            identity_pubkey: key().pubkey_hex,
+            methods,
+            updated_at: NOW,
+            expires_at: None,
+            method_verifications: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn inline_ark_proof_surfaces_through_unified_trust() {
+        let method = ark_method_with_inline_proof(Some(NOW + 10_000), false);
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Verified(TrustTier::Cryptographic));
+    }
+
+    #[test]
+    fn inline_ark_proof_expired_surfaces_as_expired() {
+        let method = ark_method_with_inline_proof(Some(NOW - 1), false);
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Expired);
+    }
+
+    #[test]
+    fn inline_ark_proof_tampered_surfaces_as_invalid() {
+        let method = ark_method_with_inline_proof(Some(NOW + 10_000), true);
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert!(matches!(trust, MethodTrust::Invalid(_)));
+    }
+
+    #[test]
+    fn method_verifications_take_precedence_over_inline_ark() {
+        // A method_verification (here, a real signature attestation) is honored
+        // first; the profile-aware evaluator delegates to it.
+        let identity = key();
+        let ark_key = key();
+        let method = PaymentMethod::Ark {
+            label: "Ark".into(),
+            server: ARK_SERVER.into(),
+            pubkey: ark_key.pubkey_hex.clone(),
+            vtxo_pointer: None,
+            proof: None,
+            expires_at: None,
+        };
+        let v = build_signature_attestation(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::ArkPubkeySignature,
+            &ark_key.secret,
+            NOW,
+            None,
+        )
+        .unwrap();
+        let mut profile = profile_with(vec![method.clone()]);
+        profile.identity_pubkey = identity.pubkey_hex.clone();
+        profile.method_verifications = vec![v];
+
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Verified(TrustTier::Cryptographic));
+    }
+
+    #[test]
+    fn unified_evaluator_delegates_for_non_ark_methods() {
+        // For a plain unverified Lightning method, the profile-aware path matches
+        // the base evaluator (Unverified) — no inline Ark shortcut applies.
+        let method = ln_method("alice@example.com");
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Unverified);
     }
 }

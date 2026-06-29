@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use satspath_core::{
     crypto::{fingerprint_pubkey, verify_signed_profile},
-    evaluate_method_trust,
+    evaluate_method_trust_for_profile,
     privacy::{mask_address, mask_identifier, mask_invoice, mask_pubkey},
     stored_status_for_method, well_known_url_of, MethodTrust, PaymentMethod,
 };
@@ -63,10 +63,9 @@ pub async fn cmd_show(alias: &str, verify_online: bool) -> Result<()> {
         } else {
             None
         };
-        trusts.push(evaluate_method_trust(
+        trusts.push(evaluate_method_trust_for_profile(
+            &signed.profile,
             method,
-            &signed.profile.identity_pubkey,
-            &signed.profile.method_verifications,
             now,
             body.as_deref(),
         ));
