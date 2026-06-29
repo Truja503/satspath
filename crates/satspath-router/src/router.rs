@@ -17,6 +17,21 @@ pub struct RouteRequest {
     pub signed_profile: SignedPaymentProfile,
 }
 
+/// The specific swap operation needed to fulfill this route.
+#[derive(Debug, Clone)]
+pub enum SwapDirective {
+    /// Direct Lightning payment (no swap needed if sender has LN).
+    LightningPayment { target_invoice: Option<String> },
+    /// Submarine Swap: L1/Ark → Lightning.
+    SubmarineSwap { target_invoice: Option<String> },
+    /// Reverse Swap: Lightning → L1.
+    ReverseSwap { target_address: String },
+    /// Chain Swap: Ark/L1 → L1/Ark.
+    ChainSwap { target_address: String },
+    /// Direct Ark VTXO transfer (no swap needed if sender is on same Ark server).
+    ArkTransfer { server: String, pubkey: String },
+}
+
 /// The selected payment rail and associated metadata.
 #[derive(Debug, Clone)]
 pub struct RouteQuote {
@@ -24,6 +39,8 @@ pub struct RouteQuote {
     pub reason: String,
     pub estimated_fee_sats: Option<u64>,
     pub estimated_confirmation: Option<String>,
+    pub swap_directive: SwapDirective,
+    pub dust_threshold_sats: u64,
 }
 
 /// Select the best available payment rail for a given request.
@@ -35,6 +52,19 @@ pub struct RouteQuote {
 ///   4. Error      — no suitable rail
 pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuote> {
     let methods = &req.signed_profile.profile.methods;
+    let fee_est = fetch_fee_estimate().await;
+
+    // Calculate dust threshold based on fastest fee
+    // Typical P2TR input is ~57.5 vBytes, P2WPKH is ~68 vBytes.
+    // We use 68 as a conservative estimate.
+    let dust_threshold_sats = fee_est.fastest_fee * 68;
+
+    if req.amount_sats < dust_threshold_sats {
+        return Err(SatsPathError::NoRouteFound(format!(
+            "Amount {} sats is below the economic dust threshold of {} sats (fee rate: {} sat/vB).",
+            req.amount_sats, dust_threshold_sats, fee_est.fastest_fee
+        )));
+    }
 
     // 1. Lightning
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
@@ -48,15 +78,25 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
                 ),
                 estimated_fee_sats: Some(fee),
                 estimated_confirmation: Some("instant".into()),
+                // We assume sender is on L1/Ark and needs to pay LN receiver -> SubmarineSwap
+                // Or if sender is on LN, it's a Direct LightningPayment.
+                // For satspath MVP, we assume sender originates from on-chain/Ark -> Submarine.
+                swap_directive: SwapDirective::SubmarineSwap { target_invoice: None },
+                dust_threshold_sats,
             });
         }
     }
 
     // 2. On-chain — check mempool fee
-    let fee_est = fetch_fee_estimate().await;
     if is_onchain_available(methods) && is_onchain_fee_acceptable(&fee_est) {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(fee_est.hour_fee);
+        
+        let target_address = match &method {
+            PaymentMethod::Onchain { address, .. } => address.clone(),
+            _ => unreachable!(),
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
@@ -65,18 +105,28 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
             ),
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some("~60 minutes".into()),
+            swap_directive: SwapDirective::ChainSwap { target_address },
+            dust_threshold_sats,
         });
     }
 
     // 3. Ark
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
+        
+        let (server, pubkey) = match &method {
+            PaymentMethod::Ark { server, pubkey, .. } => (server.clone(), pubkey.clone()),
+            _ => unreachable!(),
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason: "Ark selected as fallback (Lightning unavailable, on-chain fees too high)."
                 .into(),
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
+            swap_directive: SwapDirective::ArkTransfer { server, pubkey },
+            dust_threshold_sats,
         });
     }
 
@@ -96,6 +146,14 @@ pub fn select_route_with_fees(
 ) -> satspath_core::Result<RouteQuote> {
     let methods = &req.signed_profile.profile.methods;
 
+    let dust_threshold_sats = fee_est.fastest_fee * 68;
+    if req.amount_sats < dust_threshold_sats {
+        return Err(SatsPathError::NoRouteFound(format!(
+            "Amount {} sats is below the economic dust threshold of {} sats (fee rate: {} sat/vB).",
+            req.amount_sats, dust_threshold_sats, fee_est.fastest_fee
+        )));
+    }
+
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
         if let Some(ln) = methods.iter().find(|m| is_lightning_available(m)) {
             let fee = estimate_lightning_fee_sats(req.amount_sats);
@@ -107,6 +165,8 @@ pub fn select_route_with_fees(
                 ),
                 estimated_fee_sats: Some(fee),
                 estimated_confirmation: Some("instant".into()),
+                swap_directive: SwapDirective::SubmarineSwap { target_invoice: None },
+                dust_threshold_sats,
             });
         }
     }
@@ -114,6 +174,12 @@ pub fn select_route_with_fees(
     if is_onchain_available(methods) && is_onchain_fee_acceptable(fee_est) {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(fee_est.hour_fee);
+        
+        let target_address = match &method {
+            PaymentMethod::Onchain { address, .. } => address.clone(),
+            _ => unreachable!(),
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
@@ -122,16 +188,26 @@ pub fn select_route_with_fees(
             ),
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some("~60 minutes".into()),
+            swap_directive: SwapDirective::ChainSwap { target_address },
+            dust_threshold_sats,
         });
     }
 
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
+        
+        let (server, pubkey) = match &method {
+            PaymentMethod::Ark { server, pubkey, .. } => (server.clone(), pubkey.clone()),
+            _ => unreachable!(),
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason: "Ark selected as fallback.".into(),
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
+            swap_directive: SwapDirective::ArkTransfer { server, pubkey },
+            dust_threshold_sats,
         });
     }
 

@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 satspath-core = { path = "../satspath-core" }
 satspath-router = { path = "../satspath-router" }
+satspath-swaps = { path = "../satspath-swaps" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
