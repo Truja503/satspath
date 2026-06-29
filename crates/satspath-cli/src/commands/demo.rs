@@ -15,7 +15,7 @@ pub async fn cmd_demo() -> Result<()> {
 
     step(2, "Register r***@satspath.dev");
     // Re-registration is idempotent for demo — if already registered, show message.
-    cmd_register("rodrigo@satspath.dev")?;
+    cmd_register("rodrigo@satspath.dev", None, None, None, None)?;
     println!();
 
     step(3, "Show signed profile");

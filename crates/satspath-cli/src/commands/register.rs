@@ -3,12 +3,21 @@ use anyhow::Result;
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
     privacy::{canonical_identifier, mask_identifier, mask_pubkey},
-    PaymentMethod, PaymentProfile,
+    validation::{
+        validate_bitcoin_address, validate_compressed_pubkey, validate_lightning_address,
+    },
+    BitcoinNetwork, PaymentMethod, PaymentProfile,
 };
 
 use super::open_registry;
 
-pub fn cmd_register(alias: &str) -> Result<()> {
+pub fn cmd_register(
+    alias: &str,
+    lightning_address: Option<&str>,
+    onchain_address: Option<&str>,
+    ark_server: Option<&str>,
+    ark_pubkey: Option<&str>,
+) -> Result<()> {
     let mut registry = open_registry()?;
     let alias = canonical_identifier(alias);
 
@@ -22,37 +31,43 @@ pub fn cmd_register(alias: &str) -> Result<()> {
     let kp = generate_identity_keypair();
     let pubkey_hex = hex::encode(kp.public_key.serialize());
 
-    // Build a demo profile with placeholder payment methods.
-    // Multiple on-chain addresses are supported for privacy.
-    let domain = alias.splitn(2, '@').nth(1).unwrap_or("example.com");
+    let lightning_address = lightning_address.unwrap_or(&alias);
+    validate_lightning_address(lightning_address).map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let mut methods = vec![PaymentMethod::Lightning {
+        label: "Lightning Address".into(),
+        lnurl: None,
+        lightning_address: Some(lightning_address.to_string()),
+        bolt12: None,
+    }];
+
+    if let Some(address) = onchain_address {
+        validate_bitcoin_address(address, BitcoinNetwork::Mainnet)
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        methods.push(PaymentMethod::Onchain {
+            label: "Bitcoin mainnet".into(),
+            address: address.to_string(),
+            pubkey_hint: None,
+        });
+    }
+
+    match (ark_server, ark_pubkey) {
+        (Some(server), Some(pubkey)) => {
+            validate_compressed_pubkey(pubkey).map_err(|e| anyhow::anyhow!("{}", e))?;
+            methods.push(PaymentMethod::Ark {
+                label: "Ark".into(),
+                server: server.to_string(),
+                pubkey: pubkey.to_string(),
+            });
+        }
+        (None, None) => {}
+        _ => anyhow::bail!("--ark-server and --ark-pubkey must be provided together."),
+    }
+
     let profile = PaymentProfile {
         alias: alias.clone(),
         identity_pubkey: pubkey_hex.clone(),
-        methods: vec![
-            PaymentMethod::Lightning {
-                label: "Lightning Address".into(),
-                lnurl: None,
-                lightning_address: Some(alias.clone()),
-                bolt12: None,
-            },
-            // First on-chain address (primary)
-            PaymentMethod::Onchain {
-                label: "Bitcoin (primary)".into(),
-                address: format!("bc1q{}placeholder0001", &pubkey_hex[..8]),
-                pubkey_hint: Some(pubkey_hex[..16].to_string()),
-            },
-            // Second on-chain address for privacy
-            PaymentMethod::Onchain {
-                label: "Bitcoin (secondary)".into(),
-                address: format!("bc1q{}placeholder0002", &pubkey_hex[8..16]),
-                pubkey_hint: Some(pubkey_hex[16..32].to_string()),
-            },
-            PaymentMethod::Ark {
-                label: "Ark".into(),
-                server: format!("ark.{}", domain),
-                pubkey: pubkey_hex.clone(),
-            },
-        ],
+        methods: methods.clone(),
         updated_at: chrono::Utc::now().timestamp(),
     };
 
@@ -66,10 +81,9 @@ pub fn cmd_register(alias: &str) -> Result<()> {
     println!("Fingerprint:     {}", fp);
     println!();
     println!("Payment methods registered:");
-    println!("  - Lightning Address");
-    println!("  - Bitcoin on-chain (primary)");
-    println!("  - Bitcoin on-chain (secondary, privacy address)");
-    println!("  - Ark");
+    for method in methods {
+        println!("  - {}", method.method_name());
+    }
     println!();
     println!("Profile signed and stored in .satspath/registry.json");
     println!("No private key stored.");

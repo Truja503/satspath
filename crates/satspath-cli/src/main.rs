@@ -20,7 +20,17 @@ enum Command {
     Init,
 
     /// Register an alias and create a signed payment profile
-    Register { alias: String },
+    Register {
+        alias: String,
+        #[arg(long)]
+        lightning_address: Option<String>,
+        #[arg(long)]
+        onchain_address: Option<String>,
+        #[arg(long)]
+        ark_server: Option<String>,
+        #[arg(long)]
+        ark_pubkey: Option<String>,
+    },
 
     /// Show a registered profile
     Show { alias: String },
@@ -66,7 +76,19 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Command::Init => commands::cmd_init()?,
-        Command::Register { alias } => commands::cmd_register(&alias)?,
+        Command::Register {
+            alias,
+            lightning_address,
+            onchain_address,
+            ark_server,
+            ark_pubkey,
+        } => commands::cmd_register(
+            &alias,
+            lightning_address.as_deref(),
+            onchain_address.as_deref(),
+            ark_server.as_deref(),
+            ark_pubkey.as_deref(),
+        )?,
         Command::Show { alias } => commands::cmd_show(&alias)?,
         Command::Encode {
             alias,
