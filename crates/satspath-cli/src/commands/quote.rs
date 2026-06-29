@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use satspath_core::crypto::verify_signed_profile;
+use satspath_core::{crypto::verify_signed_profile, privacy::mask_identifier};
 use satspath_router::{select_route, RouteRequest};
 
 use super::open_registry;
@@ -8,7 +8,7 @@ use super::open_registry;
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     let registry = open_registry()?;
 
-    println!("Resolving alias '{}'...", alias);
+    println!("Resolving identifier '{}'...", mask_identifier(alias));
     let signed = registry
         .resolve_alias(alias)
         .map_err(|e| anyhow::anyhow!("{}", e))?;

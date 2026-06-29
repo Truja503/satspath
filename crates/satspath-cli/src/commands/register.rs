@@ -1,38 +1,38 @@
 use anyhow::Result;
-use serde_json::{json, Value};
-use std::fs;
 
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
+    privacy::{canonical_identifier, mask_identifier, mask_pubkey},
     PaymentMethod, PaymentProfile,
 };
 
-use super::{open_registry, satspath_dir};
+use super::open_registry;
 
 pub fn cmd_register(alias: &str) -> Result<()> {
     let mut registry = open_registry()?;
+    let alias = canonical_identifier(alias);
 
-    if registry.is_registered(alias) {
-        println!("Alias '{}' is already registered.", alias);
+    if registry.is_registered(&alias) {
+        println!("Alias '{}' is already registered.", mask_identifier(&alias));
         return Ok(());
     }
 
-    // Generate a fresh identity keypair (demo only — keys stored locally).
+    // Generate a fresh identity keypair for signing this public profile only.
+    // The private key is not stored, printed, or encoded into any QR payload.
     let kp = generate_identity_keypair();
     let pubkey_hex = hex::encode(kp.public_key.serialize());
-    let secret_hex = hex::encode(kp.secret_key.secret_bytes());
 
     // Build a demo profile with placeholder payment methods.
     // Multiple on-chain addresses are supported for privacy.
     let domain = alias.splitn(2, '@').nth(1).unwrap_or("example.com");
     let profile = PaymentProfile {
-        alias: alias.to_string(),
+        alias: alias.clone(),
         identity_pubkey: pubkey_hex.clone(),
         methods: vec![
             PaymentMethod::Lightning {
                 label: "Lightning Address".into(),
                 lnurl: None,
-                lightning_address: Some(alias.to_string()),
+                lightning_address: Some(alias.clone()),
                 bolt12: None,
             },
             // First on-chain address (primary)
@@ -61,22 +61,8 @@ pub fn cmd_register(alias: &str) -> Result<()> {
 
     registry.register_profile(signed)?;
 
-    // Persist the demo secret key locally (never commit this file).
-    let keys_path = satspath_dir().join("keys.json");
-    let mut keys: Value = if keys_path.exists() {
-        serde_json::from_str(&fs::read_to_string(&keys_path)?)?
-    } else {
-        json!({ "warning": "DEMO keys only.", "keys": {} })
-    };
-    keys["keys"][alias] = json!({
-        "pubkey": pubkey_hex,
-        "secret_key_hex": secret_hex,
-        "warning": "DEMO USE ONLY. Never use with real funds.",
-    });
-    fs::write(&keys_path, serde_json::to_string_pretty(&keys)?)?;
-
-    println!("Registered: {}", alias);
-    println!("Identity pubkey: {}", pubkey_hex);
+    println!("Registered: {}", mask_identifier(&alias));
+    println!("Identity pubkey: {}", mask_pubkey(&pubkey_hex));
     println!("Fingerprint:     {}", fp);
     println!();
     println!("Payment methods registered:");
@@ -86,6 +72,6 @@ pub fn cmd_register(alias: &str) -> Result<()> {
     println!("  - Ark");
     println!();
     println!("Profile signed and stored in .satspath/registry.json");
-    println!("DEMO secret key stored in .satspath/keys.json (git-ignored)");
+    println!("No private key stored.");
     Ok(())
 }

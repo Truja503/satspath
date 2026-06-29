@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::{Result, SatsPathError};
+use crate::privacy::{canonical_identifier, identifier_hash};
 use crate::profile::SignedPaymentProfile;
 
 const REGISTRY_FILE: &str = "registry.json";
@@ -48,32 +49,40 @@ impl Registry {
 
     /// Register a signed profile. Fails if the alias is already taken.
     pub fn register_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
-        let alias = signed.profile.alias.clone();
-        if self.data.profiles.contains_key(&alias) {
+        let alias = canonical_identifier(&signed.profile.alias);
+        let key = identifier_hash(&alias);
+        if self.data.profiles.contains_key(&key) || self.data.profiles.contains_key(&alias) {
             return Err(SatsPathError::AliasAlreadyRegistered(alias));
         }
-        self.data.profiles.insert(alias, signed);
+        self.data.profiles.insert(key, signed);
         self.save()
     }
 
     /// Update (overwrite) an existing profile entry.
     pub fn update_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
-        let alias = signed.profile.alias.clone();
-        self.data.profiles.insert(alias, signed);
+        let alias = canonical_identifier(&signed.profile.alias);
+        self.data.profiles.insert(identifier_hash(&alias), signed);
         self.save()
     }
 
     /// Resolve an alias to its signed profile.
     pub fn resolve_alias(&self, alias: &str) -> Result<&SignedPaymentProfile> {
+        let canonical = canonical_identifier(alias);
+        let key = identifier_hash(&canonical);
         self.data
             .profiles
-            .get(alias)
-            .ok_or_else(|| SatsPathError::AliasNotFound(alias.to_string()))
+            .get(&key)
+            .or_else(|| self.data.profiles.get(&canonical))
+            .ok_or_else(|| SatsPathError::AliasNotFound(canonical))
     }
 
     /// Check whether an alias is already registered.
     pub fn is_registered(&self, alias: &str) -> bool {
-        self.data.profiles.contains_key(alias)
+        let canonical = canonical_identifier(alias);
+        self.data
+            .profiles
+            .contains_key(&identifier_hash(&canonical))
+            || self.data.profiles.contains_key(&canonical)
     }
 
     /// Return all registered aliases.
@@ -119,8 +128,11 @@ mod tests {
     fn duplicate_registration_fails() {
         let dir = tempfile::tempdir().unwrap();
         let mut reg = Registry::open(dir.path()).unwrap();
-        reg.register_profile(make_signed("bob@example.com")).unwrap();
-        let err = reg.register_profile(make_signed("bob@example.com")).unwrap_err();
+        reg.register_profile(make_signed("bob@example.com"))
+            .unwrap();
+        let err = reg
+            .register_profile(make_signed("bob@example.com"))
+            .unwrap_err();
         assert!(matches!(err, SatsPathError::AliasAlreadyRegistered(_)));
     }
 
@@ -137,7 +149,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut reg = Registry::open(dir.path()).unwrap();
         assert!(!reg.is_registered("carol@example.com"));
-        reg.register_profile(make_signed("carol@example.com")).unwrap();
+        reg.register_profile(make_signed("carol@example.com"))
+            .unwrap();
         assert!(reg.is_registered("carol@example.com"));
     }
 
@@ -146,7 +159,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         {
             let mut reg = Registry::open(dir.path()).unwrap();
-            reg.register_profile(make_signed("persist@example.com")).unwrap();
+            reg.register_profile(make_signed("persist@example.com"))
+                .unwrap();
         }
         let reg2 = Registry::open(dir.path()).unwrap();
         assert!(reg2.is_registered("persist@example.com"));
