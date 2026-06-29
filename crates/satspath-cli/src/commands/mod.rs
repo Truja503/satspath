@@ -1,5 +1,6 @@
 mod ark;
 mod demo;
+mod dns;
 mod encode;
 mod init;
 mod invite;
@@ -13,6 +14,7 @@ mod show;
 
 pub use ark::{cmd_ark_receive, cmd_ark_send, cmd_ark_swap, ArkSwapSide};
 pub use demo::cmd_demo;
+pub use dns::cmd_dns_resolve;
 pub use encode::{cmd_decode, cmd_encode};
 pub use init::cmd_init;
 pub use invite::cmd_invite;

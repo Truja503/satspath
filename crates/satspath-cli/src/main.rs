@@ -131,8 +131,32 @@ enum Command {
         command: ArkCommand,
     },
 
+    /// BIP-353 DNS payment-instruction resolution (mainnet preview only).
+    Dns {
+        #[command(subcommand)]
+        command: DnsCommand,
+    },
+
     /// Run the full SatsPath demo flow
     Demo,
+}
+
+#[derive(Subcommand)]
+enum DnsCommand {
+    /// Resolve ₿user@domain (or user@domain) via DNSSEC-backed BIP-353.
+    Resolve(DnsResolveArgs),
+}
+
+#[derive(Args)]
+struct DnsResolveArgs {
+    /// The name to resolve, e.g. ₿rodrigo@satspath.dev or rodrigo@satspath.dev
+    name: String,
+    /// Emit the machine-readable resolution as JSON (and nothing else)
+    #[arg(long)]
+    json: bool,
+    /// DEV ONLY: skip DNSSEC validation (never use on mainnet)
+    #[arg(long)]
+    allow_insecure_dns_for_dev: bool,
 }
 
 #[derive(Subcommand)]
@@ -299,6 +323,12 @@ async fn main() -> Result<()> {
                     args.confirm.as_deref(),
                 )
                 .await?
+            }
+        },
+        Command::Dns { command } => match command {
+            DnsCommand::Resolve(args) => {
+                commands::cmd_dns_resolve(&args.name, args.json, args.allow_insecure_dns_for_dev)
+                    .await?
             }
         },
         Command::Demo => commands::cmd_demo().await?,

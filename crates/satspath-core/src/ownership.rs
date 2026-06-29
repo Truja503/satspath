@@ -50,6 +50,10 @@ pub enum ProofType {
     OnchainAddressSignature,
     ArkPubkeySignature,
     ManualAttestation,
+    /// Ownership attested via a DNSSEC-signed BIP-353 DNS record. Verified by the
+    /// BIP-353 resolver (a DNS lookup), not the offline
+    /// `verify_method_verification` path.
+    Bip353Dnssec,
 }
 
 /// How much weight a verified proof carries.
@@ -69,9 +73,9 @@ impl ProofType {
             ProofType::OnchainAddressSignature | ProofType::ArkPubkeySignature => {
                 TrustTier::Cryptographic
             }
-            ProofType::DomainWellKnown | ProofType::LightningAddressChallenge => {
-                TrustTier::DomainControl
-            }
+            ProofType::DomainWellKnown
+            | ProofType::LightningAddressChallenge
+            | ProofType::Bip353Dnssec => TrustTier::DomainControl,
             ProofType::ManualAttestation => TrustTier::SelfAsserted,
         }
     }
@@ -518,6 +522,14 @@ pub fn verify_method_verification(
             })?;
             let domain = lightning_method_domain(method)?;
             verify_well_known(identity_pubkey, Some(&domain), proof, body)?;
+        }
+        ProofType::Bip353Dnssec => {
+            // BIP-353 proofs are verified by the DNS resolver
+            // (`satspath_core::bip353::verify_bip353_ownership`), which performs a
+            // DNSSEC-validated lookup — not from this offline path.
+            return Err(SatsPathError::OwnershipProofUnsupported(
+                "Bip353Dnssec proofs are verified via the BIP-353 resolver, not offline".into(),
+            ));
         }
     }
 

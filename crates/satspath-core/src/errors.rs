@@ -23,6 +23,12 @@ pub enum SatsPathError {
     #[error("private material rejected: {0}")]
     PrivateMaterialRejected(String),
 
+    #[error("BIP-353 resolution error: {0}")]
+    Bip353(String),
+
+    #[error("DNSSEC validation unavailable — failing closed (Strict mode)")]
+    DnssecUnavailable,
+
     #[error("ownership proof invalid: {0}")]
     OwnershipProofInvalid(String),
 
