@@ -55,12 +55,19 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
         .collect();
 
     let verified = trusts.iter().filter(|t| t.is_verified()).count();
+    let self_asserted = trusts.iter().filter(|t| t.is_self_asserted()).count();
     let suspicious = trusts.iter().filter(|t| t.is_suspicious()).count();
     println!(
-        "Ownership:      {} of {} method(s) verified",
+        "Ownership:      {} of {} method(s) independently verified",
         verified,
         trusts.len()
     );
+    if self_asserted > 0 {
+        println!(
+            "  {} method(s) self-asserted only (no independent proof).",
+            self_asserted
+        );
+    }
     if suspicious > 0 {
         println!(
             "  ⚠  {} method(s) carry an INVALID or EXPIRED proof — do not trust them.",

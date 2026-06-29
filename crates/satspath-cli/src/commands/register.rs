@@ -9,7 +9,7 @@ use satspath_core::{
     BitcoinNetwork, PaymentMethod, PaymentProfile,
 };
 
-use super::open_registry;
+use super::{keystore, open_registry, satspath_dir};
 
 pub fn cmd_register(
     alias: &str,
@@ -81,6 +81,11 @@ pub fn cmd_register(
     let fp = fingerprint_pubkey(&pubkey_hex)?;
     registry.register_profile(signed)?;
 
+    // Persist the protocol identity key locally so the owner can attach ownership
+    // proofs to (and otherwise update) this profile later. This is NOT a wallet
+    // seed or spending key, and it never enters a profile or QR payload.
+    let key_path = keystore::save_identity_key(&satspath_dir(), &kp.secret_key)?;
+
     println!("Registered: {}", mask_identifier(&alias));
     println!("Identity pubkey: {}", mask_pubkey(&pubkey_hex));
     println!("Fingerprint:     {}", fp);
@@ -91,6 +96,15 @@ pub fn cmd_register(
     }
     println!();
     println!("Profile signed and stored in .satspath/registry.json");
-    println!("No private key stored.");
+    println!(
+        "Identity key saved to {} (gitignored, owner-only).",
+        key_path.display()
+    );
+    println!("This is your protocol identity key — not a wallet seed or spending key.");
+    println!();
+    println!(
+        "Prove ownership of a method:  satspath prove {} --method-index 0",
+        alias
+    );
     Ok(())
 }

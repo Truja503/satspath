@@ -39,6 +39,36 @@ enum Command {
     /// Show a registered profile
     Show { alias: String },
 
+    /// Print the ownership-proof challenge to sign for one method
+    Prove {
+        alias: String,
+        /// Index of the method in the profile (see `satspath show`)
+        #[arg(long, default_value_t = 0)]
+        method_index: usize,
+    },
+
+    /// Attach an ownership proof to a method and re-sign the profile
+    AttachProof {
+        alias: String,
+        #[arg(long, default_value_t = 0)]
+        method_index: usize,
+        /// Proof type: onchain | ark | manual
+        #[arg(long = "type")]
+        proof_type: String,
+        /// issued_at value printed by `satspath prove` (required for onchain/ark)
+        #[arg(long)]
+        issued_at: Option<i64>,
+        /// Compressed secp256k1 pubkey that signed the challenge (onchain/ark)
+        #[arg(long)]
+        pubkey: Option<String>,
+        /// DER signature (hex) over the challenge (onchain/ark)
+        #[arg(long)]
+        signature: Option<String>,
+        /// Optional validity window in seconds from issued_at
+        #[arg(long)]
+        expires_in: Option<i64>,
+    },
+
     /// Encode a universal SatsPath payment URI
     Encode {
         alias: String,
@@ -99,6 +129,27 @@ async fn main() -> Result<()> {
             ark_pubkey.as_deref(),
         )?,
         Command::Show { alias } => commands::cmd_show(&alias).await?,
+        Command::Prove {
+            alias,
+            method_index,
+        } => commands::cmd_prove(&alias, method_index)?,
+        Command::AttachProof {
+            alias,
+            method_index,
+            proof_type,
+            issued_at,
+            pubkey,
+            signature,
+            expires_in,
+        } => commands::cmd_attach_proof(
+            &alias,
+            method_index,
+            &proof_type,
+            issued_at,
+            pubkey.as_deref(),
+            signature.as_deref(),
+            expires_in,
+        )?,
         Command::Encode {
             alias,
             amount_sats,
