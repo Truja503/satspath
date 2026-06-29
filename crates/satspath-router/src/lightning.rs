@@ -4,16 +4,21 @@ use satspath_core::PaymentMethod;
 
 pub fn is_lightning_available(method: &PaymentMethod) -> bool {
     match method {
-        PaymentMethod::Lightning { lnurl, lightning_address, bolt12, .. } => {
-            lnurl.is_some() || lightning_address.is_some() || bolt12.is_some()
-        }
+        PaymentMethod::Lightning {
+            lnurl,
+            lightning_address,
+            bolt12,
+            ..
+        } => lnurl.is_some() || lightning_address.is_some() || bolt12.is_some(),
         _ => false,
     }
 }
 
 pub fn lightning_address(method: &PaymentMethod) -> Option<&str> {
     match method {
-        PaymentMethod::Lightning { lightning_address, .. } => lightning_address.as_deref(),
+        PaymentMethod::Lightning {
+            lightning_address, ..
+        } => lightning_address.as_deref(),
         _ => None,
     }
 }
@@ -57,7 +62,12 @@ pub async fn fetch_lnurl_metadata(lightning_address: &str) -> anyhow::Result<Lnu
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
-    let meta = client.get(&url).send().await?.json::<LnurlPayMetadata>().await?;
+    let meta = client
+        .get(&url)
+        .send()
+        .await?
+        .json::<LnurlPayMetadata>()
+        .await?;
     if meta.tag != "payRequest" {
         anyhow::bail!("unexpected LNURL tag: {}", meta.tag);
     }
@@ -74,13 +84,17 @@ pub async fn fetch_invoice(
     if amount_msats < meta.min_sendable {
         anyhow::bail!(
             "amount {} sats ({} msats) below minimum {} msats",
-            amount_sats, amount_msats, meta.min_sendable
+            amount_sats,
+            amount_msats,
+            meta.min_sendable
         );
     }
     if amount_msats > meta.max_sendable {
         anyhow::bail!(
             "amount {} sats ({} msats) exceeds maximum {} msats",
-            amount_sats, amount_msats, meta.max_sendable
+            amount_sats,
+            amount_msats,
+            meta.max_sendable
         );
     }
     let mut url = format!("{}?amount={}", meta.callback, amount_msats);
@@ -93,7 +107,12 @@ pub async fn fetch_invoice(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
-    let resp = client.get(&url).send().await?.json::<LnurlInvoiceResponse>().await?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await?
+        .json::<LnurlInvoiceResponse>()
+        .await?;
     if resp.pr.is_empty() {
         anyhow::bail!("received empty invoice from LNURL callback");
     }

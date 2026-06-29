@@ -143,7 +143,10 @@ pub async fn wait_and_claim_reverse(
     let update = client
         .wait_for_status(
             swap_id,
-            Some(&[SwapStatus::TransactionConfirmed, SwapStatus::TransactionLockupFailed]),
+            Some(&[
+                SwapStatus::TransactionConfirmed,
+                SwapStatus::TransactionLockupFailed,
+            ]),
             max_wait,
         )
         .await?;

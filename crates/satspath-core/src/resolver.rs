@@ -24,7 +24,9 @@ pub struct ChainResolver {
 
 impl ChainResolver {
     pub fn new() -> Self {
-        Self { resolvers: Vec::new() }
+        Self {
+            resolvers: Vec::new(),
+        }
     }
 
     pub fn push<R: ProfileResolver + Send + Sync + 'static>(mut self, resolver: R) -> Self {
@@ -95,9 +97,13 @@ mod tests {
     #[tokio::test]
     async fn chain_resolver_success() {
         let chain = ChainResolver::new()
-            .push(MockResolver { should_succeed: false })
-            .push(MockResolver { should_succeed: true });
-        
+            .push(MockResolver {
+                should_succeed: false,
+            })
+            .push(MockResolver {
+                should_succeed: true,
+            });
+
         let res = chain.resolve_alias("test@domain.com").await;
         assert!(res.is_ok());
         assert_eq!(res.unwrap().profile.alias, "test@domain.com");
@@ -106,9 +112,13 @@ mod tests {
     #[tokio::test]
     async fn chain_resolver_failure() {
         let chain = ChainResolver::new()
-            .push(MockResolver { should_succeed: false })
-            .push(MockResolver { should_succeed: false });
-        
+            .push(MockResolver {
+                should_succeed: false,
+            })
+            .push(MockResolver {
+                should_succeed: false,
+            });
+
         let res = chain.resolve_alias("test@domain.com").await;
         assert!(res.is_err());
     }

@@ -28,19 +28,28 @@ impl SwapStore {
     /// Open the swap store at the default location (`.satspath/swaps.enc`).
     pub fn open() -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
-        Ok(Self { path, encryption_key: None })
+        Ok(Self {
+            path,
+            encryption_key: None,
+        })
     }
 
     /// Open the store with an AES-256 encryption key derived from user password.
     /// The key should be derived via PBKDF2 (same scheme as ARK SDK's StorageCrypto).
     pub fn open_with_key(key: [u8; 32]) -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
-        Ok(Self { path, encryption_key: Some(key) })
+        Ok(Self {
+            path,
+            encryption_key: Some(key),
+        })
     }
 
     /// Open a plaintext store at a custom path (for tests / dev).
     pub fn open_plaintext(path: PathBuf) -> Self {
-        Self { path, encryption_key: None }
+        Self {
+            path,
+            encryption_key: None,
+        }
     }
 
     // ── Read ─────────────────────────────────────────────────────────────────
@@ -62,9 +71,8 @@ impl SwapStore {
             raw
         };
 
-        serde_json::from_slice(&json_bytes).map_err(|e| {
-            SwapError::StorageCorruption(format!("Failed to parse swap store: {e}"))
-        })
+        serde_json::from_slice(&json_bytes)
+            .map_err(|e| SwapError::StorageCorruption(format!("Failed to parse swap store: {e}")))
     }
 
     // ── Write ────────────────────────────────────────────────────────────────
@@ -134,7 +142,11 @@ impl SwapStore {
     /// List all swaps in a recoverable state (failed but funds can be reclaimed).
     pub fn list_recoverable(&self) -> Result<Vec<SwapRecord>> {
         let store = self.load_all()?;
-        Ok(store.swaps.into_iter().filter(|s| s.is_recoverable()).collect())
+        Ok(store
+            .swaps
+            .into_iter()
+            .filter(|s| s.is_recoverable())
+            .collect())
     }
 
     /// List all swaps of a given kind that are still pending.

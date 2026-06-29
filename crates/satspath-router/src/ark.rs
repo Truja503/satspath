@@ -30,7 +30,9 @@ impl ArkClient for MockArkClient {
 
 /// Check whether any Ark method exists in a method list.
 pub fn is_ark_available(methods: &[PaymentMethod]) -> bool {
-    methods.iter().any(|m| matches!(m, PaymentMethod::Ark { .. }))
+    methods
+        .iter()
+        .any(|m| matches!(m, PaymentMethod::Ark { .. }))
 }
 
 /// Find the first Ark method.

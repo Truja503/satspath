@@ -3,8 +3,8 @@ mod encode;
 mod init;
 mod invite;
 mod pay;
-mod quote;
 mod qr;
+mod quote;
 mod register;
 mod show;
 
@@ -38,14 +38,14 @@ use satspath_core::resolvers::http::HttpResolver;
 
 pub(crate) fn get_resolver() -> Result<ChainResolver> {
     let mut chain = ChainResolver::new();
-    
+
     // Add local registry first
     if let Ok(reg) = open_registry() {
         chain = chain.push(reg);
     }
-    
+
     // Add public HTTP resolver fallback
     chain = chain.push(HttpResolver::new());
-    
+
     Ok(chain)
 }

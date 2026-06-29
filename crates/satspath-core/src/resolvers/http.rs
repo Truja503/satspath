@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use reqwest::Client;
 use std::time::Duration;
 
-use crate::{Result, SatsPathError, SignedPaymentProfile};
 use crate::resolver::ProfileResolver;
+use crate::{Result, SatsPathError, SignedPaymentProfile};
 
 /// Resolves a profile by making an HTTP GET request to the domain of the alias.
-/// 
+///
 /// If the alias is `rodrigo@satspath.dev`, it fetches:
 /// `https://satspath.dev/.well-known/satspath/rodrigo`
 pub struct HttpResolver {
