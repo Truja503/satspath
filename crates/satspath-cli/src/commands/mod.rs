@@ -4,6 +4,7 @@ mod init;
 mod invite;
 mod pay;
 mod quote;
+mod qr;
 mod register;
 mod show;
 
@@ -27,9 +28,7 @@ pub(crate) fn satspath_dir() -> PathBuf {
 pub(crate) fn open_registry() -> Result<Registry> {
     let dir = satspath_dir();
     if !dir.exists() {
-        anyhow::bail!(
-            ".satspath/ directory not found. Run `satspath init` first."
-        );
+        anyhow::bail!(".satspath/ not found. Run `satspath init` first.");
     }
     Ok(Registry::open(&dir)?)
 }
