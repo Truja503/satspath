@@ -32,12 +32,22 @@ pub async fn cmd_pay(
     }
 
     println!("─────────────────────────────────────────");
-    println!("SatsPath Preview Mode");
+    if mainnet_preview {
+        println!("SatsPath Mainnet Preview");
+    } else {
+        println!("SatsPath Preview Mode");
+    }
     println!("─────────────────────────────────────────");
     println!("No funds moved.");
     println!("No signing performed.");
     println!("No private keys touched.");
     println!("Public payment pointer only.");
+    if mainnet_preview {
+        println!("MAINNET PREVIEW ONLY.");
+        println!("No transaction signed.");
+        println!("No transaction broadcast.");
+        println!("Use your own wallet to pay this QR.");
+    }
     println!();
 
     if experimental_swaps {

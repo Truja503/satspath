@@ -109,6 +109,57 @@ pub fn assert_no_private_material(payload: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn assert_mainnet_preview_safe(payload: &str) -> Result<()> {
+    assert_no_private_material(payload)?;
+
+    let lower = payload.to_ascii_lowercase();
+    let blocked = [
+        "seed",
+        "mnemonic",
+        "xprv",
+        "tprv",
+        "private key",
+        "privkey",
+        "macaroon",
+        "cert",
+        "api_key",
+        "secret",
+        "password",
+        "refund_key",
+        "claim_key",
+        "preimage",
+    ];
+    if let Some(term) = blocked.iter().find(|term| lower.contains(**term)) {
+        return Err(SatsPathError::PrivateMaterialRejected((*term).into()));
+    }
+
+    let secret_field_names = [
+        "seed",
+        "mnemonic",
+        "xprv",
+        "tprv",
+        "private_key",
+        "privkey",
+        "macaroon",
+        "cert",
+        "api_key",
+        "secret",
+        "password",
+        "refund_key",
+        "claim_key",
+        "preimage",
+    ];
+    for field in secret_field_names {
+        if lower.contains(&format!("\"{field}\"")) || lower.contains(&format!("'{field}'")) {
+            return Err(SatsPathError::PrivateMaterialRejected(format!(
+                "secret-bearing field `{field}`"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
 pub fn validate_claim_policy(policy: &ClaimPolicy) -> Result<()> {
     match policy {
         ClaimPolicy::SingleSig { receiver_pubkey } => validate_compressed_pubkey(receiver_pubkey),
@@ -288,6 +339,13 @@ mod tests {
             method_verifications: Vec::new(),
         };
         assert!(validate_public_profile(&profile).is_err());
+    }
+
+    #[test]
+    fn mainnet_preview_safe_rejects_secret_terms() {
+        assert!(assert_mainnet_preview_safe("bitcoin:bc1qexample?amount=0.1").is_ok());
+        assert!(assert_mainnet_preview_safe("{\"claim_key\":\"abc\"}").is_err());
+        assert!(assert_mainnet_preview_safe("lnbc1_refund_key_payload").is_err());
     }
 
     #[test]

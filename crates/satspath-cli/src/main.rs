@@ -101,6 +101,27 @@ enum Command {
         /// Emit the machine-readable QuoteResponse as JSON (and nothing else)
         #[arg(long)]
         json: bool,
+        /// Use mainnet public-data preview rules. No execution.
+        #[arg(long)]
+        mainnet_preview: bool,
+        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
+        #[arg(long)]
+        fetch_lnurl_invoice: bool,
+    },
+
+    /// Build a mainnet-compatible public payment preview. No funds move.
+    Preview {
+        recipient: String,
+        amount_sats: u64,
+        /// Use real mainnet public data, never execution.
+        #[arg(long)]
+        mainnet: bool,
+        /// Print only valid JSON.
+        #[arg(long)]
+        json: bool,
+        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
+        #[arg(long)]
+        fetch_lnurl_invoice: bool,
     },
 
     /// Resolve, route, and build a public QR preview. No funds move by default.
@@ -246,12 +267,26 @@ async fn main() -> Result<()> {
             alias,
             amount_sats,
             json,
+            mainnet_preview,
+            fetch_lnurl_invoice,
         } => {
-            if json {
+            if mainnet_preview {
+                commands::cmd_preview(&alias, amount_sats, true, json, fetch_lnurl_invoice).await?
+            } else if json {
                 commands::cmd_quote_json(&alias, amount_sats).await?
             } else {
                 commands::cmd_quote(&alias, amount_sats).await?
             }
+        }
+        Command::Preview {
+            recipient,
+            amount_sats,
+            mainnet,
+            json,
+            fetch_lnurl_invoice,
+        } => {
+            commands::cmd_preview(&recipient, amount_sats, mainnet, json, fetch_lnurl_invoice)
+                .await?
         }
         Command::Pay {
             alias,

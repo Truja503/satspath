@@ -2,6 +2,7 @@ pub mod ark;
 pub mod codec;
 pub mod crypto;
 pub mod errors;
+pub mod execution;
 pub mod ownership;
 pub mod peer_registry;
 pub mod platform;
@@ -19,6 +20,7 @@ pub use ark::{
     ArkReceivePointer, ArkRouteKind, ClientValidationReport,
 };
 pub use errors::{Result, SatsPathError};
+pub use execution::ExecutionMode;
 pub use ownership::{
     attach_signature_proof, attach_well_known_proof, build_manual_attestation,
     build_signature_attestation, evaluate_method_trust, evaluate_method_trust_for_profile,
