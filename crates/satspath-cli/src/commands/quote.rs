@@ -16,6 +16,15 @@ use super::{
     qr::{bitcoin_uri, print_qr},
 };
 
+/// Emit the machine-readable quote contract as a single JSON object and nothing
+/// else, so the UX / API layer can consume it directly. Human-facing output
+/// stays in [`cmd_quote`].
+pub async fn cmd_quote_json(alias: &str, amount_sats: u64) -> Result<()> {
+    let response = satspath_router::quote(alias, amount_sats).await;
+    println!("{}", serde_json::to_string_pretty(&response)?);
+    Ok(())
+}
+
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     let resolver = get_resolver()?;
 
