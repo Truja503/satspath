@@ -20,14 +20,10 @@ enum Command {
     Init,
 
     /// Register an alias and create a signed payment profile
-    Register {
-        alias: String,
-    },
+    Register { alias: String },
 
     /// Show a registered profile
-    Show {
-        alias: String,
-    },
+    Show { alias: String },
 
     /// Encode a universal SatsPath payment URI
     Encode {
@@ -38,27 +34,27 @@ enum Command {
     },
 
     /// Decode a SatsPath payment URI
-    Decode {
-        uri: String,
-    },
+    Decode { uri: String },
 
     /// Get a route quote for an alias and amount
-    Quote {
-        alias: String,
-        amount_sats: u64,
-    },
+    Quote { alias: String, amount_sats: u64 },
 
     /// Simulate a payment to an alias
     Pay {
         alias: String,
         amount_sats: u64,
+        #[arg(long)]
+        mainnet_preview: bool,
+        #[arg(long)]
+        experimental_swaps: bool,
+        #[arg(long)]
+        testnet: bool,
+        #[arg(long)]
+        debug: bool,
     },
 
     /// Generate an invite for an unregistered alias
-    Invite {
-        alias: String,
-        amount_sats: u64,
-    },
+    Invite { alias: String, amount_sats: u64 },
 
     /// Run the full SatsPath demo flow
     Demo,
@@ -72,19 +68,32 @@ async fn main() -> Result<()> {
         Command::Init => commands::cmd_init()?,
         Command::Register { alias } => commands::cmd_register(&alias)?,
         Command::Show { alias } => commands::cmd_show(&alias)?,
-        Command::Encode { alias, amount_sats, memo } => {
-            commands::cmd_encode(&alias, amount_sats, memo.as_deref())?
-        }
+        Command::Encode {
+            alias,
+            amount_sats,
+            memo,
+        } => commands::cmd_encode(&alias, amount_sats, memo.as_deref())?,
         Command::Decode { uri } => commands::cmd_decode(&uri)?,
-        Command::Quote { alias, amount_sats } => {
-            commands::cmd_quote(&alias, amount_sats).await?
+        Command::Quote { alias, amount_sats } => commands::cmd_quote(&alias, amount_sats).await?,
+        Command::Pay {
+            alias,
+            amount_sats,
+            mainnet_preview,
+            experimental_swaps,
+            testnet,
+            debug,
+        } => {
+            commands::cmd_pay(
+                &alias,
+                amount_sats,
+                mainnet_preview,
+                experimental_swaps,
+                testnet,
+                debug,
+            )
+            .await?
         }
-        Command::Pay { alias, amount_sats } => {
-            commands::cmd_pay(&alias, amount_sats).await?
-        }
-        Command::Invite { alias, amount_sats } => {
-            commands::cmd_invite(&alias, amount_sats)?
-        }
+        Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
         Command::Demo => commands::cmd_demo().await?,
     }
 
