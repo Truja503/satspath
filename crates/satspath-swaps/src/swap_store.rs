@@ -53,14 +53,6 @@ impl SwapStore {
         }
     }
 
-    /// Open an encrypted store at a specific path (for tests).
-    pub fn open_encrypted_at(path: PathBuf, key: [u8; 32]) -> Self {
-        Self {
-            path,
-            encryption_key: Some(key),
-        }
-    }
-
     // ── Read ─────────────────────────────────────────────────────────────────
 
     fn load_all(&self) -> Result<SwapStoreFile> {

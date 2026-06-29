@@ -24,7 +24,9 @@ pub struct ChainResolver {
 
 impl ChainResolver {
     pub fn new() -> Self {
-        Self { resolvers: Vec::new() }
+        Self {
+            resolvers: Vec::new(),
+        }
     }
 
     pub fn push<R: ProfileResolver + Send + Sync + 'static>(mut self, resolver: R) -> Self {
@@ -36,25 +38,16 @@ impl ChainResolver {
 #[async_trait]
 impl ProfileResolver for ChainResolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
-        let mut last_error = None;
-
         for resolver in &self.resolvers {
             match resolver.resolve_alias(alias).await {
                 Ok(profile) => return Ok(profile),
                 Err(SatsPathError::AliasNotFound(_)) => continue,
-                Err(e) => {
-                    // Save the error, but keep trying the next resolver
-                    last_error = Some(e);
-                    continue;
-                }
+                Err(SatsPathError::NetworkError(_)) => continue,
+                Err(e) => return Err(e),
             }
         }
 
-        if let Some(e) = last_error {
-            Err(e)
-        } else {
-            Err(SatsPathError::AliasNotFound(alias.to_string()))
-        }
+        Err(SatsPathError::AliasNotFound(alias.to_string()))
     }
 }
 
@@ -79,11 +72,13 @@ mod tests {
                     identity_pubkey: pubkey_hex,
                     methods: vec![PaymentMethod::Lightning {
                         label: "LN".into(),
-                        lnurl: None,
                         lightning_address: Some(alias.to_string()),
+                        lnurl: None,
                         bolt12: None,
+                        receiver_pubkey: None,
                     }],
                     updated_at: 1_700_000_000,
+                    expires_at: None,
                 };
                 Ok(sign_profile(profile, &kp.secret_key).unwrap())
             } else {
@@ -95,9 +90,13 @@ mod tests {
     #[tokio::test]
     async fn chain_resolver_success() {
         let chain = ChainResolver::new()
-            .push(MockResolver { should_succeed: false })
-            .push(MockResolver { should_succeed: true });
-        
+            .push(MockResolver {
+                should_succeed: false,
+            })
+            .push(MockResolver {
+                should_succeed: true,
+            });
+
         let res = chain.resolve_alias("test@domain.com").await;
         assert!(res.is_ok());
         assert_eq!(res.unwrap().profile.alias, "test@domain.com");
@@ -106,9 +105,13 @@ mod tests {
     #[tokio::test]
     async fn chain_resolver_failure() {
         let chain = ChainResolver::new()
-            .push(MockResolver { should_succeed: false })
-            .push(MockResolver { should_succeed: false });
-        
+            .push(MockResolver {
+                should_succeed: false,
+            })
+            .push(MockResolver {
+                should_succeed: false,
+            });
+
         let res = chain.resolve_alias("test@domain.com").await;
         assert!(res.is_err());
     }

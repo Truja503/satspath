@@ -19,15 +19,21 @@ enum Command {
     /// Initialize SatsPath local state (.satspath/ directory)
     Init,
 
-    /// Register an alias with a signed payment profile
+    /// Register an alias with a signed public payment profile
     Register {
         alias: String,
-        /// Wire a real Lightning Address (e.g. trujasx@blink.sv)
+        /// Wire a real Lightning Address.
+        #[arg(long, alias = "ln-address")]
+        lightning_address: Option<String>,
+        /// Wire a real mainnet Bitcoin address.
+        #[arg(long, alias = "onchain")]
+        onchain_address: Option<String>,
+        /// Wire an Ark server URL.
         #[arg(long)]
-        ln_address: Option<String>,
-        /// Wire a real on-chain Bitcoin address
+        ark_server: Option<String>,
+        /// Wire an Ark receiver compressed secp256k1 pubkey.
         #[arg(long)]
-        onchain: Option<String>,
+        ark_pubkey: Option<String>,
     },
 
     /// Show a registered profile
@@ -44,25 +50,29 @@ enum Command {
     /// Decode a SatsPath payment URI
     Decode { uri: String },
 
-    /// Show routing decision with live mempool fees + scannable QR
+    /// Show routing decision with live mempool fees
     Quote { alias: String, amount_sats: u64 },
 
-    /// Resolve, route, fetch real invoice and display QR.
-    /// Add --experimental-swaps --testnet to activate the swap engine (testnet only).
+    /// Resolve, route, and build a public QR preview. No funds move by default.
     Pay {
         alias: String,
         amount_sats: u64,
         #[arg(long)]
         memo: Option<String>,
-        /// Activate Boltz swap engine (requires --testnet, testnet only)
+        #[arg(long)]
+        mainnet_preview: bool,
+        /// Activate experimental swap engine. Requires --testnet.
         #[arg(long)]
         experimental_swaps: bool,
-        /// Target testnet instead of mainnet
+        /// Target testnet instead of mainnet.
         #[arg(long)]
         testnet: bool,
+        /// Print full public pointer and QR payload values.
+        #[arg(long)]
+        debug: bool,
     },
 
-    /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
+    /// Generate an invite for an unregistered alias
     Invite { alias: String, amount_sats: u64 },
 
     /// Run the full SatsPath demo flow
@@ -75,28 +85,44 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Command::Init => commands::cmd_init()?,
-        Command::Register { alias, ln_address, onchain } => {
-            commands::cmd_register(&alias, ln_address.as_deref(), onchain.as_deref())?
-        }
+        Command::Register {
+            alias,
+            lightning_address,
+            onchain_address,
+            ark_server,
+            ark_pubkey,
+        } => commands::cmd_register(
+            &alias,
+            lightning_address.as_deref(),
+            onchain_address.as_deref(),
+            ark_server.as_deref(),
+            ark_pubkey.as_deref(),
+        )?,
         Command::Show { alias } => commands::cmd_show(&alias).await?,
-        Command::Encode { alias, amount_sats, memo } => {
-            commands::cmd_encode(&alias, amount_sats, memo.as_deref())?
-        }
+        Command::Encode {
+            alias,
+            amount_sats,
+            memo,
+        } => commands::cmd_encode(&alias, amount_sats, memo.as_deref())?,
         Command::Decode { uri } => commands::cmd_decode(&uri)?,
         Command::Quote { alias, amount_sats } => commands::cmd_quote(&alias, amount_sats).await?,
         Command::Pay {
             alias,
             amount_sats,
             memo,
+            mainnet_preview,
             experimental_swaps,
             testnet,
+            debug,
         } => {
             commands::cmd_pay(
                 &alias,
                 amount_sats,
                 memo.as_deref(),
+                mainnet_preview,
                 experimental_swaps,
                 testnet,
+                debug,
             )
             .await?
         }

@@ -1,17 +1,24 @@
 use anyhow::Result;
 
-use satspath_core::{crypto::verify_signed_profile, PaymentMethod};
+use satspath_core::{
+    crypto::verify_signed_profile,
+    privacy::{mask_address, mask_identifier, mask_invoice, mask_pubkey},
+    resolver::ProfileResolver,
+    PaymentMethod,
+};
 use satspath_router::{
     fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route, RouteRequest,
 };
 
-use super::{get_resolver, qr::{bitcoin_uri, print_qr}};
-use satspath_core::resolver::ProfileResolver;
+use super::{
+    get_resolver,
+    qr::{bitcoin_uri, print_qr},
+};
 
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     let resolver = get_resolver()?;
 
-    println!("Resolving alias '{}'...", alias);
+    println!("Resolving identifier '{}'...", mask_identifier(alias));
     let signed = resolver
         .resolve_alias(alias)
         .await
@@ -35,7 +42,6 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("done.");
 
-    // ── Live fee table ──────────────────────────────────────────────────────
     if let Some(snap) = &quote.fee_snapshot {
         println!();
         println!("  Mempool fees (sat/vB)");
@@ -47,7 +53,6 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         println!("  └─ 60 minutes           : {} sat/vB", snap.hour_sat_vb);
     }
 
-    // ── Routing decision ────────────────────────────────────────────────────
     println!();
     println!("  ┌─────────────────────────────────────────┐");
     println!(
@@ -64,38 +69,48 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     println!("  └─────────────────────────────────────────┘");
     println!("  Reason: {}", quote.reason);
 
-    // ── QR for selected method ──────────────────────────────────────────────
     println!();
     match &quote.selected_method {
         PaymentMethod::Lightning { .. } => {
             let ln_addr = lightning_address(&quote.selected_method)
                 .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;
 
-            print!("  Fetching invoice from {}... ", ln_addr);
-            let meta = fetch_lnurl_metadata(ln_addr).await?;
-            let invoice = fetch_invoice(&meta, amount_sats, None).await?;
-            println!("received.");
-            println!();
-            println!("  Scan to pay — Lightning ({} sats)", amount_sats);
-            println!("  ─────────────────────────────────────────");
-            print_qr(&invoice.to_uppercase())?;
-            println!("  {}...", &invoice[..40.min(invoice.len())]);
+            print!("  Fetching invoice from {}... ", mask_identifier(ln_addr));
+            match fetch_lnurl_metadata(ln_addr).await {
+                Ok(meta) => {
+                    match fetch_invoice(&meta, amount_sats, None).await {
+                        Ok(invoice) => {
+                            println!("received.");
+                            println!();
+                            println!("  Scan to pay — Lightning ({} sats)", amount_sats);
+                            println!("  ─────────────────────────────────────────");
+                            print_qr(&invoice.to_uppercase())?;
+                            println!("  {}...", mask_invoice(&invoice));
+                            println!("  Warning: this is a real invoice QR generated from public metadata.");
+                        }
+                        Err(e) => {
+                            println!("unavailable ({e}).");
+                            println!("  Preview only. No funds moved.");
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("unavailable ({e}).");
+                    println!("  Preview only. No funds moved.");
+                }
+            }
         }
-
         PaymentMethod::Onchain { address, .. } => {
             let uri = bitcoin_uri(address, amount_sats);
             println!("  Scan to pay — Bitcoin on-chain ({} sats)", amount_sats);
             println!("  ─────────────────────────────────────────");
             print_qr(&uri)?;
-            println!("  {}", uri);
+            println!("  {}", mask_address(&uri));
         }
-
         PaymentMethod::Ark { pubkey, server, .. } => {
-            println!("  Ark payment via {}", server);
-            println!("  Pubkey: {}...", &pubkey[..16.min(pubkey.len())]);
-            println!(
-                "  ⚠  [EXPERIMENTAL] Use --experimental-swaps --testnet to attempt execution."
-            );
+            println!("  Ark payment via {}", mask_address(server));
+            println!("  Pubkey: {}", mask_pubkey(pubkey));
+            println!("  Use `satspath pay --mainnet-preview` for public pointer preview.");
         }
     }
 
