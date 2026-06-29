@@ -36,9 +36,10 @@ pub fn cmd_register(
 
     let mut methods = vec![PaymentMethod::Lightning {
         label: "Lightning Address".into(),
-        lnurl: None,
         lightning_address: Some(lightning_address.to_string()),
+        lnurl: None,
         bolt12: None,
+        receiver_pubkey: None,
     }];
 
     if let Some(address) = onchain_address {
@@ -46,8 +47,10 @@ pub fn cmd_register(
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         methods.push(PaymentMethod::Onchain {
             label: "Bitcoin mainnet".into(),
+            network: BitcoinNetwork::Mainnet,
             address: address.to_string(),
             pubkey_hint: None,
+            descriptor_hint: None,
         });
     }
 
@@ -58,6 +61,7 @@ pub fn cmd_register(
                 label: "Ark".into(),
                 server: server.to_string(),
                 pubkey: pubkey.to_string(),
+                vtxo_pointer: None,
             });
         }
         (None, None) => {}
@@ -69,6 +73,7 @@ pub fn cmd_register(
         identity_pubkey: pubkey_hex.clone(),
         methods: methods.clone(),
         updated_at: chrono::Utc::now().timestamp(),
+        expires_at: None,
     };
 
     let signed = sign_profile(profile, &kp.secret_key)?;

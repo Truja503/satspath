@@ -43,6 +43,7 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
                 lightning_address,
                 lnurl,
                 bolt12,
+                receiver_pubkey,
             } => {
                 println!("  - {} [Lightning]", label);
                 if let Some(la) = lightning_address {
@@ -54,26 +55,39 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
                 if let Some(b12) = bolt12 {
                     println!("      BOLT12: {}", mask_invoice(b12));
                 }
+                if let Some(pubkey) = receiver_pubkey {
+                    println!("      Receiver pubkey: {}", mask_pubkey(pubkey));
+                }
             }
             PaymentMethod::Onchain {
                 label,
+                network,
                 address,
                 pubkey_hint,
+                descriptor_hint,
             } => {
                 println!("  - {} [On-chain]", label);
+                println!("      Network: {:?}", network);
                 println!("      Address: {}", mask_address(address));
                 if let Some(hint) = pubkey_hint {
                     println!("      Pubkey hint: {}", mask_pubkey(hint));
+                }
+                if descriptor_hint.is_some() {
+                    println!("      Descriptor hint: present");
                 }
             }
             PaymentMethod::Ark {
                 label,
                 server,
                 pubkey,
+                vtxo_pointer,
             } => {
                 println!("  - {} [Ark]", label);
                 println!("      Server: {}", mask_address(server));
                 println!("      Pubkey: {}", mask_pubkey(pubkey));
+                if vtxo_pointer.is_some() {
+                    println!("      VTXO pointer: present");
+                }
             }
         }
     }

@@ -116,11 +116,13 @@ mod tests {
             identity_pubkey: pubkey_hex,
             methods: vec![PaymentMethod::Lightning {
                 label: "LN".into(),
-                lnurl: None,
                 lightning_address: Some(alias.to_string()),
+                lnurl: None,
                 bolt12: None,
+                receiver_pubkey: None,
             }],
             updated_at: 1_700_000_000,
+            expires_at: None,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

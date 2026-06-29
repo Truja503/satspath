@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use url::form_urlencoded;
 
 use crate::errors::{Result, SatsPathError};
+use crate::profile::ClaimPolicy;
 use crate::validation::{assert_no_private_material, validate_amount_sats};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -23,7 +24,6 @@ pub enum PaymentPointer {
     },
     LnurlPay {
         callback_url: String,
-        metadata_hash: Option<String>,
         receiver_pubkey: Option<String>,
     },
     Bolt11Invoice {
@@ -33,7 +33,7 @@ pub enum PaymentPointer {
     OnchainAddress {
         network: BitcoinNetwork,
         address: String,
-        derivation_hint: Option<String>,
+        claim_policy: Option<ClaimPolicy>,
     },
     Ark {
         server: String,
@@ -74,6 +74,14 @@ pub fn build_qr_payload(pointer: &PaymentPointer, amount_sats: u64) -> Result<St
             url.query_pairs_mut()
                 .append_pair("amount", &amount_msats.to_string());
             url.to_string()
+        }
+        PaymentPointer::Bolt11Invoice {
+            invoice,
+            amount_sats: Some(invoice_amount),
+        } if *invoice_amount != amount_sats => {
+            return Err(SatsPathError::InvalidPaymentPointer(format!(
+                "BOLT11 amount mismatch: invoice={invoice_amount} sats request={amount_sats} sats"
+            )));
         }
         PaymentPointer::Bolt11Invoice { invoice, .. } => invoice.clone(),
         PaymentPointer::OnchainAddress { address, .. } => {
@@ -132,7 +140,7 @@ mod tests {
         let pointer = PaymentPointer::OnchainAddress {
             network: BitcoinNetwork::Mainnet,
             address: "1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into(),
-            derivation_hint: None,
+            claim_policy: None,
         };
         assert_eq!(
             build_qr_payload(&pointer, 21_000).unwrap(),
@@ -161,5 +169,14 @@ mod tests {
             amount_sats: Some(1),
         };
         assert!(build_qr_payload(&pointer, 1).is_err());
+    }
+
+    #[test]
+    fn bolt11_amount_mismatch_fails() {
+        let pointer = PaymentPointer::Bolt11Invoice {
+            invoice: "lnbc210n1pexampleinvoice".into(),
+            amount_sats: Some(21_000),
+        };
+        assert!(build_qr_payload(&pointer, 1_000).is_err());
     }
 }

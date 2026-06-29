@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 use satspath_core::{
+    create_invite_record,
     crypto::verify_signed_profile,
     pointer::build_qr_payload,
     privacy::{mask_address, mask_identifier, mask_invoice, mask_pubkey},
@@ -9,7 +10,7 @@ use satspath_core::{
         assert_no_private_material, validate_amount_sats, validate_bitcoin_address,
         validate_compressed_pubkey, validate_lightning_address, LARGE_PREVIEW_AMOUNT_SATS,
     },
-    BitcoinNetwork, PaymentMethod, PaymentPointer,
+    BitcoinNetwork, PaymentMethod, PaymentPointer, SatsPathError,
 };
 use satspath_router::{select_route, RouteRequest, SwapDirective};
 
@@ -62,10 +63,26 @@ pub async fn cmd_pay(
 
     println!("Resolving identifier {}...", display_alias);
     let resolver = get_resolver()?;
-    let signed = resolver
-        .resolve_alias(alias)
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let signed = match resolver.resolve_alias(alias).await {
+        Ok(signed) => signed,
+        Err(SatsPathError::AliasNotFound(_)) => {
+            let invite = create_invite_record(
+                alias,
+                amount_sats,
+                memo.map(str::to_string),
+                "local-sender".into(),
+                7 * 24 * 60 * 60,
+            );
+            println!("No signed profile found.");
+            println!("Created invite: {}", invite.invite_id);
+            println!("Receiver must verify email and publish a signed public payment profile.");
+            println!("No funds moved.");
+            println!("No signing performed.");
+            println!("No private keys touched.");
+            return Ok(());
+        }
+        Err(e) => return Err(anyhow::anyhow!("{}", e)),
+    };
     println!("  Found signed profile.");
 
     println!("Verifying signed profile...");
@@ -94,7 +111,7 @@ pub async fn cmd_pay(
     } else {
         BitcoinNetwork::Mainnet
     };
-    let pointer = payment_method_to_pointer(&quote.selected_method, network)?;
+    let pointer = payment_method_to_pointer(&quote.selected_method)?;
     validate_pointer_for_preview(&pointer, mainnet_preview, network)?;
     let qr_payload =
         build_qr_payload(&pointer, amount_sats).map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -222,10 +239,7 @@ async fn exec_experimental(
     Ok(())
 }
 
-fn payment_method_to_pointer(
-    method: &PaymentMethod,
-    network: BitcoinNetwork,
-) -> Result<PaymentPointer> {
+fn payment_method_to_pointer(method: &PaymentMethod) -> Result<PaymentPointer> {
     match method {
         PaymentMethod::Lightning {
             lnurl,
@@ -241,7 +255,6 @@ fn payment_method_to_pointer(
             } else if let Some(callback_url) = lnurl {
                 Ok(PaymentPointer::LnurlPay {
                     callback_url: callback_url.clone(),
-                    metadata_hash: None,
                     receiver_pubkey: None,
                 })
             } else if let Some(invoice) = bolt12 {
@@ -254,13 +267,11 @@ fn payment_method_to_pointer(
             }
         }
         PaymentMethod::Onchain {
-            address,
-            pubkey_hint,
-            ..
+            address, network, ..
         } => Ok(PaymentPointer::OnchainAddress {
-            network,
+            network: *network,
             address: address.clone(),
-            derivation_hint: pubkey_hint.clone(),
+            claim_policy: None,
         }),
         PaymentMethod::Ark { server, pubkey, .. } => Ok(PaymentPointer::Ark {
             server: server.clone(),
