@@ -220,6 +220,14 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
             }
         }
     }
+
+    // Ownership attestations are structurally validated here (no private
+    // material, well-formed proofs, sane expiry). Cryptographic re-verification
+    // is performed separately at resolve time by
+    // `ownership::verify_method_verification`.
+    for verification in &profile.method_verifications {
+        crate::ownership::validate_method_verification(verification)?;
+    }
     Ok(())
 }
 
@@ -277,6 +285,7 @@ mod tests {
             }],
             updated_at: 1,
             expires_at: Some(2),
+            method_verifications: Vec::new(),
         };
         assert!(validate_public_profile(&profile).is_err());
     }

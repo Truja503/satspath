@@ -64,6 +64,44 @@ impl PaymentMethod {
             PaymentMethod::Ark { label, .. } => label,
         }
     }
+
+    /// A stable, public, privacy-safe identifier for this method.
+    ///
+    /// An ownership proof is bound to this descriptor so it cannot be lifted
+    /// from one method and replayed onto another. It never contains private
+    /// material (no xprv, descriptor, seed, etc.) — only public pointers.
+    pub fn ownership_descriptor(&self) -> String {
+        match self {
+            PaymentMethod::Onchain {
+                network, address, ..
+            } => {
+                let net = match network {
+                    BitcoinNetwork::Mainnet => "mainnet",
+                    BitcoinNetwork::Testnet => "testnet",
+                    BitcoinNetwork::Regtest => "regtest",
+                };
+                format!("onchain:{net}:{address}")
+            }
+            PaymentMethod::Lightning {
+                lightning_address,
+                lnurl,
+                bolt12,
+                label,
+                ..
+            } => {
+                if let Some(addr) = lightning_address {
+                    format!("ln-address:{}", addr.trim().to_ascii_lowercase())
+                } else if let Some(url) = lnurl {
+                    format!("lnurl:{url}")
+                } else if let Some(offer) = bolt12 {
+                    format!("bolt12:{offer}")
+                } else {
+                    format!("lightning:{label}")
+                }
+            }
+            PaymentMethod::Ark { pubkey, .. } => format!("ark:{pubkey}"),
+        }
+    }
 }
 
 /// A user-owned payment profile associating an alias with payment methods.
@@ -80,6 +118,15 @@ pub struct PaymentProfile {
     /// Unix timestamp after which resolvers should treat this profile as stale.
     #[serde(default)]
     pub expires_at: Option<i64>,
+    /// Ownership-proof attestations, one per (proven) method, bound to the
+    /// method's [`PaymentMethod::ownership_descriptor`].
+    ///
+    /// Omitted from the wire when empty, so profiles authored before ownership
+    /// proofs existed serialize — and verify — byte-for-byte identically. The
+    /// identity signature commits to this list, making attestations
+    /// tamper-evident.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub method_verifications: Vec<crate::ownership::MethodVerification>,
 }
 
 /// A payment profile together with the owner's signature over its contents.

@@ -85,6 +85,7 @@ mod tests {
                     }],
                     updated_at: 1_700_000_000,
                     expires_at: None,
+                    method_verifications: Vec::new(),
                 };
                 Ok(sign_profile(profile, &kp.secret_key).unwrap())
             } else {

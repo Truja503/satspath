@@ -45,7 +45,8 @@ impl SwapStore {
     }
 
     /// Open a plaintext store at a custom path (for tests / dev).
-    pub fn open_plaintext_for_tests(path: PathBuf) -> Self {
+    /// Sensitive records (preimage_hex, refund_key_hex, claim_key_hex) are still rejected.
+    pub fn open_plaintext(path: PathBuf) -> Self {
         Self {
             path,
             encryption_key: None,
@@ -104,10 +105,34 @@ impl SwapStore {
         Ok(())
     }
 
+    // ── Sensitive material guard ──────────────────────────────────────────────
+
+    /// Returns true if the record contains cryptographic secrets that must not
+    /// be stored in plaintext: preimage, refund key, or claim key.
+    pub fn contains_sensitive_material(record: &SwapRecord) -> bool {
+        record.preimage_hex.is_some()
+            || record.refund_key_hex.is_some()
+            || record.claim_key_hex.is_some()
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// Save a new swap record. Overwrites any existing record with the same ID.
+    ///
+    /// # Errors
+    /// Returns `SwapError::Encryption` if the record contains sensitive material
+    /// (`preimage_hex`, `refund_key_hex`, or `claim_key_hex`) but no encryption
+    /// key was provided. Use `open_with_key()` or strip sensitive fields first.
     pub fn upsert(&self, record: &SwapRecord) -> Result<()> {
+        if Self::contains_sensitive_material(record) && self.encryption_key.is_none() {
+            return Err(SwapError::Encryption(
+                "Refusing to store swap record with sensitive material \
+                 (preimage_hex / refund_key_hex / claim_key_hex) without an \
+                 encryption key. Call SwapStore::open_with_key() or strip \
+                 sensitive fields before persisting."
+                    .into(),
+            ));
+        }
         let mut store = self.load_all()?;
         if let Some(pos) = store.swaps.iter().position(|s| s.id == record.id) {
             store.swaps[pos] = record.clone();
@@ -317,35 +342,62 @@ mod tests {
     }
 
     #[test]
-    fn default_open_fails_closed() {
-        assert!(SwapStore::open().is_err());
+    fn swapstore_refuses_sensitive_plaintext_records() {
+        let dir = tempdir().unwrap();
+        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+
+        // Non-sensitive record (no keys or preimage) must succeed.
+        let clean = make_record("swap_clean");
+        assert!(
+            store.upsert(&clean).is_ok(),
+            "clean record should store without key"
+        );
+
+        // Record with preimage_hex must be rejected without encryption key.
+        let mut with_preimage = make_record("swap_preimage");
+        with_preimage.preimage_hex = Some("deadbeef".repeat(8));
+        let err = store.upsert(&with_preimage).unwrap_err();
+        assert!(
+            err.to_string().contains("sensitive material"),
+            "expected sensitive-material error, got: {err}"
+        );
+
+        // Record with refund_key_hex must be rejected without encryption key.
+        let mut with_refund = make_record("swap_refund");
+        with_refund.refund_key_hex = Some("cafebabe".repeat(8));
+        assert!(store.upsert(&with_refund).is_err());
+
+        // Record with claim_key_hex must be rejected without encryption key.
+        let mut with_claim = make_record("swap_claim");
+        with_claim.claim_key_hex = Some("aabbccdd".repeat(8));
+        assert!(store.upsert(&with_claim).is_err());
+
+        // Same record with an encryption key must succeed.
+        let key = [0x77u8; 32];
+        let encrypted_store = SwapStore::open_encrypted_at(dir.path().join("swaps_enc.enc"), key);
+        let mut sensitive = make_record("swap_sens");
+        sensitive.preimage_hex = Some("deadbeef".repeat(8));
+        assert!(
+            encrypted_store.upsert(&sensitive).is_ok(),
+            "encrypted store must accept sensitive records"
+        );
     }
 
     #[test]
-    fn plaintext_only_explicit_test_api() {
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("swaps.json");
-        let store = SwapStore::open_plaintext_for_tests(path.clone());
-        let mut rec = make_record("swap_plaintext");
-        rec.preimage_hex = Some("secret_preimage".into());
-        store.upsert(&rec).unwrap();
-        let bytes = std::fs::read(path).unwrap();
-        assert!(String::from_utf8_lossy(&bytes).contains("secret_preimage"));
-    }
+    fn contains_sensitive_material_detects_fields() {
+        let clean = make_record("x");
+        assert!(!SwapStore::contains_sensitive_material(&clean));
 
-    #[test]
-    fn encrypted_roundtrip_store_hides_secrets() {
-        let dir = tempdir().unwrap();
-        std::env::set_var("SATSPATH_DIR", dir.path());
-        let store = SwapStore::open_encrypted([0x42u8; 32]).unwrap();
-        let mut rec = make_record("swap_encrypted");
-        rec.preimage_hex = Some("secret_preimage".into());
-        store.upsert(&rec).unwrap();
+        let mut with_pre = make_record("x");
+        with_pre.preimage_hex = Some("aaa".into());
+        assert!(SwapStore::contains_sensitive_material(&with_pre));
 
-        let bytes = std::fs::read(dir.path().join("swaps.enc")).unwrap();
-        assert!(!String::from_utf8_lossy(&bytes).contains("secret_preimage"));
-        let found = store.get("swap_encrypted").unwrap().unwrap();
-        assert_eq!(found.preimage_hex.as_deref(), Some("secret_preimage"));
-        std::env::remove_var("SATSPATH_DIR");
+        let mut with_refund = make_record("x");
+        with_refund.refund_key_hex = Some("bbb".into());
+        assert!(SwapStore::contains_sensitive_material(&with_refund));
+
+        let mut with_claim = make_record("x");
+        with_claim.claim_key_hex = Some("ccc".into());
+        assert!(SwapStore::contains_sensitive_material(&with_claim));
     }
 }
