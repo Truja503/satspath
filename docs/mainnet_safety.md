@@ -8,6 +8,10 @@ SatsPath is a powerful routing engine that coordinates interactions across multi
 - The `Identity Key` (used to sign profiles) **does not** control funds.
 - Wallet, Node, or SDK plugins are responsible for securely managing funds and signing transactions.
 - Never store seed phrases, wallet private keys, macaroons, certs, API tokens, or other high-value secrets in the SatsPath repository or plaintext config files.
+- Email verification proves inbox access only. It does not transfer custody and
+  does not prove ownership of a Gmail-style domain.
+- Receiver wallets must generate private keys locally on the receiver's device
+  and publish only public payment profiles.
 
 ## 2. Mainnet Configuration
 
@@ -19,7 +23,10 @@ By default, the SatsPath Swap Engine operates in **Testnet mode**.
 - `require_manual_confirmation = true`
 - `fail_closed = true`
 
-Mainnet execution requires explicit confirmation via the CLI (`--experimental-swaps --testnet` are for testing only; mainnet will require a different explicit flag once enabled).
+Mainnet preview is allowed because it touches public data only. Mainnet
+execution is disabled. `--experimental-swaps --testnet` is for testnet-only
+engine scaffolding; mainnet execution requires a separate future feature with
+stronger confirmation gates.
 
 ## 3. Strict Pre-Execution Checks
 
