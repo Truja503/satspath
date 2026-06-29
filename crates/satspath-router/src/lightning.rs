@@ -252,14 +252,14 @@ pub fn parse_bolt11_amount_sats(invoice: &str) -> Option<u64> {
         Some('u') => amount_val.checked_mul(100),     // micro-BTC = 100 sats
         Some('n') => {
             // nano-BTC = 0.1 sats; must be divisible by 10 for whole sats
-            if amount_val % 10 != 0 {
+            if !amount_val.is_multiple_of(10) {
                 return None;
             }
             Some(amount_val / 10)
         }
         Some('p') => {
             // pico-BTC = 0.0001 sats; must be divisible by 10_000
-            if amount_val % 10_000 != 0 {
+            if !amount_val.is_multiple_of(10_000) {
                 return None;
             }
             Some(amount_val / 10_000)

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::ark::ArkOwnershipProof;
 use crate::pointer::BitcoinNetwork;
 
 /// A single payment method supported by the profile owner.
@@ -36,6 +37,10 @@ pub enum PaymentMethod {
         pubkey: String,
         #[serde(default)]
         vtxo_pointer: Option<String>,
+        #[serde(default)]
+        proof: Option<ArkOwnershipProof>,
+        #[serde(default)]
+        expires_at: Option<i64>,
     },
 }
 

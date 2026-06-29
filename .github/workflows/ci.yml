@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "develop", "feat/**", "fix/**"]
+    branches: ["main", "develop", "feat/**", "fix/**", "feature/**"]
   pull_request:
     branches: ["main", "develop"]
 
@@ -36,7 +36,7 @@ jobs:
         run: cargo build --workspace
 
       - name: Run all tests
-        run: cargo test --workspace
+        run: cargo test --workspace --all-targets
 
       - name: Clippy — deny warnings
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings

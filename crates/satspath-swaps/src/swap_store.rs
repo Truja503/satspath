@@ -17,36 +17,50 @@ struct SwapStoreFile {
 
 /// Persistent, encrypted local store for in-progress swap records.
 ///
-/// Stored at `~/.satspath/swaps.enc` (AES-256-GCM encrypted JSON).
+/// Stored at `.satspath/swaps.enc` (AES-256-GCM encrypted JSON).
 ///
-/// # Security Contract
+/// # Security contract (SWAPS-02)
 ///
-/// - **`open_with_key(key)`** — Production constructor. Always encrypts with
-///   AES-256-GCM. The 32-byte key must be derived via PBKDF2 (or Argon2 in
-///   future) from a user password before calling this.
+/// - **`open_encrypted(key)`** (alias **`open_with_key(key)`**) — the only
+///   production constructors. Always encrypt with AES-256-GCM; the 32-byte key
+///   must be derived via PBKDF2/Argon2 from a user password before calling.
+/// - **`open_plaintext(path)`** — development / test ONLY. Writes raw JSON and
+///   is annotated accordingly. MUST NOT be used in production paths.
+/// - There is deliberately **no** keyless default constructor. The original
+///   `SwapStore::open()` that silently wrote plaintext (issue SWAPS-02) has been
+///   removed, so misuse is now a compile-time error.
 ///
-/// - **`open_plaintext(path)`** — Development / test only. Writes and reads raw
-///   JSON. MUST NOT be used in production paths. Annotated accordingly.
-///
-/// There is deliberately **no** default constructor without a key; calling
-/// `SwapStore::open()` without a key was the original bug (issue SWAPS-02)
-/// and is now a compile-time error.
+/// Reads and writes fail closed: without a key — and outside the explicit
+/// plaintext dev mode — the store refuses to decrypt or encrypt.
 pub struct SwapStore {
     path: PathBuf,
     encryption_key: Option<[u8; 32]>,
+    allow_plaintext: bool,
 }
 
 impl SwapStore {
-    /// Open the encrypted swap store with the given AES-256 key.
+    /// Open the encrypted swap store at the default location with the given
+    /// AES-256 key. Fails closed — never falls back to plaintext.
     ///
     /// The key must be derived from a user password (e.g. PBKDF2-SHA256).
-    /// Fails closed: returns an error rather than falling back to plaintext.
-    pub fn open_with_key(key: [u8; 32]) -> Result<Self> {
+    pub fn open_encrypted(key: [u8; 32]) -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
-        Ok(Self {
+        Ok(Self::open_encrypted_at(path, key))
+    }
+
+    /// Alias for [`SwapStore::open_encrypted`] — the production constructor named
+    /// by the SWAPS-02 security contract.
+    pub fn open_with_key(key: [u8; 32]) -> Result<Self> {
+        Self::open_encrypted(key)
+    }
+
+    /// Open an encrypted store at a custom path (for tests / dev).
+    pub fn open_encrypted_at(path: PathBuf, key: [u8; 32]) -> Self {
+        Self {
             path,
             encryption_key: Some(key),
-        })
+            allow_plaintext: false,
+        }
     }
 
     /// Open the encrypted swap store at a custom path with the given AES-256 key.
@@ -54,10 +68,7 @@ impl SwapStore {
     /// Useful when the caller controls the storage location (e.g. integration
     /// tests that want to use a temp directory while still testing encryption).
     pub fn open_with_key_at(path: PathBuf, key: [u8; 32]) -> Self {
-        Self {
-            path,
-            encryption_key: Some(key),
-        }
+        Self::open_encrypted_at(path, key)
     }
 
     /// Open a plaintext (unencrypted) store at a custom path.
@@ -71,7 +82,13 @@ impl SwapStore {
         Self {
             path,
             encryption_key: None,
+            allow_plaintext: true,
         }
+    }
+
+    /// Open a plaintext store at a custom path (for tests / dev).
+    pub fn open_plaintext_for_tests(path: PathBuf) -> Self {
+        Self::open_plaintext(path)
     }
 
     // ── Read ─────────────────────────────────────────────────────────────────
@@ -87,10 +104,14 @@ impl SwapStore {
             return Ok(SwapStoreFile::default());
         }
 
-        let json_bytes = if let Some(key) = &self.encryption_key {
+        let json_bytes = if self.allow_plaintext {
+            raw
+        } else if let Some(key) = &self.encryption_key {
             decrypt(key, &raw)?
         } else {
-            raw
+            return Err(SwapError::Encryption(
+                "refusing to read swap store without encryption key".into(),
+            ));
         };
 
         serde_json::from_slice(&json_bytes)
@@ -107,11 +128,15 @@ impl SwapStore {
 
         let json = serde_json::to_vec_pretty(store).map_err(SwapError::Json)?;
 
-        let to_write = if let Some(key) = &self.encryption_key {
+        let to_write = if self.allow_plaintext {
+            json
+        } else if let Some(key) = &self.encryption_key {
             encrypt(key, &json)?
         } else {
-            // Plaintext path — only reachable from open_plaintext (dev/test).
-            json
+            // Fail closed: no key and not the explicit plaintext dev mode.
+            return Err(SwapError::Encryption(
+                "refusing to write swap store without encryption key".into(),
+            ));
         };
 
         std::fs::write(&self.path, to_write)?;
@@ -296,7 +321,7 @@ mod tests {
     #[test]
     fn upsert_and_retrieve() {
         let dir = tempdir().unwrap();
-        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+        let store = SwapStore::open_plaintext_for_tests(dir.path().join("swaps.enc"));
 
         let rec = make_record("swap_001");
         store.upsert(&rec).unwrap();
@@ -309,7 +334,7 @@ mod tests {
     #[test]
     fn update_status() {
         let dir = tempdir().unwrap();
-        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+        let store = SwapStore::open_plaintext_for_tests(dir.path().join("swaps.enc"));
 
         store.upsert(&make_record("swap_002")).unwrap();
         store
@@ -324,7 +349,7 @@ mod tests {
     #[test]
     fn list_pending() {
         let dir = tempdir().unwrap();
-        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+        let store = SwapStore::open_plaintext_for_tests(dir.path().join("swaps.enc"));
 
         store.upsert(&make_record("swap_003")).unwrap();
         let mut done = make_record("swap_004");

@@ -3,13 +3,14 @@ use anyhow::Result;
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
     privacy::{canonical_identifier, mask_identifier, mask_pubkey},
+    validate_ark_server_url,
     validation::{
         validate_bitcoin_address, validate_compressed_pubkey, validate_lightning_address,
     },
     BitcoinNetwork, PaymentMethod, PaymentProfile,
 };
 
-use super::open_registry;
+use super::{keystore, open_registry, satspath_dir};
 
 pub fn cmd_register(
     alias: &str,
@@ -56,12 +57,15 @@ pub fn cmd_register(
 
     match (ark_server, ark_pubkey) {
         (Some(server), Some(pubkey)) => {
+            validate_ark_server_url(server).map_err(|e| anyhow::anyhow!("{}", e))?;
             validate_compressed_pubkey(pubkey).map_err(|e| anyhow::anyhow!("{}", e))?;
             methods.push(PaymentMethod::Ark {
                 label: "Ark".into(),
                 server: server.to_string(),
                 pubkey: pubkey.to_string(),
                 vtxo_pointer: None,
+                proof: None,
+                expires_at: None,
             });
         }
         (None, None) => {}
@@ -81,6 +85,11 @@ pub fn cmd_register(
     let fp = fingerprint_pubkey(&pubkey_hex)?;
     registry.register_profile(signed)?;
 
+    // Persist the protocol identity key locally so the owner can attach ownership
+    // proofs to (and otherwise update) this profile later. This is NOT a wallet
+    // seed or spending key, and it never enters a profile or QR payload.
+    let key_path = keystore::save_identity_key(&satspath_dir(), &kp.secret_key)?;
+
     println!("Registered: {}", mask_identifier(&alias));
     println!("Identity pubkey: {}", mask_pubkey(&pubkey_hex));
     println!("Fingerprint:     {}", fp);
@@ -91,6 +100,15 @@ pub fn cmd_register(
     }
     println!();
     println!("Profile signed and stored in .satspath/registry.json");
-    println!("No private key stored.");
+    println!(
+        "Identity key saved to {} (gitignored, owner-only).",
+        key_path.display()
+    );
+    println!("This is your protocol identity key — not a wallet seed or spending key.");
+    println!();
+    println!(
+        "Prove ownership of a method:  satspath prove {} --method-index 0",
+        alias
+    );
     Ok(())
 }

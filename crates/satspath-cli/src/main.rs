@@ -1,7 +1,7 @@
 mod commands;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
@@ -37,7 +37,51 @@ enum Command {
     },
 
     /// Show a registered profile
-    Show { alias: String },
+    Show {
+        alias: String,
+        /// Fetch and re-verify domain-control proofs over the network
+        #[arg(long)]
+        verify_online: bool,
+    },
+
+    /// Print the ownership-proof challenge to sign for one method
+    Prove {
+        alias: String,
+        /// Index of the method in the profile (see `satspath show`)
+        #[arg(long, default_value_t = 0)]
+        method_index: usize,
+    },
+
+    /// Attach an ownership proof to a method and re-sign the profile
+    AttachProof {
+        alias: String,
+        #[arg(long, default_value_t = 0)]
+        method_index: usize,
+        /// Proof type: onchain | ark | domain | manual
+        #[arg(long = "type")]
+        proof_type: String,
+        /// issued_at value printed by `satspath prove` (required for onchain/ark)
+        #[arg(long)]
+        issued_at: Option<i64>,
+        /// Compressed secp256k1 pubkey that signed the challenge (onchain/ark)
+        #[arg(long)]
+        pubkey: Option<String>,
+        /// DER signature (hex) over the challenge (onchain/ark)
+        #[arg(long)]
+        signature: Option<String>,
+        /// Well-known URL to fetch+verify (domain; auto-derived for Lightning)
+        #[arg(long)]
+        url: Option<String>,
+        /// Token the served body must contain (domain; defaults to identity pubkey)
+        #[arg(long)]
+        nonce: Option<String>,
+        /// Verify a local copy of the served content instead of fetching (domain)
+        #[arg(long)]
+        body_file: Option<String>,
+        /// Optional validity window in seconds from issued_at
+        #[arg(long)]
+        expires_in: Option<i64>,
+    },
 
     /// Encode a universal SatsPath payment URI
     Encode {
@@ -75,8 +119,62 @@ enum Command {
     /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
     Invite { alias: String, amount_sats: u64 },
 
+    /// Ark direct receive/send and swap intents. Testnet-gated; mainnet execution disabled.
+    Ark {
+        #[command(subcommand)]
+        command: ArkCommand,
+    },
+
     /// Run the full SatsPath demo flow
     Demo,
+}
+
+#[derive(Subcommand)]
+enum ArkCommand {
+    /// Preview an Ark receive pointer for a registered alias.
+    Receive(ArkReceiveArgs),
+    /// Preview or testnet-execute a direct Ark send intent.
+    Send(ArkSendArgs),
+    /// Preview or testnet-execute an Ark swap intent.
+    Swap(ArkSwapArgs),
+}
+
+#[derive(Args)]
+struct ArkReceiveArgs {
+    #[arg(long)]
+    alias: String,
+    #[arg(long)]
+    testnet: bool,
+    #[arg(long)]
+    execute_testnet: bool,
+}
+
+#[derive(Args)]
+struct ArkSendArgs {
+    alias: String,
+    amount_sats: u64,
+    #[arg(long)]
+    testnet: bool,
+    #[arg(long)]
+    execute_testnet: bool,
+    #[arg(long)]
+    confirm: Option<String>,
+}
+
+#[derive(Args)]
+struct ArkSwapArgs {
+    alias: String,
+    amount_sats: u64,
+    #[arg(long)]
+    from: commands::ArkSwapSide,
+    #[arg(long)]
+    to: commands::ArkSwapSide,
+    #[arg(long)]
+    testnet: bool,
+    #[arg(long)]
+    execute_testnet: bool,
+    #[arg(long)]
+    confirm: Option<String>,
 }
 
 #[tokio::main]
@@ -98,7 +196,40 @@ async fn main() -> Result<()> {
             ark_server.as_deref(),
             ark_pubkey.as_deref(),
         )?,
-        Command::Show { alias } => commands::cmd_show(&alias).await?,
+        Command::Show {
+            alias,
+            verify_online,
+        } => commands::cmd_show(&alias, verify_online).await?,
+        Command::Prove {
+            alias,
+            method_index,
+        } => commands::cmd_prove(&alias, method_index)?,
+        Command::AttachProof {
+            alias,
+            method_index,
+            proof_type,
+            issued_at,
+            pubkey,
+            signature,
+            url,
+            nonce,
+            body_file,
+            expires_in,
+        } => {
+            commands::cmd_attach_proof(
+                &alias,
+                method_index,
+                &proof_type,
+                issued_at,
+                pubkey.as_deref(),
+                signature.as_deref(),
+                url.as_deref(),
+                nonce.as_deref(),
+                body_file.as_deref(),
+                expires_in,
+            )
+            .await?
+        }
         Command::Encode {
             alias,
             amount_sats,
@@ -127,6 +258,33 @@ async fn main() -> Result<()> {
             .await?
         }
         Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
+        Command::Ark { command } => match command {
+            ArkCommand::Receive(args) => {
+                commands::cmd_ark_receive(&args.alias, args.testnet, args.execute_testnet).await?
+            }
+            ArkCommand::Send(args) => {
+                commands::cmd_ark_send(
+                    &args.alias,
+                    args.amount_sats,
+                    args.testnet,
+                    args.execute_testnet,
+                    args.confirm.as_deref(),
+                )
+                .await?
+            }
+            ArkCommand::Swap(args) => {
+                commands::cmd_ark_swap(
+                    &args.alias,
+                    args.amount_sats,
+                    args.from,
+                    args.to,
+                    args.testnet,
+                    args.execute_testnet,
+                    args.confirm.as_deref(),
+                )
+                .await?
+            }
+        },
         Command::Demo => commands::cmd_demo().await?,
     }
 
