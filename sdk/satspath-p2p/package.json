@@ -1,0 +1,22 @@
+{
+  "name": "@satspath/p2p",
+  "version": "0.1.0",
+  "description": "Resolve & serve SatsPath signed payment profiles peer-to-peer over the Holepunch stack (Hyperswarm/HyperDHT) with NAT hole-punching. Transport + signature verification only — never moves funds.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "example:publish": "node examples/publish.mjs",
+    "example:resolve": "node examples/resolve.mjs"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
+    "hyperdht": "^6.20.0",
+    "hyperswarm": "^4.11.7"
+  },
+  "license": "MIT"
+}
