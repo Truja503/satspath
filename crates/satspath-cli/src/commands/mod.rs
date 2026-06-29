@@ -1,3 +1,4 @@
+mod ark;
 mod demo;
 mod encode;
 mod init;
@@ -8,6 +9,7 @@ mod quote;
 mod register;
 mod show;
 
+pub use ark::{cmd_ark_receive, cmd_ark_send, cmd_ark_swap, ArkSwapSide};
 pub use demo::cmd_demo;
 pub use encode::{cmd_decode, cmd_encode};
 pub use init::cmd_init;

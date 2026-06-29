@@ -1,5 +1,7 @@
 use satspath_core::{PaymentMethod, PaymentPointer, Result, SatsPathError, SignedPaymentProfile};
 
+use crate::ark_routes::SenderCapabilities;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PaymentRail {
     Lightning,
@@ -35,6 +37,7 @@ pub struct RoutePreferences {
     pub prefer_privacy: bool,
     pub allow_experimental_ark: bool,
     pub max_fee_sats: Option<u64>,
+    pub sender_capabilities: SenderCapabilities,
 }
 
 impl Default for RoutePreferences {
@@ -45,6 +48,7 @@ impl Default for RoutePreferences {
             prefer_privacy: false,
             allow_experimental_ark: false,
             max_fee_sats: None,
+            sender_capabilities: SenderCapabilities::default(),
         }
     }
 }
@@ -151,6 +155,8 @@ pub fn score_routes(
                 ..
             } => {
                 let available = preferences.allow_experimental_ark;
+                let plan =
+                    crate::ark_routes::plan_ark_route(&preferences.sender_capabilities, profile);
                 candidates.push(RouteCandidate {
                     rail: PaymentRail::Ark,
                     estimated_fee_sats: fee_snapshot.ark_fee_sats_estimate.or(Some(1)),
@@ -159,8 +165,11 @@ pub fn score_routes(
                     reliability_score: if available { 5 } else { 2 },
                     requires_user_action: true,
                     available,
-                    reason: if available {
-                        "Ark pointer available; experimental route allowed.".into()
+                    reason: if let Some(plan) = plan {
+                        format!("{} Ark routes remain testnet-gated.", plan.reason)
+                    } else if available {
+                        "Ark pointer available; no executable sender path declared; intent preview only."
+                            .into()
                     } else {
                         "Ark pointer available but experimental Ark is disabled.".into()
                     },
@@ -338,6 +347,8 @@ mod tests {
             server: "https://ark.example.com".into(),
             pubkey: valid_pubkey.into(),
             vtxo_pointer: None,
+            proof: None,
+            expires_at: None,
         }]);
         assert!(score_routes(
             1_000,

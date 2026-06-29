@@ -2,6 +2,7 @@ use bitcoin::{Address, Network};
 use secp256k1::PublicKey;
 use std::str::FromStr;
 
+use crate::ark::{validate_ark_receive_pointer, verify_ark_ownership_proof, ArkReceivePointer};
 use crate::errors::{Result, SatsPathError};
 use crate::pointer::BitcoinNetwork;
 use crate::profile::{ClaimPolicy, PaymentMethod, PaymentProfile};
@@ -200,16 +201,21 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
                 server,
                 pubkey,
                 vtxo_pointer,
+                proof,
+                expires_at,
                 ..
             } => {
-                if server.trim().is_empty() {
-                    return Err(SatsPathError::InvalidPaymentPointer(
-                        "Ark server is required".into(),
-                    ));
-                }
-                validate_compressed_pubkey(pubkey)?;
-                if let Some(vtxo) = vtxo_pointer {
-                    assert_no_private_material(vtxo)?;
+                let pointer = ArkReceivePointer {
+                    server: server.clone(),
+                    receiver_pubkey: pubkey.clone(),
+                    vtxo_pointer: vtxo_pointer.clone(),
+                    proof: proof.clone(),
+                    expires_at: *expires_at,
+                };
+                let now = chrono::Utc::now().timestamp();
+                validate_ark_receive_pointer(&pointer, now)?;
+                if proof.is_some() && !verify_ark_ownership_proof(&profile.alias, &pointer, now)? {
+                    return Err(SatsPathError::InvalidSignature);
                 }
             }
         }

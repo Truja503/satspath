@@ -35,6 +35,12 @@ impl ChainResolver {
     }
 }
 
+impl Default for ChainResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ProfileResolver for ChainResolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {

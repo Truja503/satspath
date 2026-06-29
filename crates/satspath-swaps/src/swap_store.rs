@@ -17,38 +17,39 @@ struct SwapStoreFile {
 
 /// Persistent, encrypted local store for in-progress swap records.
 ///
-/// Stored at `~/.satspath/swaps.enc` (AES-256-GCM encrypted JSON).
-/// Falls back to plaintext `~/.satspath/swaps.json` in development mode.
+/// Stored at `.satspath/swaps.enc` (AES-256-GCM encrypted JSON).
+/// Plaintext storage is available only through explicit test/dev APIs.
 pub struct SwapStore {
     path: PathBuf,
     encryption_key: Option<[u8; 32]>,
+    allow_plaintext: bool,
 }
 
 impl SwapStore {
     /// Open the swap store at the default location (`.satspath/swaps.enc`).
     pub fn open() -> Result<Self> {
-        let path = satspath_dir()?.join("swaps.enc");
-        Ok(Self {
-            path,
-            encryption_key: None,
-        })
+        Err(SwapError::Encryption(
+            "SwapStore::open requires an encryption key; use open_encrypted(key)".into(),
+        ))
     }
 
     /// Open the store with an AES-256 encryption key derived from user password.
     /// The key should be derived via PBKDF2 (same scheme as ARK SDK's StorageCrypto).
-    pub fn open_with_key(key: [u8; 32]) -> Result<Self> {
+    pub fn open_encrypted(key: [u8; 32]) -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
         Ok(Self {
             path,
             encryption_key: Some(key),
+            allow_plaintext: false,
         })
     }
 
     /// Open a plaintext store at a custom path (for tests / dev).
-    pub fn open_plaintext(path: PathBuf) -> Self {
+    pub fn open_plaintext_for_tests(path: PathBuf) -> Self {
         Self {
             path,
             encryption_key: None,
+            allow_plaintext: true,
         }
     }
 
@@ -65,10 +66,14 @@ impl SwapStore {
             return Ok(SwapStoreFile::default());
         }
 
-        let json_bytes = if let Some(key) = &self.encryption_key {
+        let json_bytes = if self.allow_plaintext {
+            raw
+        } else if let Some(key) = &self.encryption_key {
             decrypt(key, &raw)?
         } else {
-            raw
+            return Err(SwapError::Encryption(
+                "refusing to read swap store without encryption key".into(),
+            ));
         };
 
         serde_json::from_slice(&json_bytes)
@@ -85,10 +90,14 @@ impl SwapStore {
 
         let json = serde_json::to_vec_pretty(store).map_err(SwapError::Json)?;
 
-        let to_write = if let Some(key) = &self.encryption_key {
+        let to_write = if self.allow_plaintext {
+            json
+        } else if let Some(key) = &self.encryption_key {
             encrypt(key, &json)?
         } else {
-            json
+            return Err(SwapError::Encryption(
+                "refusing to write swap store without encryption key".into(),
+            ));
         };
 
         std::fs::write(&self.path, to_write)?;
@@ -249,7 +258,7 @@ mod tests {
     #[test]
     fn upsert_and_retrieve() {
         let dir = tempdir().unwrap();
-        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+        let store = SwapStore::open_plaintext_for_tests(dir.path().join("swaps.enc"));
 
         let rec = make_record("swap_001");
         store.upsert(&rec).unwrap();
@@ -262,7 +271,7 @@ mod tests {
     #[test]
     fn update_status() {
         let dir = tempdir().unwrap();
-        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+        let store = SwapStore::open_plaintext_for_tests(dir.path().join("swaps.enc"));
 
         store.upsert(&make_record("swap_002")).unwrap();
         store
@@ -277,7 +286,7 @@ mod tests {
     #[test]
     fn list_pending() {
         let dir = tempdir().unwrap();
-        let store = SwapStore::open_plaintext(dir.path().join("swaps.enc"));
+        let store = SwapStore::open_plaintext_for_tests(dir.path().join("swaps.enc"));
 
         store.upsert(&make_record("swap_003")).unwrap();
         let mut done = make_record("swap_004");
@@ -305,5 +314,38 @@ mod tests {
         let plaintext = b"secret swap data";
         let enc = encrypt(&key, plaintext).unwrap();
         assert!(decrypt(&bad_key, &enc).is_err());
+    }
+
+    #[test]
+    fn default_open_fails_closed() {
+        assert!(SwapStore::open().is_err());
+    }
+
+    #[test]
+    fn plaintext_only_explicit_test_api() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("swaps.json");
+        let store = SwapStore::open_plaintext_for_tests(path.clone());
+        let mut rec = make_record("swap_plaintext");
+        rec.preimage_hex = Some("secret_preimage".into());
+        store.upsert(&rec).unwrap();
+        let bytes = std::fs::read(path).unwrap();
+        assert!(String::from_utf8_lossy(&bytes).contains("secret_preimage"));
+    }
+
+    #[test]
+    fn encrypted_roundtrip_store_hides_secrets() {
+        let dir = tempdir().unwrap();
+        std::env::set_var("SATSPATH_DIR", dir.path());
+        let store = SwapStore::open_encrypted([0x42u8; 32]).unwrap();
+        let mut rec = make_record("swap_encrypted");
+        rec.preimage_hex = Some("secret_preimage".into());
+        store.upsert(&rec).unwrap();
+
+        let bytes = std::fs::read(dir.path().join("swaps.enc")).unwrap();
+        assert!(!String::from_utf8_lossy(&bytes).contains("secret_preimage"));
+        let found = store.get("swap_encrypted").unwrap().unwrap();
+        assert_eq!(found.preimage_hex.as_deref(), Some("secret_preimage"));
+        std::env::remove_var("SATSPATH_DIR");
     }
 }

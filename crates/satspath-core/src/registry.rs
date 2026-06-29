@@ -73,7 +73,7 @@ impl Registry {
             .profiles
             .get(&key)
             .or_else(|| self.data.profiles.get(&canonical))
-            .ok_or_else(|| SatsPathError::AliasNotFound(canonical))
+            .ok_or(SatsPathError::AliasNotFound(canonical))
     }
 
     /// Check whether an alias is already registered.

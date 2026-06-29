@@ -33,16 +33,14 @@ pub fn encode_payment_request(
 ///   - `satspath:<alias>`              — simple form
 ///   - `satspath:v1:<base64url_json>`  — encoded form
 pub fn decode_payment_request(uri: &str) -> Result<PaymentRequest> {
-    if uri.starts_with(V1_PREFIX) {
-        let encoded = &uri[V1_PREFIX.len()..];
+    if let Some(encoded) = uri.strip_prefix(V1_PREFIX) {
         let bytes = URL_SAFE_NO_PAD
             .decode(encoded)
             .map_err(|e| SatsPathError::InvalidPaymentUri(e.to_string()))?;
         let req: PaymentRequest = serde_json::from_slice(&bytes)
             .map_err(|e| SatsPathError::InvalidPaymentUri(e.to_string()))?;
         Ok(req)
-    } else if uri.starts_with(SATSPATH_SCHEME) {
-        let alias = &uri[SATSPATH_SCHEME.len()..];
+    } else if let Some(alias) = uri.strip_prefix(SATSPATH_SCHEME) {
         if alias.is_empty() {
             return Err(SatsPathError::InvalidPaymentUri("alias is empty".into()));
         }

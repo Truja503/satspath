@@ -1,3 +1,4 @@
+pub mod ark;
 pub mod codec;
 pub mod crypto;
 pub mod errors;
@@ -11,6 +12,11 @@ pub mod resolver;
 pub mod resolvers;
 pub mod validation;
 
+pub use ark::{
+    ark_ownership_challenge, validate_ark_receive_pointer, validate_ark_server_url,
+    verify_ark_ownership_proof, ArkIntentStatus, ArkOwnershipProof, ArkPaymentIntent,
+    ArkReceivePointer, ArkRouteKind, ClientValidationReport,
+};
 pub use errors::{Result, SatsPathError};
 pub use peer_registry::{
     canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,

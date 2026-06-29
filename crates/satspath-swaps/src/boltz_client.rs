@@ -274,7 +274,7 @@ impl BoltzClient {
             });
         }
 
-        serde_json::from_str(&body).map_err(|e| SwapError::Json(serde_json::Error::from(e)))
+        serde_json::from_str(&body).map_err(SwapError::Json)
     }
 
     // ── GET /v2/swap/fees ─────────────────────────────────────────────────
@@ -439,7 +439,7 @@ impl BoltzClient {
         target: Option<&[SwapStatus]>,
         max_wait: Duration,
     ) -> Result<WsSwapUpdate> {
-        let ws_url = format!("{}", self.ws_url);
+        let ws_url = self.ws_url.to_string();
 
         let (mut ws, _) = connect_async(&ws_url)
             .await

@@ -68,7 +68,7 @@ pub async fn create_reverse(
     // Generate preimage (client secret — this is the HTLC secret)
     let mut preimage = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut preimage);
-    let preimage_hash: [u8; 32] = Sha256::digest(&preimage).into();
+    let preimage_hash: [u8; 32] = Sha256::digest(preimage).into();
 
     // Generate ephemeral claim keypair
     let secp = Secp256k1::new();
@@ -154,11 +154,11 @@ pub async fn wait_and_claim_reverse(
     match update.status {
         SwapStatus::TransactionLockupFailed => {
             store.update_status(swap_id, SwapStatus::TransactionLockupFailed, None)?;
-            return Err(SwapError::LockupAmountMismatch {
+            Err(SwapError::LockupAmountMismatch {
                 id: swap_id.to_string(),
                 got: 0,
                 expected: 0,
-            });
+            })
         }
         SwapStatus::TransactionConfirmed => {
             // Retrieve persisted record to get preimage and claim key
@@ -248,10 +248,10 @@ mod tests {
     fn preimage_and_hash_are_consistent() {
         let mut preimage = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut preimage);
-        let hash: [u8; 32] = Sha256::digest(&preimage).into();
+        let hash: [u8; 32] = Sha256::digest(preimage).into();
 
         // Verify deterministic
-        let hash2: [u8; 32] = Sha256::digest(&preimage).into();
+        let hash2: [u8; 32] = Sha256::digest(preimage).into();
         assert_eq!(hash, hash2);
 
         // Preimage hash is what we share with Boltz

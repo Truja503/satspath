@@ -59,8 +59,8 @@ pub struct RouteQuote {
 ///
 /// Priority:
 ///   1. Lightning  — if amount < 100 000 sats and a Lightning method exists.
-///                   NOTE: Lightning is checked BEFORE on-chain fees.
-///                   The dust threshold must NOT block Lightning route selection.
+///      NOTE: Lightning is checked BEFORE on-chain fees.
+///      The dust threshold must NOT block Lightning route selection.
 ///   2. On-chain   — if fastestFee ≤ 20 sat/vB (next block, <10 min).
 ///   3. Ark        — fallback when on-chain fees are too high.
 ///   4. Error      — no suitable rail found.
@@ -356,9 +356,11 @@ mod tests {
             },
             PaymentMethod::Ark {
                 label: "Ark".into(),
-                server: "ark.example.com".into(),
-                pubkey: "aabbcc".into(),
+                server: "https://ark.example.com".into(),
+                pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into(),
                 vtxo_pointer: None,
+                proof: None,
+                expires_at: None,
             },
         ]);
         let req = RouteRequest {
