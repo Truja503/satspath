@@ -147,7 +147,11 @@ mod tests {
         let url = format!("{}/profile", server.url());
         let result = resolver.resolve_from_url(&url).await;
 
-        assert!(result.is_ok(), "valid profile should resolve successfully: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "valid profile should resolve successfully: {:?}",
+            result.err()
+        );
         assert_eq!(result.unwrap().profile.alias, "alice@test.com");
     }
 

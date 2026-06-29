@@ -4,7 +4,8 @@ use crate::ark::{first_ark_method, is_ark_available};
 use crate::fees::{fetch_fee_estimate, FeeEstimate};
 use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available};
 use crate::onchain::{
-    estimate_onchain_fee_sats, first_onchain_method, is_onchain_available, is_onchain_fee_acceptable,
+    estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
+    is_onchain_fee_acceptable,
 };
 
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
@@ -58,8 +59,9 @@ pub struct RouteQuote {
 ///
 /// Priority:
 ///   1. Lightning  — if amount < 100 000 sats and a Lightning method exists.
-///                   NOTE: Lightning is checked BEFORE on-chain fees.
-///                   The dust threshold must NOT block Lightning route selection.
+///      Verify Lightning is not blocked by dust threshold.
+///      NOTE: Lightning is checked BEFORE on-chain fees.
+///      The dust threshold must NOT block Lightning routing.
 ///   2. On-chain   — if fastestFee ≤ 20 sat/vB (next block, <10 min).
 ///   3. Ark        — fallback when on-chain fees are too high.
 ///   4. Error      — no suitable rail found.
@@ -70,9 +72,9 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
         if let Some(ln) = methods.iter().find(|m| is_lightning_available(m)) {
             let ln_address = match ln {
-                PaymentMethod::Lightning { lightning_address, .. } => {
-                    lightning_address.clone()
-                }
+                PaymentMethod::Lightning {
+                    lightning_address, ..
+                } => lightning_address.clone(),
                 _ => None,
             };
             let fee = estimate_lightning_fee_sats(req.amount_sats);
@@ -166,7 +168,9 @@ pub fn select_route_with_fees(
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
         if let Some(ln) = methods.iter().find(|m| is_lightning_available(m)) {
             let ln_address = match ln {
-                PaymentMethod::Lightning { lightning_address, .. } => lightning_address.clone(),
+                PaymentMethod::Lightning {
+                    lightning_address, ..
+                } => lightning_address.clone(),
                 _ => None,
             };
             let fee = estimate_lightning_fee_sats(req.amount_sats);
@@ -246,11 +250,23 @@ mod tests {
     };
 
     fn low_fees() -> FeeEstimate {
-        FeeEstimate { fastest_fee: 5, half_hour_fee: 4, hour_fee: 3, economy_fee: 2, minimum_fee: 1 }
+        FeeEstimate {
+            fastest_fee: 5,
+            half_hour_fee: 4,
+            hour_fee: 3,
+            economy_fee: 2,
+            minimum_fee: 1,
+        }
     }
 
     fn high_fees() -> FeeEstimate {
-        FeeEstimate { fastest_fee: 50, half_hour_fee: 30, hour_fee: 20, economy_fee: 15, minimum_fee: 10 }
+        FeeEstimate {
+            fastest_fee: 50,
+            half_hour_fee: 30,
+            hour_fee: 20,
+            economy_fee: 15,
+            minimum_fee: 10,
+        }
     }
 
     fn make_profile(methods: Vec<PaymentMethod>) -> SignedPaymentProfile {
@@ -268,15 +284,17 @@ mod tests {
 
     #[test]
     fn chooses_lightning_for_small_amount() {
-        let signed = make_profile(vec![
-            PaymentMethod::Lightning {
-                label: "LN".into(),
-                lnurl: None,
-                lightning_address: Some("test@example.com".into()),
-                bolt12: None,
-            },
-        ]);
-        let req = RouteRequest { alias: "test@example.com".into(), amount_sats: 21_000, signed_profile: signed };
+        let signed = make_profile(vec![PaymentMethod::Lightning {
+            label: "LN".into(),
+            lnurl: None,
+            lightning_address: Some("test@example.com".into()),
+            bolt12: None,
+        }]);
+        let req = RouteRequest {
+            alias: "test@example.com".into(),
+            amount_sats: 21_000,
+            signed_profile: signed,
+        };
         let q = select_route_with_fees(&req, &low_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Lightning { .. }));
     }
@@ -284,16 +302,24 @@ mod tests {
     #[test]
     fn lightning_not_blocked_by_fees() {
         // Even with extreme fees, Lightning for small amounts must still win.
-        let signed = make_profile(vec![
-            PaymentMethod::Lightning {
-                label: "LN".into(),
-                lnurl: None,
-                lightning_address: Some("test@example.com".into()),
-                bolt12: None,
-            },
-        ]);
-        let extreme_fees = FeeEstimate { fastest_fee: 500, half_hour_fee: 400, hour_fee: 300, economy_fee: 200, minimum_fee: 100 };
-        let req = RouteRequest { alias: "test@example.com".into(), amount_sats: 1_000, signed_profile: signed };
+        let signed = make_profile(vec![PaymentMethod::Lightning {
+            label: "LN".into(),
+            lnurl: None,
+            lightning_address: Some("test@example.com".into()),
+            bolt12: None,
+        }]);
+        let extreme_fees = FeeEstimate {
+            fastest_fee: 500,
+            half_hour_fee: 400,
+            hour_fee: 300,
+            economy_fee: 200,
+            minimum_fee: 100,
+        };
+        let req = RouteRequest {
+            alias: "test@example.com".into(),
+            amount_sats: 1_000,
+            signed_profile: signed,
+        };
         let q = select_route_with_fees(&req, &extreme_fees).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Lightning { .. }));
     }
@@ -305,7 +331,11 @@ mod tests {
             address: "bc1q...".into(),
             pubkey_hint: None,
         }]);
-        let req = RouteRequest { alias: "test@example.com".into(), amount_sats: 500_000, signed_profile: signed };
+        let req = RouteRequest {
+            alias: "test@example.com".into(),
+            amount_sats: 500_000,
+            signed_profile: signed,
+        };
         let q = select_route_with_fees(&req, &low_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
         assert!(q.reason.contains("5 sat/vB"));
@@ -314,10 +344,22 @@ mod tests {
     #[test]
     fn falls_back_to_ark_when_fees_high() {
         let signed = make_profile(vec![
-            PaymentMethod::Onchain { label: "BTC".into(), address: "bc1q...".into(), pubkey_hint: None },
-            PaymentMethod::Ark { label: "Ark".into(), server: "ark.example.com".into(), pubkey: "aabbcc".into() },
+            PaymentMethod::Onchain {
+                label: "BTC".into(),
+                address: "bc1q...".into(),
+                pubkey_hint: None,
+            },
+            PaymentMethod::Ark {
+                label: "Ark".into(),
+                server: "ark.example.com".into(),
+                pubkey: "aabbcc".into(),
+            },
         ]);
-        let req = RouteRequest { alias: "test@example.com".into(), amount_sats: 500_000, signed_profile: signed };
+        let req = RouteRequest {
+            alias: "test@example.com".into(),
+            amount_sats: 500_000,
+            signed_profile: signed,
+        };
         let q = select_route_with_fees(&req, &high_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Ark { .. }));
         assert!(q.reason.contains("50 sat/vB"));
@@ -326,7 +368,11 @@ mod tests {
     #[test]
     fn no_route_when_no_methods() {
         let signed = make_profile(vec![]);
-        let req = RouteRequest { alias: "test@example.com".into(), amount_sats: 500_000, signed_profile: signed };
+        let req = RouteRequest {
+            alias: "test@example.com".into(),
+            amount_sats: 500_000,
+            signed_profile: signed,
+        };
         assert!(matches!(
             select_route_with_fees(&req, &high_fees()).unwrap_err(),
             SatsPathError::NoRouteFound(_)
@@ -340,12 +386,34 @@ mod tests {
             address: "bc1q...".into(),
             pubkey_hint: None,
         }]);
-        let req = RouteRequest { alias: "test@example.com".into(), amount_sats: 500_000, signed_profile: signed };
+        let req = RouteRequest {
+            alias: "test@example.com".into(),
+            amount_sats: 500_000,
+            signed_profile: signed,
+        };
 
-        let at = FeeEstimate { fastest_fee: 20, half_hour_fee: 15, hour_fee: 10, economy_fee: 5, minimum_fee: 1 };
-        assert!(matches!(select_route_with_fees(&req, &at).unwrap().selected_method, PaymentMethod::Onchain { .. }));
+        let at = FeeEstimate {
+            fastest_fee: 20,
+            half_hour_fee: 15,
+            hour_fee: 10,
+            economy_fee: 5,
+            minimum_fee: 1,
+        };
+        assert!(matches!(
+            select_route_with_fees(&req, &at).unwrap().selected_method,
+            PaymentMethod::Onchain { .. }
+        ));
 
-        let above = FeeEstimate { fastest_fee: 21, half_hour_fee: 16, hour_fee: 11, economy_fee: 6, minimum_fee: 2 };
-        assert!(matches!(select_route_with_fees(&req, &above).unwrap_err(), SatsPathError::NoRouteFound(_)));
+        let above = FeeEstimate {
+            fastest_fee: 21,
+            half_hour_fee: 16,
+            hour_fee: 11,
+            economy_fee: 6,
+            minimum_fee: 2,
+        };
+        assert!(matches!(
+            select_route_with_fees(&req, &above).unwrap_err(),
+            SatsPathError::NoRouteFound(_)
+        ));
     }
 }

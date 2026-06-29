@@ -267,13 +267,14 @@ impl BoltzClient {
             // Try to extract Boltz error message
             let msg = serde_json::from_str::<BoltzErrorResponse>(&body)
                 .map(|e| e.error)
-                .unwrap_or_else(|_| body.clone());
-            return Err(SwapError::BoltzApi { status, message: msg });
+                .unwrap_or(body);
+            return Err(SwapError::BoltzApi {
+                status,
+                message: msg,
+            });
         }
 
-        serde_json::from_str(&body).map_err(|e| {
-            SwapError::Json(serde_json::Error::from(e))
-        })
+        serde_json::from_str(&body).map_err(SwapError::Json)
     }
 
     // ── GET /v2/swap/fees ─────────────────────────────────────────────────
@@ -357,10 +358,7 @@ impl BoltzClient {
     // ── POST /v2/swap/reverse ─────────────────────────────────────────────
 
     /// Create a reverse swap: Lightning payment → on-chain BTC delivery.
-    pub async fn create_reverse(
-        &self,
-        req: &ReverseSwapRequest,
-    ) -> Result<ReverseSwapResponse> {
+    pub async fn create_reverse(&self, req: &ReverseSwapRequest) -> Result<ReverseSwapResponse> {
         let resp = self
             .http
             .post(self.url("/swap/reverse"))
@@ -375,10 +373,7 @@ impl BoltzClient {
     // ── POST /v2/swap/chain ───────────────────────────────────────────────
 
     /// Create a chain swap: on-chain/Ark → on-chain BTC (no Lightning).
-    pub async fn create_chain(
-        &self,
-        req: &ChainSwapRequest,
-    ) -> Result<ChainSwapResponse> {
+    pub async fn create_chain(&self, req: &ChainSwapRequest) -> Result<ChainSwapResponse> {
         let resp = self
             .http
             .post(self.url("/swap/chain"))
@@ -423,7 +418,10 @@ impl BoltzClient {
         } else {
             let status = resp.status().as_u16();
             let msg = resp.text().await.unwrap_or_default();
-            Err(SwapError::BoltzApi { status, message: msg })
+            Err(SwapError::BoltzApi {
+                status,
+                message: msg,
+            })
         }
     }
 
@@ -441,7 +439,7 @@ impl BoltzClient {
         target: Option<&[SwapStatus]>,
         max_wait: Duration,
     ) -> Result<WsSwapUpdate> {
-        let ws_url = format!("{}", self.ws_url);
+        let ws_url = self.ws_url.to_string();
 
         let (mut ws, _) = connect_async(&ws_url)
             .await
@@ -474,9 +472,8 @@ impl BoltzClient {
                                     }
 
                                     // Return if we reached a terminal state or the target state
-                                    let reached_target = target
-                                        .map(|t| t.contains(&arg.status))
-                                        .unwrap_or(false);
+                                    let reached_target =
+                                        target.map(|t| t.contains(&arg.status)).unwrap_or(false);
                                     let is_terminal = arg.status.is_terminal();
 
                                     if reached_target || is_terminal {
@@ -487,9 +484,7 @@ impl BoltzClient {
                         }
                     }
                     Ok(Message::Close(_)) => {
-                        return Err(SwapError::WebSocket(
-                            "WebSocket closed by server".into(),
-                        ));
+                        return Err(SwapError::WebSocket("WebSocket closed by server".into()));
                     }
                     Err(e) => {
                         return Err(SwapError::WebSocket(e.to_string()));
@@ -497,7 +492,9 @@ impl BoltzClient {
                     _ => {}
                 }
             }
-            Err(SwapError::WebSocket("WebSocket stream ended unexpectedly".into()))
+            Err(SwapError::WebSocket(
+                "WebSocket stream ended unexpectedly".into(),
+            ))
         })
         .await;
 

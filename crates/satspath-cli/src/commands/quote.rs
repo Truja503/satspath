@@ -5,7 +5,10 @@ use satspath_router::{
     fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route, RouteRequest,
 };
 
-use super::{get_resolver, qr::{bitcoin_uri, print_qr}};
+use super::{
+    get_resolver,
+    qr::{bitcoin_uri, print_qr},
+};
 use satspath_core::resolver::ProfileResolver;
 
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
@@ -30,7 +33,9 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         amount_sats,
         signed_profile: signed.clone(),
     };
-    let quote = select_route(&req).await.map_err(|e| anyhow::anyhow!("{}", e))?;
+    let quote = select_route(&req)
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("done.");
 
     // ── Live fee table ──────────────────────────────────────────────────────
@@ -38,14 +43,20 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         println!();
         println!("  Mempool fees (sat/vB)");
         println!("  ├─ Next block  (~10 min): {} sat/vB", snap.fastest_sat_vb);
-        println!("  ├─ 30 minutes           : {} sat/vB", snap.half_hour_sat_vb);
+        println!(
+            "  ├─ 30 minutes           : {} sat/vB",
+            snap.half_hour_sat_vb
+        );
         println!("  └─ 60 minutes           : {} sat/vB", snap.hour_sat_vb);
     }
 
     // ── Routing decision ────────────────────────────────────────────────────
     println!();
     println!("  ┌─────────────────────────────────────────┐");
-    println!("  │  Rail   : {:30}  │", quote.selected_method.method_name());
+    println!(
+        "  │  Rail   : {:30}  │",
+        quote.selected_method.method_name()
+    );
     println!("  │  Label  : {:30}  │", quote.selected_method.label());
     if let Some(fee) = quote.estimated_fee_sats {
         println!("  │  Fee    : {:30}  │", format!("{} sats", fee));
@@ -85,7 +96,9 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         PaymentMethod::Ark { pubkey, server, .. } => {
             println!("  Ark payment via {}", server);
             println!("  Pubkey: {}...", &pubkey[..16.min(pubkey.len())]);
-            println!("  ⚠  [EXPERIMENTAL] Use --experimental-swaps --testnet to attempt execution.");
+            println!(
+                "  ⚠  [EXPERIMENTAL] Use --experimental-swaps --testnet to attempt execution."
+            );
         }
     }
 

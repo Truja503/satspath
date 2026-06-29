@@ -6,16 +6,21 @@ use satspath_core::PaymentMethod;
 
 pub fn is_lightning_available(method: &PaymentMethod) -> bool {
     match method {
-        PaymentMethod::Lightning { lnurl, lightning_address, bolt12, .. } => {
-            lnurl.is_some() || lightning_address.is_some() || bolt12.is_some()
-        }
+        PaymentMethod::Lightning {
+            lnurl,
+            lightning_address,
+            bolt12,
+            ..
+        } => lnurl.is_some() || lightning_address.is_some() || bolt12.is_some(),
         _ => false,
     }
 }
 
 pub fn lightning_address(method: &PaymentMethod) -> Option<&str> {
     match method {
-        PaymentMethod::Lightning { lightning_address, .. } => lightning_address.as_deref(),
+        PaymentMethod::Lightning {
+            lightning_address, ..
+        } => lightning_address.as_deref(),
         _ => None,
     }
 }
@@ -78,7 +83,12 @@ pub async fn fetch_lnurl_metadata(lightning_address: &str) -> anyhow::Result<Lnu
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
-    let meta = client.get(&url).send().await?.json::<LnurlPayMetadata>().await?;
+    let meta = client
+        .get(&url)
+        .send()
+        .await?
+        .json::<LnurlPayMetadata>()
+        .await?;
     if meta.tag != "payRequest" {
         anyhow::bail!("unexpected LNURL tag: {}", meta.tag);
     }
@@ -161,7 +171,10 @@ pub async fn fetch_invoice(
 /// - The invoice is unparseable.
 /// - The invoice amount does not match `expected_msats`.
 /// - The invoice has expired.
-pub fn validate_bolt11_invoice(bolt11: &str, expected_msats: u64) -> anyhow::Result<ValidatedInvoice> {
+pub fn validate_bolt11_invoice(
+    bolt11: &str,
+    expected_msats: u64,
+) -> anyhow::Result<ValidatedInvoice> {
     let invoice = Bolt11Invoice::from_str(bolt11)
         .map_err(|e| anyhow::anyhow!("failed to parse BOLT11 invoice: {e:?}"))?;
 

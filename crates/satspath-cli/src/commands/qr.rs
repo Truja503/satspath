@@ -3,8 +3,8 @@ use qrcode::render::unicode;
 use qrcode::QrCode;
 
 pub fn print_qr(data: &str) -> Result<()> {
-    let code = QrCode::new(data.as_bytes())
-        .map_err(|e| anyhow::anyhow!("QR encode error: {}", e))?;
+    let code =
+        QrCode::new(data.as_bytes()).map_err(|e| anyhow::anyhow!("QR encode error: {}", e))?;
     let image = code
         .render::<unicode::Dense1x2>()
         .dark_color(unicode::Dense1x2::Dark)

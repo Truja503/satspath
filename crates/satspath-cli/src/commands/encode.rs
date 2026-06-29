@@ -20,10 +20,7 @@ pub fn cmd_decode(uri: &str) -> Result<()> {
             .map(|a| format!("{} sats", a))
             .unwrap_or_else(|| "not specified".into())
     );
-    println!(
-        "  Memo:        {}",
-        req.memo.as_deref().unwrap_or("(none)")
-    );
+    println!("  Memo:        {}", req.memo.as_deref().unwrap_or("(none)"));
     println!(
         "  Profile hint:{}",
         req.profile_hint.as_deref().unwrap_or("(none)")

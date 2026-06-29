@@ -43,7 +43,10 @@ impl SwapStore {
     /// Fails closed: returns an error rather than falling back to plaintext.
     pub fn open_with_key(key: [u8; 32]) -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
-        Ok(Self { path, encryption_key: Some(key) })
+        Ok(Self {
+            path,
+            encryption_key: Some(key),
+        })
     }
 
     /// Open the encrypted swap store at a custom path with the given AES-256 key.
@@ -51,7 +54,10 @@ impl SwapStore {
     /// Useful when the caller controls the storage location (e.g. integration
     /// tests that want to use a temp directory while still testing encryption).
     pub fn open_with_key_at(path: PathBuf, key: [u8; 32]) -> Self {
-        Self { path, encryption_key: Some(key) }
+        Self {
+            path,
+            encryption_key: Some(key),
+        }
     }
 
     /// Open a plaintext (unencrypted) store at a custom path.
@@ -62,7 +68,10 @@ impl SwapStore {
     /// disk without any encryption. Use `open_with_key` for all user-facing
     /// flows.
     pub fn open_plaintext(path: PathBuf) -> Self {
-        Self { path, encryption_key: None }
+        Self {
+            path,
+            encryption_key: None,
+        }
     }
 
     // ── Read ─────────────────────────────────────────────────────────────────
@@ -84,9 +93,8 @@ impl SwapStore {
             raw
         };
 
-        serde_json::from_slice(&json_bytes).map_err(|e| {
-            SwapError::StorageCorruption(format!("Failed to parse swap store: {e}"))
-        })
+        serde_json::from_slice(&json_bytes)
+            .map_err(|e| SwapError::StorageCorruption(format!("Failed to parse swap store: {e}")))
     }
 
     // ── Write ────────────────────────────────────────────────────────────────
@@ -157,7 +165,11 @@ impl SwapStore {
     /// List all swaps in a recoverable state (failed but funds can be reclaimed).
     pub fn list_recoverable(&self) -> Result<Vec<SwapRecord>> {
         let store = self.load_all()?;
-        Ok(store.swaps.into_iter().filter(|s| s.is_recoverable()).collect())
+        Ok(store
+            .swaps
+            .into_iter()
+            .filter(|s| s.is_recoverable())
+            .collect())
     }
 
     /// List all swaps of a given kind that are still pending.
@@ -357,6 +369,9 @@ mod tests {
         let key = [0x42u8; 32];
         let enc = SwapStore::open_with_key_at(path, key);
         let result = enc.get("plain_001");
-        assert!(result.is_err(), "encrypted store must not accept plaintext files");
+        assert!(
+            result.is_err(),
+            "encrypted store must not accept plaintext files"
+        );
     }
 }

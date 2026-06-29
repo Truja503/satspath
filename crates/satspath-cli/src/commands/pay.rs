@@ -2,8 +2,8 @@ use anyhow::Result;
 
 use satspath_core::{crypto::verify_signed_profile, PaymentMethod};
 use satspath_router::{
-    fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route,
-    RouteRequest, SwapDirective,
+    fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route, RouteRequest,
+    SwapDirective,
 };
 
 use super::{
@@ -56,14 +56,19 @@ pub async fn cmd_pay(
         amount_sats,
         signed_profile: signed.clone(),
     };
-    let quote = select_route(&req).await.map_err(|e| anyhow::anyhow!("{}", e))?;
+    let quote = select_route(&req)
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("done.");
 
     if let Some(snap) = &quote.fee_snapshot {
         println!();
         println!("  Mempool fees (sat/vB)");
         println!("  ├─ Next block  (~10 min): {} sat/vB", snap.fastest_sat_vb);
-        println!("  ├─ 30 minutes           : {} sat/vB", snap.half_hour_sat_vb);
+        println!(
+            "  ├─ 30 minutes           : {} sat/vB",
+            snap.half_hour_sat_vb
+        );
         println!("  └─ 60 minutes           : {} sat/vB", snap.hour_sat_vb);
     }
 
@@ -114,7 +119,11 @@ async fn exec_safe(method: &PaymentMethod, amount_sats: u64, memo: Option<&str>)
     Ok(())
 }
 
-async fn safe_lightning(method: &PaymentMethod, amount_sats: u64, memo: Option<&str>) -> Result<()> {
+async fn safe_lightning(
+    method: &PaymentMethod,
+    amount_sats: u64,
+    memo: Option<&str>,
+) -> Result<()> {
     let ln_addr = lightning_address(method)
         .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;
 
@@ -175,23 +184,19 @@ fn safe_onchain(address: &str, label: &str, amount_sats: u64) {
 
 // ─── Experimental Engine v0 ──────────────────────────────────────────────────
 
-async fn exec_experimental(
-    directive: &SwapDirective,
-    amount_sats: u64,
-    alias: &str,
-) -> Result<()> {
+async fn exec_experimental(directive: &SwapDirective, amount_sats: u64, alias: &str) -> Result<()> {
     println!("══════════════════════════════════════════════════");
     println!("  Engine v0 — EXPERIMENTAL TESTNET ONLY");
     println!("══════════════════════════════════════════════════");
 
     match directive {
         SwapDirective::LightningPayment { target_ln_address } => {
-            let addr = target_ln_address
-                .as_deref()
-                .ok_or_else(|| anyhow::anyhow!(
+            let addr = target_ln_address.as_deref().ok_or_else(|| {
+                anyhow::anyhow!(
                     "No verified Lightning Address in profile. \
                      Cannot create swap without a real payment pointer."
-                ))?;
+                )
+            })?;
             println!("  [Direct LN] Target: {}", addr);
             println!("  Testnet LN node integration pending.");
             println!("  Run with a real LN node to execute.");
@@ -199,12 +204,12 @@ async fn exec_experimental(
 
         SwapDirective::SubmarineSwap { target_invoice } => {
             // Must have a real invoice — no fake fallback.
-            let invoice = target_invoice
-                .as_deref()
-                .ok_or_else(|| anyhow::anyhow!(
+            let invoice = target_invoice.as_deref().ok_or_else(|| {
+                anyhow::anyhow!(
                     "Submarine swap requires a real BOLT11 invoice. \
                      No verified invoice in profile. Cannot proceed."
-                ))?;
+                )
+            })?;
 
             println!("  [Submarine Swap] Ark/L1 → Lightning");
             println!("  Invoice : {}...", &invoice[..40.min(invoice.len())]);

@@ -321,9 +321,15 @@ mod tests {
     fn swap_quote_calculation() {
         let fees = PairFees {
             percentage: 0.1,
-            miner_fees: MinerFees { claim: 500, refund: 500 },
+            miner_fees: MinerFees {
+                claim: 500,
+                refund: 500,
+            },
         };
-        let limits = PairLimits { minimal: 1_000, maximal: 10_000_000 };
+        let limits = PairLimits {
+            minimal: 1_000,
+            maximal: 10_000_000,
+        };
         let quote = SwapQuote::calculate(100_000, &fees, &limits);
 
         // Service fee: 100_000 * 0.1% = 100 sats

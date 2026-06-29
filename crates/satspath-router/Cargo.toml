@@ -15,3 +15,6 @@ tokio = { workspace = true }
 hex = { workspace = true }
 urlencoding = "2"
 lightning-invoice = { workspace = true }
+
+[dev-dependencies]
+mockito = "1"

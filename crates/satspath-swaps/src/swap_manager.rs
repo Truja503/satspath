@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use crate::ark_bridge::ArkBridge;
 use crate::boltz_client::BoltzClient;
-use crate::chain_swap::{create_chain_swap, wait_and_claim_chain, ChainSwapCreated, ChainSwapParams};
+use crate::chain_swap::{
+    create_chain_swap, wait_and_claim_chain, ChainSwapCreated, ChainSwapParams,
+};
 use crate::errors::{Result, SwapError};
 use crate::reverse::{create_reverse, wait_and_claim_reverse, ReverseParams, ReverseSwapCreated};
-use crate::submarine::{
-    create_submarine, wait_submarine, SubmarineParams, SubmarineSwapCreated,
-};
+use crate::submarine::{create_submarine, wait_submarine, SubmarineParams, SubmarineSwapCreated};
 use crate::swap_store::SwapStore;
 use crate::types::{SwapKind, SwapRecord, SwapResult};
 
@@ -24,7 +24,11 @@ pub struct SwapManager {
 impl SwapManager {
     /// Create a new SwapManager.
     pub fn new(client: BoltzClient, store: SwapStore) -> Self {
-        Self { client, store, bridge: None }
+        Self {
+            client,
+            store,
+            bridge: None,
+        }
     }
 
     /// Attach the ARK Node.js bridge to this SwapManager.
@@ -61,9 +65,15 @@ impl SwapManager {
             .ok_or_else(|| SwapError::NotFound(swap_id.to_string()))?;
 
         match record.kind {
-            SwapKind::Submarine => wait_submarine(&self.client, &self.store, swap_id, max_wait).await,
-            SwapKind::Reverse => wait_and_claim_reverse(&self.client, &self.store, swap_id, max_wait).await,
-            SwapKind::Chain => wait_and_claim_chain(&self.client, &self.store, swap_id, max_wait).await,
+            SwapKind::Submarine => {
+                wait_submarine(&self.client, &self.store, swap_id, max_wait).await
+            }
+            SwapKind::Reverse => {
+                wait_and_claim_reverse(&self.client, &self.store, swap_id, max_wait).await
+            }
+            SwapKind::Chain => {
+                wait_and_claim_chain(&self.client, &self.store, swap_id, max_wait).await
+            }
         }
     }
 

@@ -4,8 +4,7 @@ use std::fs;
 
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
-    display_hint,
-    PaymentMethod, PaymentProfile,
+    display_hint, PaymentMethod, PaymentProfile,
 };
 
 use super::{open_registry, satspath_dir};
@@ -25,7 +24,7 @@ pub fn cmd_register(
     let kp = generate_identity_keypair();
     let pubkey_hex = hex::encode(kp.public_key.serialize());
     let secret_hex = hex::encode(kp.secret_key.secret_bytes());
-    let domain = alias.splitn(2, '@').nth(1).unwrap_or("example.com");
+    let domain = alias.split_once('@').map(|x| x.1).unwrap_or("example.com");
 
     let effective_ln = ln_address.unwrap_or(alias);
     let mut methods: Vec<PaymentMethod> = vec![PaymentMethod::Lightning {

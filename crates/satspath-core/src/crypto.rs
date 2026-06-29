@@ -14,7 +14,10 @@ pub struct IdentityKeypair {
 pub fn generate_identity_keypair() -> IdentityKeypair {
     let secp = Secp256k1::new();
     let (secret_key, public_key) = secp.generate_keypair(&mut rand::thread_rng());
-    IdentityKeypair { secret_key, public_key }
+    IdentityKeypair {
+        secret_key,
+        public_key,
+    }
 }
 
 /// Produce a deterministic canonical JSON serialization of a PaymentProfile.
@@ -28,7 +31,10 @@ pub fn canonical_profile_bytes(profile: &PaymentProfile) -> Result<Vec<u8>> {
 }
 
 /// Sign a PaymentProfile with the given secret key and return a SignedPaymentProfile.
-pub fn sign_profile(profile: PaymentProfile, secret_key: &SecretKey) -> Result<SignedPaymentProfile> {
+pub fn sign_profile(
+    profile: PaymentProfile,
+    secret_key: &SecretKey,
+) -> Result<SignedPaymentProfile> {
     let secp = Secp256k1::new();
     let bytes = canonical_profile_bytes(&profile)?;
     let digest = Sha256::digest(&bytes);
@@ -49,8 +55,8 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
     let public_key = PublicKey::from_slice(&pubkey_bytes)
         .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
 
-    let sig_bytes = hex::decode(&signed.signature)
-        .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+    let sig_bytes =
+        hex::decode(&signed.signature).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
     let sig = secp256k1::ecdsa::Signature::from_der(&sig_bytes)
         .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
 
@@ -84,8 +90,8 @@ pub fn check_profile_expiry(profile: &PaymentProfile) -> Result<()> {
 
 /// Produce a short human-readable fingerprint of a public key (first 8 hex chars of SHA-256).
 pub fn fingerprint_pubkey(pubkey_hex: &str) -> Result<String> {
-    let bytes = hex::decode(pubkey_hex)
-        .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+    let bytes =
+        hex::decode(pubkey_hex).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
     let digest = Sha256::digest(&bytes);
     Ok(hex::encode(&digest[..4]))
 }

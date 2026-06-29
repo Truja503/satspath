@@ -39,7 +39,7 @@ layer — not a wallet, not a custodian.
 
 ## What this prototype does NOT do yet
 
-- Execute real Lightning, on-chain, or Ark payments.
+- Execute real Lightning, on-chain, or Ark payments (except via experimental swap engine).
 - Verify email or domain ownership during registration.
 - Persist profiles to a decentralized registry (BIP-353, Nostr, DNS).
 - Support key rotation or profile revocation.
@@ -207,7 +207,7 @@ Route Quote:
 ### Pay (simulated)
 
 ```bash
-satspath pay rodrigo@satspath.dev 21000
+satspath pay rodrigo@satspath.dev 21000 --experimental-swaps --testnet
 ```
 
 ```
@@ -217,7 +217,7 @@ Checking available payment rails...
 Selected route: Lightning
 Reason:         Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
 
-Payment status: simulated_success
+Payment status: simulated_success (or real execution if experimental engine is enabled)
 ```
 
 ### Invite (unregistered user)
@@ -271,8 +271,9 @@ See [examples/demo_flow.md](examples/demo_flow.md) for a full annotated walkthro
 | Fake alias registration | Signature-bound profiles; first-come-first-served |
 | Server tampering | secp256k1 signature verification on every resolve |
 | Key replacement attack | Signature covers identity_pubkey; swap breaks sig |
+| Profile replay | `expires_at` enforced locally and remotely |
 | Email takeover | Not mitigated at MVP (future: DKIM challenge) |
-| LNURL spoofing | Not mitigated at MVP (future: TLS pinning) |
+| LNURL spoofing | Amount and expiry verification before routing |
 | On-chain privacy leaks | Multiple on-chain addresses per profile |
 | Lost keys | Local backup only (future: BIP-39 seed phrase) |
 | Malicious invite links | Alias hash + amount in invite; receiver verifies |
@@ -321,14 +322,14 @@ Test coverage includes:
 
 This prototype was built during a hackathon to demonstrate:
 
-1. A working secp256k1-signed payment profile format.
+1. A working secp256k1-signed payment profile format with expiration.
 2. A universal URI encoding scheme for payment requests.
 3. An automatic payment rail selector using real mempool.space fee data.
 4. A privacy-aware profile with multiple on-chain addresses.
 5. An invite flow that preserves receiver key sovereignty.
+6. A fail-closed, encrypted swap storage engine (behind `--experimental-swaps`).
 
-It is **not production-ready**. The registry is local, payments are simulated,
-and domain verification is not implemented.
+It is **not production-ready**. The registry is local, payments are simulated (unless experimental flags are used), and domain verification is not implemented.
 
 ---
 
