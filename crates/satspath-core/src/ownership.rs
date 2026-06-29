@@ -626,7 +626,7 @@ mod tests {
     use crate::crypto::{generate_identity_keypair, sign_message};
     use crate::profile::PaymentMethod;
     use bitcoin::{Address, CompressedPublicKey, Network, XOnlyPublicKey};
-    use secp256k1::{PublicKey, Secp256k1, SecretKey};
+    use secp256k1::{Secp256k1, SecretKey};
 
     const NOW: i64 = 1_700_000_000;
 
@@ -772,10 +772,12 @@ mod tests {
         )
         .unwrap();
 
-        if let VerificationStatus::Verified { proof, .. } = &mut verification.status {
-            if let OwnershipProof::MessageSignature { message, .. } = proof {
-                *message = "SatsPath Ownership Proof v1\nidentity=evil".into();
-            }
+        if let VerificationStatus::Verified {
+            proof: OwnershipProof::MessageSignature { message, .. },
+            ..
+        } = &mut verification.status
+        {
+            *message = "SatsPath Ownership Proof v1\nidentity=evil".into();
         }
         assert!(verify_method_verification(
             &method,

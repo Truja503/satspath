@@ -211,11 +211,11 @@ mod tests {
         // Verify the preimage → hash relationship we'll use for Reverse swaps
         let mut preimage = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut preimage);
-        let hash: [u8; 32] = Sha256::digest(&preimage).into();
+        let hash: [u8; 32] = Sha256::digest(preimage).into();
         // Hash must be different from preimage
         assert_ne!(preimage, hash);
         // Re-hashing the hash should be different again
-        let double_hash: [u8; 32] = Sha256::digest(&hash).into();
+        let double_hash: [u8; 32] = Sha256::digest(hash).into();
         assert_ne!(hash, double_hash);
     }
 }

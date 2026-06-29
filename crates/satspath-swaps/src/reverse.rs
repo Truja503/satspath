@@ -248,10 +248,10 @@ mod tests {
     fn preimage_and_hash_are_consistent() {
         let mut preimage = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut preimage);
-        let hash: [u8; 32] = Sha256::digest(&preimage).into();
+        let hash: [u8; 32] = Sha256::digest(preimage).into();
 
         // Verify deterministic
-        let hash2: [u8; 32] = Sha256::digest(&preimage).into();
+        let hash2: [u8; 32] = Sha256::digest(preimage).into();
         assert_eq!(hash, hash2);
 
         // Preimage hash is what we share with Boltz
