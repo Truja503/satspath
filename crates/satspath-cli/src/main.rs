@@ -1,7 +1,7 @@
 mod commands;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
@@ -105,8 +105,62 @@ enum Command {
     /// Generate an invite for an unregistered alias
     Invite { alias: String, amount_sats: u64 },
 
+    /// Ark direct receive/send and swap intents. Testnet-gated; mainnet execution disabled.
+    Ark {
+        #[command(subcommand)]
+        command: ArkCommand,
+    },
+
     /// Run the full SatsPath demo flow
     Demo,
+}
+
+#[derive(Subcommand)]
+enum ArkCommand {
+    /// Preview an Ark receive pointer for a registered alias.
+    Receive(ArkReceiveArgs),
+    /// Preview or testnet-execute a direct Ark send intent.
+    Send(ArkSendArgs),
+    /// Preview or testnet-execute an Ark swap intent.
+    Swap(ArkSwapArgs),
+}
+
+#[derive(Args)]
+struct ArkReceiveArgs {
+    #[arg(long)]
+    alias: String,
+    #[arg(long)]
+    testnet: bool,
+    #[arg(long)]
+    execute_testnet: bool,
+}
+
+#[derive(Args)]
+struct ArkSendArgs {
+    alias: String,
+    amount_sats: u64,
+    #[arg(long)]
+    testnet: bool,
+    #[arg(long)]
+    execute_testnet: bool,
+    #[arg(long)]
+    confirm: Option<String>,
+}
+
+#[derive(Args)]
+struct ArkSwapArgs {
+    alias: String,
+    amount_sats: u64,
+    #[arg(long)]
+    from: commands::ArkSwapSide,
+    #[arg(long)]
+    to: commands::ArkSwapSide,
+    #[arg(long)]
+    testnet: bool,
+    #[arg(long)]
+    execute_testnet: bool,
+    #[arg(long)]
+    confirm: Option<String>,
 }
 
 #[tokio::main]
@@ -178,6 +232,33 @@ async fn main() -> Result<()> {
             .await?
         }
         Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
+        Command::Ark { command } => match command {
+            ArkCommand::Receive(args) => {
+                commands::cmd_ark_receive(&args.alias, args.testnet, args.execute_testnet).await?
+            }
+            ArkCommand::Send(args) => {
+                commands::cmd_ark_send(
+                    &args.alias,
+                    args.amount_sats,
+                    args.testnet,
+                    args.execute_testnet,
+                    args.confirm.as_deref(),
+                )
+                .await?
+            }
+            ArkCommand::Swap(args) => {
+                commands::cmd_ark_swap(
+                    &args.alias,
+                    args.amount_sats,
+                    args.from,
+                    args.to,
+                    args.testnet,
+                    args.execute_testnet,
+                    args.confirm.as_deref(),
+                )
+                .await?
+            }
+        },
         Command::Demo => commands::cmd_demo().await?,
     }
 

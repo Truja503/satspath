@@ -119,21 +119,31 @@ fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
             if let Some(hint) = pubkey_hint {
                 println!("      Pubkey hint: {}", mask_pubkey(hint));
             }
-            if descriptor_hint.is_some() {
-                println!("      Descriptor hint: present");
-            }
-        }
-        PaymentMethod::Ark {
-            label,
-            server,
-            pubkey,
-            vtxo_pointer,
-        } => {
-            println!("  - {} [Ark]   {}", label, trust.badge());
-            println!("      Server: {}", mask_address(server));
-            println!("      Pubkey: {}", mask_pubkey(pubkey));
-            if vtxo_pointer.is_some() {
-                println!("      VTXO pointer: present");
+            PaymentMethod::Ark {
+                label,
+                server,
+                pubkey,
+                vtxo_pointer,
+                proof,
+                expires_at,
+            } => {
+                println!("  - {} [Ark]", label);
+                println!("      Server: {}", mask_address(server));
+                println!("      Pubkey: {}", mask_pubkey(pubkey));
+                if vtxo_pointer.is_some() {
+                    println!("      VTXO pointer: present");
+                }
+                println!(
+                    "      Ownership proof: {}",
+                    if proof.is_some() {
+                        "claimed"
+                    } else {
+                        "not provided"
+                    }
+                );
+                if let Some(expires_at) = expires_at {
+                    println!("      Expires at: {}", expires_at);
+                }
             }
         }
     }

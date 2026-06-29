@@ -31,15 +31,17 @@ layer — not a wallet, not a custodian.
 - Encode/decode universal payment URIs (`satspath:v1:<base64url_json>`).
 - Sign profiles with secp256k1 identity keys.
 - Verify profile signatures before routing.
-- Select the best payment rail (Lightning → On-chain → Ark).
+- Select the best payment rail (Lightning → On-chain → Ark preview/intents).
 - Fetch real-time on-chain fee estimates from mempool.space.
-- Simulate payment execution on the selected rail.
+- Generate safe payment previews and Ark route intents; Ark swaps are not claimed
+  as complete unless explicitly testnet-executed and supported by the bridge.
 - Generate invite links for unregistered users (receiver generates their own keys).
 - Full CLI: `init`, `register`, `show`, `encode`, `decode`, `quote`, `pay`, `invite`, `demo`.
 
 ## What this prototype does NOT do yet
 
 - Execute real Lightning, on-chain, or Ark payments.
+- Enable mainnet Ark execution.
 - Verify email or domain ownership during registration.
 - Persist profiles to a decentralized registry (BIP-353, Nostr, DNS).
 - Support key rotation or profile revocation.
@@ -312,6 +314,7 @@ Test coverage includes:
 - Router: Lightning for small amounts
 - Router: On-chain for low fees
 - Router: Ark fallback for high fees
+- Ark route planning and testnet-gated intent safety
 - Router: Error when no methods available
 - Registry persistence across opens
 

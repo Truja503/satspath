@@ -77,7 +77,7 @@ pub async fn create_chain_swap(
     // Generate preimage (the atomic secret for both HTLC legs)
     let mut preimage = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut preimage);
-    let preimage_hash: [u8; 32] = Sha256::digest(&preimage).into();
+    let preimage_hash: [u8; 32] = Sha256::digest(preimage).into();
 
     let secp = Secp256k1::new();
     let mut rng = rand::thread_rng();

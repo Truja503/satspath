@@ -59,8 +59,8 @@ pub struct RouteQuote {
 ///
 /// Priority:
 ///   1. Lightning  — if amount < 100 000 sats and a Lightning method exists.
-///                   NOTE: Lightning is checked BEFORE on-chain fees.
-///                   The dust threshold must NOT block Lightning route selection.
+///      NOTE: Lightning is checked BEFORE on-chain fees.
+///      The dust threshold must NOT block Lightning route selection.
 ///   2. On-chain   — if fastestFee ≤ 20 sat/vB (next block, <10 min).
 ///   3. Ark        — fallback when on-chain fees are too high.
 ///   4. Error      — no suitable rail found.
@@ -357,9 +357,11 @@ mod tests {
             },
             PaymentMethod::Ark {
                 label: "Ark".into(),
-                server: "ark.example.com".into(),
-                pubkey: "aabbcc".into(),
+                server: "https://ark.example.com".into(),
+                pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into(),
                 vtxo_pointer: None,
+                proof: None,
+                expires_at: None,
             },
         ]);
         let req = RouteRequest {
@@ -398,29 +400,31 @@ mod tests {
         let req = RouteRequest {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
-            signed_profile: signed.clone(),
+            signed_profile: signed,
         };
 
-        // Exactly at threshold — should choose on-chain
-        let at_threshold = FeeEstimate {
+        let at = FeeEstimate {
             fastest_fee: 20,
             half_hour_fee: 15,
             hour_fee: 10,
             economy_fee: 5,
             minimum_fee: 1,
         };
-        let q = select_route_with_fees(&req, &at_threshold).unwrap();
-        assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
+        assert!(matches!(
+            select_route_with_fees(&req, &at).unwrap().selected_method,
+            PaymentMethod::Onchain { .. }
+        ));
 
-        // One above — no on-chain method and no Ark → error
-        let above_threshold = FeeEstimate {
+        let above = FeeEstimate {
             fastest_fee: 21,
             half_hour_fee: 16,
             hour_fee: 11,
             economy_fee: 6,
             minimum_fee: 2,
         };
-        let err = select_route_with_fees(&req, &above_threshold).unwrap_err();
-        assert!(matches!(err, SatsPathError::NoRouteFound(_)));
+        assert!(matches!(
+            select_route_with_fees(&req, &above).unwrap_err(),
+            SatsPathError::NoRouteFound(_)
+        ));
     }
 }

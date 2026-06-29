@@ -3,6 +3,7 @@ use anyhow::Result;
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
     privacy::{canonical_identifier, mask_identifier, mask_pubkey},
+    validate_ark_server_url,
     validation::{
         validate_bitcoin_address, validate_compressed_pubkey, validate_lightning_address,
     },
@@ -56,12 +57,15 @@ pub fn cmd_register(
 
     match (ark_server, ark_pubkey) {
         (Some(server), Some(pubkey)) => {
+            validate_ark_server_url(server).map_err(|e| anyhow::anyhow!("{}", e))?;
             validate_compressed_pubkey(pubkey).map_err(|e| anyhow::anyhow!("{}", e))?;
             methods.push(PaymentMethod::Ark {
                 label: "Ark".into(),
                 server: server.to_string(),
                 pubkey: pubkey.to_string(),
                 vtxo_pointer: None,
+                proof: None,
+                expires_at: None,
             });
         }
         (None, None) => {}
