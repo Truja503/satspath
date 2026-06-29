@@ -17,6 +17,12 @@ pub enum SatsPathError {
     #[error("invalid payment URI: {0}")]
     InvalidPaymentUri(String),
 
+    #[error("invalid payment pointer: {0}")]
+    InvalidPaymentPointer(String),
+
+    #[error("private material rejected: {0}")]
+    PrivateMaterialRejected(String),
+
     #[error("no payment methods available")]
     NoPaymentMethods,
 
