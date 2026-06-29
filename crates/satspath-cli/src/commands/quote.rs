@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use satspath_core::{
     crypto::verify_signed_profile,
-    evaluate_method_trust,
+    evaluate_method_trust_for_profile,
     privacy::{mask_address, mask_identifier, mask_invoice, mask_pubkey},
     resolver::ProfileResolver,
     PaymentMethod,
@@ -70,11 +70,11 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     println!("  └─────────────────────────────────────────┘");
     println!("  Reason: {}", quote.reason);
 
-    // Ownership trust of the selected rail, re-verified client-side.
-    let trust = evaluate_method_trust(
+    // Ownership trust of the selected rail, re-verified client-side. Unifies
+    // method_verifications and any inline Ark pointer proof under one signal.
+    let trust = evaluate_method_trust_for_profile(
+        &signed.profile,
         &quote.selected_method,
-        &signed.profile.identity_pubkey,
-        &signed.profile.method_verifications,
         chrono::Utc::now().timestamp(),
         None,
     );

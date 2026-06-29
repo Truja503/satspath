@@ -20,11 +20,12 @@ pub use ark::{
 };
 pub use errors::{Result, SatsPathError};
 pub use ownership::{
-    attach_signature_proof, build_manual_attestation, build_signature_attestation,
-    evaluate_method_trust, ownership_challenge_message, pubkey_controls_address,
-    stored_status_for_method, upsert_method_verification, validate_method_verification,
-    validate_ownership_proof, verify_method_verification, MethodTrust, MethodVerification,
-    OwnershipProof, ProofType, TrustTier, VerificationStatus,
+    attach_signature_proof, attach_well_known_proof, build_manual_attestation,
+    build_signature_attestation, evaluate_method_trust, evaluate_method_trust_for_profile,
+    ownership_challenge_message, pubkey_controls_address, stored_status_for_method,
+    upsert_method_verification, validate_method_verification, validate_ownership_proof,
+    verify_method_verification, well_known_url_for_method, well_known_url_of, MethodTrust,
+    MethodVerification, OwnershipProof, ProofType, TrustTier, VerificationStatus,
 };
 pub use peer_registry::{
     canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,

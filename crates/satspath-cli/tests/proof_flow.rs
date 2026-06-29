@@ -158,6 +158,95 @@ fn manual_self_attestation_end_to_end() {
 }
 
 #[test]
+fn domain_control_proof_via_body_file_end_to_end() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+    // The Lightning Address domain (example.com) is what the proof binds to; the
+    // well-known URL https://example.com/.well-known/satspath/alice is derived.
+    let alias = "alice@example.com";
+
+    assert!(run(dir, &["init"]).2);
+    assert!(
+        run(
+            dir,
+            &["register", alias, "--ln-address", "alice@example.com"]
+        )
+        .2
+    );
+
+    // Learn the identity pubkey to put in the served file.
+    let identity_pubkey = {
+        let reg = Registry::open(&dir.join(".satspath")).unwrap();
+        reg.resolve_alias(alias)
+            .unwrap()
+            .profile
+            .identity_pubkey
+            .clone()
+    };
+
+    // Write the content the domain "serves": it must contain the identity pubkey.
+    let served = dir.join("served.txt");
+    std::fs::write(&served, format!("satspath-identity={identity_pubkey}\n")).unwrap();
+
+    // Attach a domain proof, verifying the local served copy (no network needed).
+    let (out, err, ok) = run(
+        dir,
+        &[
+            "attach-proof",
+            alias,
+            "--method-index",
+            "0",
+            "--type",
+            "domain",
+            "--body-file",
+            served.to_str().unwrap(),
+        ],
+    );
+    assert!(ok, "domain attach failed: {err}{out}");
+    assert!(
+        out.contains("verified · domain control"),
+        "attach should report domain control at mint time:\n{out}"
+    );
+
+    // Offline `show` is honest: it did not fetch, so the proof is "claimed".
+    let (out, _e, ok) = run(dir, &["show", alias]);
+    assert!(ok);
+    assert!(
+        out.contains("claimed · domain control"),
+        "offline show should report claimed (re-verify on fetch):\n{out}"
+    );
+}
+
+#[test]
+fn domain_proof_rejects_body_missing_identity() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+    let alias = "bob@example.com";
+
+    assert!(run(dir, &["init"]).2);
+    assert!(run(dir, &["register", alias, "--ln-address", "bob@example.com"]).2);
+
+    // Served content does NOT contain the identity pubkey → must be rejected.
+    let served = dir.join("bad.txt");
+    std::fs::write(&served, "nothing useful here\n").unwrap();
+
+    let (_o, _e, ok) = run(
+        dir,
+        &[
+            "attach-proof",
+            alias,
+            "--method-index",
+            "0",
+            "--type",
+            "domain",
+            "--body-file",
+            served.to_str().unwrap(),
+        ],
+    );
+    assert!(!ok, "a body without the identity binding must be rejected");
+}
+
+#[test]
 fn attach_proof_rejects_forged_onchain_signature() {
     let tmp = tempfile::tempdir().unwrap();
     let dir = tmp.path();

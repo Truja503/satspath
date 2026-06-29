@@ -37,7 +37,12 @@ enum Command {
     },
 
     /// Show a registered profile
-    Show { alias: String },
+    Show {
+        alias: String,
+        /// Fetch and re-verify domain-control proofs over the network
+        #[arg(long)]
+        verify_online: bool,
+    },
 
     /// Print the ownership-proof challenge to sign for one method
     Prove {
@@ -52,7 +57,7 @@ enum Command {
         alias: String,
         #[arg(long, default_value_t = 0)]
         method_index: usize,
-        /// Proof type: onchain | ark | manual
+        /// Proof type: onchain | ark | domain | manual
         #[arg(long = "type")]
         proof_type: String,
         /// issued_at value printed by `satspath prove` (required for onchain/ark)
@@ -64,6 +69,15 @@ enum Command {
         /// DER signature (hex) over the challenge (onchain/ark)
         #[arg(long)]
         signature: Option<String>,
+        /// Well-known URL to fetch+verify (domain; auto-derived for Lightning)
+        #[arg(long)]
+        url: Option<String>,
+        /// Token the served body must contain (domain; defaults to identity pubkey)
+        #[arg(long)]
+        nonce: Option<String>,
+        /// Verify a local copy of the served content instead of fetching (domain)
+        #[arg(long)]
+        body_file: Option<String>,
         /// Optional validity window in seconds from issued_at
         #[arg(long)]
         expires_in: Option<i64>,
@@ -182,7 +196,10 @@ async fn main() -> Result<()> {
             ark_server.as_deref(),
             ark_pubkey.as_deref(),
         )?,
-        Command::Show { alias } => commands::cmd_show(&alias).await?,
+        Command::Show {
+            alias,
+            verify_online,
+        } => commands::cmd_show(&alias, verify_online).await?,
         Command::Prove {
             alias,
             method_index,
@@ -194,16 +211,25 @@ async fn main() -> Result<()> {
             issued_at,
             pubkey,
             signature,
+            url,
+            nonce,
+            body_file,
             expires_in,
-        } => commands::cmd_attach_proof(
-            &alias,
-            method_index,
-            &proof_type,
-            issued_at,
-            pubkey.as_deref(),
-            signature.as_deref(),
-            expires_in,
-        )?,
+        } => {
+            commands::cmd_attach_proof(
+                &alias,
+                method_index,
+                &proof_type,
+                issued_at,
+                pubkey.as_deref(),
+                signature.as_deref(),
+                url.as_deref(),
+                nonce.as_deref(),
+                body_file.as_deref(),
+                expires_in,
+            )
+            .await?
+        }
         Command::Encode {
             alias,
             amount_sats,

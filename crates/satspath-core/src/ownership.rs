@@ -370,6 +370,79 @@ pub fn upsert_method_verification(
     }
 }
 
+/// The canonical well-known URL that a Lightning method's domain should serve to
+/// prove control: `https://<domain>/.well-known/satspath/<user>`. Returns `None`
+/// for methods without a Lightning Address.
+pub fn well_known_url_for_method(method: &PaymentMethod) -> Option<String> {
+    match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(addr),
+            ..
+        } => {
+            let (user, domain) = addr.split_once('@')?;
+            Some(format!(
+                "https://{}/.well-known/satspath/{}",
+                domain.trim().to_ascii_lowercase(),
+                user.trim().to_ascii_lowercase()
+            ))
+        }
+        _ => None,
+    }
+}
+
+/// Build a verified domain-control attestation from content the caller fetched
+/// (or is serving) at `url`. The proof commits to `sha256(fetched_body)`; the
+/// served content must contain both `nonce` and the identity pubkey, binding the
+/// page to this identity.
+///
+/// The attestation is verified against `fetched_body` before being returned, so
+/// a wrong host, missing identity binding, or mismatched body is rejected up
+/// front. Note the proof itself stores only the URL, nonce, and body hash — never
+/// the body — so any resolver re-fetches and re-checks independently.
+#[allow(clippy::too_many_arguments)]
+pub fn attach_well_known_proof(
+    method: &PaymentMethod,
+    identity_pubkey: &str,
+    proof_type: ProofType,
+    url: &str,
+    nonce: &str,
+    fetched_body: &str,
+    verified_at: i64,
+    expires_at: Option<i64>,
+) -> Result<MethodVerification> {
+    if !matches!(
+        proof_type,
+        ProofType::DomainWellKnown | ProofType::LightningAddressChallenge
+    ) {
+        return Err(SatsPathError::OwnershipProofUnsupported(
+            "attach_well_known_proof only handles domain-control proof types".into(),
+        ));
+    }
+    let descriptor = method.ownership_descriptor();
+    let expected_body_hash = hex::encode(Sha256::digest(fetched_body.as_bytes()));
+    let verification = MethodVerification {
+        method_descriptor: descriptor,
+        status: VerificationStatus::Verified {
+            proof_type,
+            verified_at,
+            expires_at,
+            proof: OwnershipProof::WellKnownChallenge {
+                url: url.to_string(),
+                nonce: nonce.to_string(),
+                expected_body_hash,
+            },
+        },
+    };
+    verify_method_verification(
+        method,
+        identity_pubkey,
+        &verification,
+        verified_at,
+        Some(fetched_body),
+    )?;
+    Ok(verification)
+}
+
 // ─── Verification (client-side) ───────────────────────────────────────────────
 
 /// Re-verify a stored [`MethodVerification`] against its method and identity.
@@ -679,6 +752,20 @@ pub fn pubkey_controls_address(
     Ok(false)
 }
 
+/// The well-known URL a domain-control proof commits to, if this status carries
+/// one. Lets an online verifier know what to fetch before re-checking.
+pub fn well_known_url_of(status: &VerificationStatus) -> Option<&str> {
+    if let VerificationStatus::Verified {
+        proof: OwnershipProof::WellKnownChallenge { url, .. },
+        ..
+    } = status
+    {
+        Some(url)
+    } else {
+        None
+    }
+}
+
 /// Resolve the stored verification (if any) for a given method within a profile,
 /// returning [`VerificationStatus::Unverified`] when no proof is attached.
 pub fn stored_status_for_method<'a>(
@@ -804,6 +891,65 @@ pub fn evaluate_method_trust(
         Err(SatsPathError::OwnershipProofExpired) => MethodTrust::Expired,
         Err(e) => MethodTrust::Invalid(e.to_string()),
     }
+}
+
+/// Evaluate a method's trust within its profile, unifying both ownership
+/// mechanisms under one [`MethodTrust`]:
+///   * the general `profile.method_verifications` (on-chain / Ark / domain / manual), and
+///   * the Ark-pointer-local inline proof carried on `PaymentMethod::Ark` itself.
+///
+/// `method_verifications` take precedence; an inline Ark proof is consulted only
+/// when no `method_verifications` entry covers the method. This lets a resolver
+/// rely on a single trust signal regardless of which path populated the proof.
+pub fn evaluate_method_trust_for_profile(
+    profile: &crate::profile::PaymentProfile,
+    method: &PaymentMethod,
+    now: i64,
+    well_known_body: Option<&str>,
+) -> MethodTrust {
+    let base = evaluate_method_trust(
+        method,
+        &profile.identity_pubkey,
+        &profile.method_verifications,
+        now,
+        well_known_body,
+    );
+    if !matches!(base, MethodTrust::Unverified) {
+        return base;
+    }
+
+    // No general attestation covers this method — fall back to an inline Ark
+    // pointer proof, if present, so it surfaces through the same trust lens.
+    if let PaymentMethod::Ark {
+        server,
+        pubkey,
+        vtxo_pointer,
+        proof: Some(_),
+        expires_at,
+        ..
+    } = method
+    {
+        let pointer = crate::ark::ArkReceivePointer {
+            server: server.clone(),
+            receiver_pubkey: pubkey.clone(),
+            vtxo_pointer: vtxo_pointer.clone(),
+            proof: match method {
+                PaymentMethod::Ark { proof, .. } => proof.clone(),
+                _ => None,
+            },
+            expires_at: *expires_at,
+        };
+        return match crate::ark::verify_ark_ownership_proof(&profile.alias, &pointer, now) {
+            Ok(true) => MethodTrust::Verified(TrustTier::Cryptographic),
+            Ok(false) => MethodTrust::Unverified,
+            Err(SatsPathError::InvalidPaymentPointer(m)) if m.contains("expired") => {
+                MethodTrust::Expired
+            }
+            Err(e) => MethodTrust::Invalid(e.to_string()),
+        };
+    }
+
+    base
 }
 
 #[cfg(test)]
@@ -1504,6 +1650,104 @@ mod tests {
         ));
     }
 
+    // ── Domain-control mint (FASE 4) ──────────────────────────────────────────
+
+    #[test]
+    fn well_known_url_derives_from_lightning_address() {
+        let method = ln_method("Alice@Example.com");
+        assert_eq!(
+            well_known_url_for_method(&method).as_deref(),
+            Some("https://example.com/.well-known/satspath/alice")
+        );
+        // Non-Lightning methods have no canonical well-known URL.
+        let onchain = onchain_method(&p2wpkh(&key(), Network::Bitcoin));
+        assert!(well_known_url_for_method(&onchain).is_none());
+    }
+
+    #[test]
+    fn attach_well_known_proof_verifies_domain_control() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let url = well_known_url_for_method(&method).unwrap();
+        let nonce = &identity.pubkey_hex;
+        let body = format!("satspath identity {} nonce {nonce}", identity.pubkey_hex);
+
+        let v = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::LightningAddressChallenge,
+            &url,
+            nonce,
+            &body,
+            NOW,
+            None,
+        )
+        .unwrap();
+
+        let tier = verify_method_verification(&method, &identity.pubkey_hex, &v, NOW, Some(&body))
+            .unwrap();
+        assert_eq!(tier, TrustTier::DomainControl);
+    }
+
+    #[test]
+    fn attach_well_known_proof_rejects_wrong_host() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let nonce = &identity.pubkey_hex;
+        let body = format!("identity={} nonce={nonce}", identity.pubkey_hex);
+        // URL host (attacker.com) does not match the LN address domain.
+        let res = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::LightningAddressChallenge,
+            "https://attacker.com/.well-known/satspath/alice",
+            nonce,
+            &body,
+            NOW,
+            None,
+        );
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn attach_well_known_proof_rejects_body_without_identity() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let url = well_known_url_for_method(&method).unwrap();
+        // Body has the nonce literal but not the identity pubkey.
+        let res = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::LightningAddressChallenge,
+            &url,
+            "some-nonce",
+            "some-nonce but no identity here",
+            NOW,
+            None,
+        );
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn attach_well_known_proof_rejects_signature_type() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let res = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::OnchainAddressSignature,
+            "https://example.com/x",
+            "n",
+            "body",
+            NOW,
+            None,
+        );
+        assert!(matches!(
+            res,
+            Err(SatsPathError::OwnershipProofUnsupported(_))
+        ));
+    }
+
     #[test]
     fn upsert_replaces_existing_descriptor() {
         let method = ln_method("alice@example.com");
@@ -1628,5 +1872,111 @@ mod tests {
         // pre-existing signature over them — are unchanged.
         let json = serde_json::to_string(&profile).unwrap();
         assert!(!json.contains("method_verifications"));
+    }
+
+    // ── Unified trust: inline Ark proof ↔ method_verifications (FASE 5) ────────
+
+    const ARK_SERVER: &str = "https://ark.example.com";
+    const ARK_ALIAS: &str = "alice@example.com";
+
+    fn ark_method_with_inline_proof(expires_at: Option<i64>, tamper: bool) -> PaymentMethod {
+        let k = key();
+        let message =
+            crate::ark::ark_ownership_challenge(ARK_ALIAS, ARK_SERVER, &k.pubkey_hex, "n1");
+        let signature = sign_message(&message, &k.secret);
+        let proof = crate::ark::ArkOwnershipProof {
+            message,
+            signature,
+            // Tampering: claim a different pubkey than the one that signed.
+            pubkey: if tamper {
+                "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into()
+            } else {
+                k.pubkey_hex.clone()
+            },
+        };
+        PaymentMethod::Ark {
+            label: "Ark".into(),
+            server: ARK_SERVER.into(),
+            pubkey: k.pubkey_hex,
+            vtxo_pointer: None,
+            proof: Some(proof),
+            expires_at,
+        }
+    }
+
+    fn profile_with(methods: Vec<PaymentMethod>) -> crate::profile::PaymentProfile {
+        crate::profile::PaymentProfile {
+            alias: ARK_ALIAS.into(),
+            identity_pubkey: key().pubkey_hex,
+            methods,
+            updated_at: NOW,
+            expires_at: None,
+            method_verifications: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn inline_ark_proof_surfaces_through_unified_trust() {
+        let method = ark_method_with_inline_proof(Some(NOW + 10_000), false);
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Verified(TrustTier::Cryptographic));
+    }
+
+    #[test]
+    fn inline_ark_proof_expired_surfaces_as_expired() {
+        let method = ark_method_with_inline_proof(Some(NOW - 1), false);
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Expired);
+    }
+
+    #[test]
+    fn inline_ark_proof_tampered_surfaces_as_invalid() {
+        let method = ark_method_with_inline_proof(Some(NOW + 10_000), true);
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert!(matches!(trust, MethodTrust::Invalid(_)));
+    }
+
+    #[test]
+    fn method_verifications_take_precedence_over_inline_ark() {
+        // A method_verification (here, a real signature attestation) is honored
+        // first; the profile-aware evaluator delegates to it.
+        let identity = key();
+        let ark_key = key();
+        let method = PaymentMethod::Ark {
+            label: "Ark".into(),
+            server: ARK_SERVER.into(),
+            pubkey: ark_key.pubkey_hex.clone(),
+            vtxo_pointer: None,
+            proof: None,
+            expires_at: None,
+        };
+        let v = build_signature_attestation(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::ArkPubkeySignature,
+            &ark_key.secret,
+            NOW,
+            None,
+        )
+        .unwrap();
+        let mut profile = profile_with(vec![method.clone()]);
+        profile.identity_pubkey = identity.pubkey_hex.clone();
+        profile.method_verifications = vec![v];
+
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Verified(TrustTier::Cryptographic));
+    }
+
+    #[test]
+    fn unified_evaluator_delegates_for_non_ark_methods() {
+        // For a plain unverified Lightning method, the profile-aware path matches
+        // the base evaluator (Unverified) — no inline Ark shortcut applies.
+        let method = ln_method("alice@example.com");
+        let profile = profile_with(vec![method.clone()]);
+        let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
+        assert_eq!(trust, MethodTrust::Unverified);
     }
 }
