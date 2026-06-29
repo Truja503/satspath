@@ -12,7 +12,7 @@ use satspath_router::{
 };
 
 use super::{
-    cmd_preview, get_resolver,
+    get_resolver,
     qr::{bitcoin_uri, print_qr},
 };
 

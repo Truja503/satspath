@@ -39,7 +39,7 @@ pub async fn cmd_demo() -> Result<()> {
     println!();
 
     step(6, "Get route quote for 21,000 sats");
-    cmd_quote("rodrigo@satspath.dev", 21_000, false, false, false).await?;
+    cmd_quote("rodrigo@satspath.dev", 21_000).await?;
     println!();
 
     step(7, "Preview payment route for 21,000 sats");

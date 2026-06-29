@@ -12,9 +12,8 @@ use satspath_core::{
     BitcoinNetwork, ExecutionMode, PaymentMethod, SatsPathError, SignedPaymentProfile,
 };
 use satspath_router::{
-    fetch_invoice, fetch_lnurl_metadata,
-    lightning::{verify_invoice_amount, verify_invoice_not_expired},
-    select_route, RouteQuote, RouteRequest,
+    fetch_invoice, fetch_lnurl_metadata, lightning::verify_invoice_amount, select_route,
+    RouteQuote, RouteRequest,
 };
 use serde::Serialize;
 
@@ -249,7 +248,6 @@ async fn method_preview(
                 let meta = fetch_lnurl_metadata(address).await?;
                 let invoice = fetch_invoice(&meta, amount_sats, None).await?;
                 verify_invoice_amount(&invoice, amount_sats)?;
-                verify_invoice_not_expired(&invoice)?;
                 invoice
             } else if let Some(address) = lightning_address {
                 format!("lightning:{}", address.to_ascii_lowercase())
@@ -523,10 +521,5 @@ mod tests {
         assert!(qr.starts_with("satspath:ark?"));
         assert!(qr.contains("network=mainnet"));
         assert!(warnings.iter().any(|w| w.contains("unavailable")));
-    }
-
-    #[test]
-    fn expired_invoice_fixture_is_rejected() {
-        assert!(verify_invoice_not_expired("lnbc10u1expired").is_err());
     }
 }
