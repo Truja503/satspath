@@ -76,15 +76,29 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
                 .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;
 
             print!("  Fetching invoice from {}... ", mask_identifier(ln_addr));
-            let meta = fetch_lnurl_metadata(ln_addr).await?;
-            let invoice = fetch_invoice(&meta, amount_sats, None).await?;
-            println!("received.");
-            println!();
-            println!("  Scan to pay — Lightning ({} sats)", amount_sats);
-            println!("  ─────────────────────────────────────────");
-            print_qr(&invoice.to_uppercase())?;
-            println!("  {}...", mask_invoice(&invoice));
-            println!("  Warning: this is a real invoice QR generated from public metadata.");
+            match fetch_lnurl_metadata(ln_addr).await {
+                Ok(meta) => {
+                    match fetch_invoice(&meta, amount_sats, None).await {
+                        Ok(invoice) => {
+                            println!("received.");
+                            println!();
+                            println!("  Scan to pay — Lightning ({} sats)", amount_sats);
+                            println!("  ─────────────────────────────────────────");
+                            print_qr(&invoice.to_uppercase())?;
+                            println!("  {}...", mask_invoice(&invoice));
+                            println!("  Warning: this is a real invoice QR generated from public metadata.");
+                        }
+                        Err(e) => {
+                            println!("unavailable ({e}).");
+                            println!("  Preview only. No funds moved.");
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("unavailable ({e}).");
+                    println!("  Preview only. No funds moved.");
+                }
+            }
         }
         PaymentMethod::Onchain { address, .. } => {
             let uri = bitcoin_uri(address, amount_sats);
