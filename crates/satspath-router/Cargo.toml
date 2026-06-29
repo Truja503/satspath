@@ -1,0 +1,15 @@
+[package]
+name = "satspath-router"
+version = "0.1.0"
+edition = "2021"
+description = "Payment route selection engine for SatsPath"
+
+[dependencies]
+satspath-core = { path = "../satspath-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+hex = { workspace = true }

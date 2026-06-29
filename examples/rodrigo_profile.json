@@ -1,0 +1,35 @@
+{
+  "profile": {
+    "alias": "rodrigo@satspath.dev",
+    "identity_pubkey": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+    "methods": [
+      {
+        "type": "Lightning",
+        "label": "Lightning Address",
+        "lnurl": null,
+        "lightning_address": "rodrigo@satspath.dev",
+        "bolt12": null
+      },
+      {
+        "type": "Onchain",
+        "label": "Bitcoin (primary)",
+        "address": "bc1qa1b2c3d4e5f6placeholder0001",
+        "pubkey_hint": "02a1b2c3d4e5f6a7"
+      },
+      {
+        "type": "Onchain",
+        "label": "Bitcoin (secondary)",
+        "address": "bc1qa1b2c3d4e5f6placeholder0002",
+        "pubkey_hint": "b8c9d0e1f2a3b4c5"
+      },
+      {
+        "type": "Ark",
+        "label": "Ark",
+        "server": "ark.satspath.dev",
+        "pubkey": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+      }
+    ],
+    "updated_at": 1735000000
+  },
+  "signature": "3045022100...demo_signature_placeholder...0220..."
+}

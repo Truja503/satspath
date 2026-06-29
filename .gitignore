@@ -1,0 +1,7 @@
+target/
+.satspath/
+.env
+*.key
+keys.json
+registry.local.json
+Cargo.lock
