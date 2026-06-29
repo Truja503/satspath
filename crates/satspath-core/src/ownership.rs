@@ -1532,11 +1532,13 @@ mod tests {
             None,
         )
         .unwrap();
-        if let VerificationStatus::Verified { proof, .. } = &mut v.status {
-            if let OwnershipProof::MessageSignature { signature, .. } = proof {
-                // Corrupt the signature so re-verification fails.
-                *signature = "00".to_string();
-            }
+        if let VerificationStatus::Verified {
+            proof: OwnershipProof::MessageSignature { signature, .. },
+            ..
+        } = &mut v.status
+        {
+            // Corrupt the signature so re-verification fails.
+            *signature = "00".to_string();
         }
         let trust = evaluate_method_trust(
             &method,

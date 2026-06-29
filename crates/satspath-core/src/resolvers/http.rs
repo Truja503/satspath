@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use std::time::Duration;
 
+use crate::crypto::{check_profile_expiry, verify_signed_profile};
 use crate::resolver::ProfileResolver;
 use crate::{Result, SatsPathError, SignedPaymentProfile};
 
@@ -9,6 +10,13 @@ use crate::{Result, SatsPathError, SignedPaymentProfile};
 ///
 /// If the alias is `rodrigo@satspath.dev`, it fetches:
 /// `https://satspath.dev/.well-known/satspath/rodrigo`
+///
+/// After fetching, the resolver:
+/// 1. Verifies the profile signature (ECDSA secp256k1 over canonical JSON).
+/// 2. Checks the profile expiry (`expires_at` field).
+///
+/// Both checks must pass. Fail-closed: unsigned or expired profiles are
+/// rejected with a hard error, never passed through.
 pub struct HttpResolver {
     client: Client,
 }
@@ -21,6 +29,13 @@ impl HttpResolver {
                 .build()
                 .unwrap_or_default(),
         }
+    }
+
+    /// Build with a custom base URL (for testing with a mock server).
+    #[cfg(test)]
+    pub fn new_with_base_url(_base_url: &str) -> Self {
+        // The base_url override is handled by rewriting the resolution URL in tests.
+        Self::new()
     }
 }
 
@@ -41,15 +56,25 @@ impl ProfileResolver for HttpResolver {
         let username = parts[0];
         let domain = parts[1];
 
-        // Must use HTTPS in production!
+        // Always HTTPS in production.
         let url = format!("https://{}/.well-known/satspath/{}", domain, username);
 
-        let resp = self.client.get(&url).send().await.map_err(|e| {
-            SatsPathError::NetworkError(format!("Failed to connect to {}: {}", domain, e))
+        self.resolve_from_url(&url).await
+    }
+}
+
+impl HttpResolver {
+    /// Fetch, verify, and return a signed profile from an explicit URL.
+    ///
+    /// Extracted so tests can pass a mock server URL directly without
+    /// needing a real DNS entry for the test domain.
+    pub async fn resolve_from_url(&self, url: &str) -> Result<SignedPaymentProfile> {
+        let resp = self.client.get(url).send().await.map_err(|e| {
+            SatsPathError::NetworkError(format!("Failed to connect to {}: {}", url, e))
         })?;
 
         if resp.status() == 404 {
-            return Err(SatsPathError::AliasNotFound(alias.to_string()));
+            return Err(SatsPathError::AliasNotFound(url.to_string()));
         }
 
         if !resp.status().is_success() {
@@ -59,10 +84,205 @@ impl ProfileResolver for HttpResolver {
             )));
         }
 
-        let profile: SignedPaymentProfile = resp.json().await.map_err(|e| {
+        let signed: SignedPaymentProfile = resp.json().await.map_err(|e| {
             SatsPathError::SerializationError(format!("Failed to parse profile JSON: {}", e))
         })?;
 
-        Ok(profile)
+        // RESOLVE-02: verify signature — fail closed.
+        let valid = verify_signed_profile(&signed)?;
+        if !valid {
+            return Err(SatsPathError::InvalidSignature);
+        }
+
+        // SEC-01: enforce expiry — fail closed.
+        check_profile_expiry(&signed.profile)?;
+
+        Ok(signed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crypto::{generate_identity_keypair, sign_profile};
+    use crate::profile::{PaymentMethod, PaymentProfile};
+    use mockito::Server;
+
+    /// Build a valid signed profile.
+    fn make_valid_signed(alias: &str, expires_at: Option<i64>) -> SignedPaymentProfile {
+        let kp = generate_identity_keypair();
+        let pubkey_hex = hex::encode(kp.public_key.serialize());
+        let profile = PaymentProfile {
+            alias: alias.to_string(),
+            identity_pubkey: pubkey_hex,
+            methods: vec![PaymentMethod::Lightning {
+                label: "LN".into(),
+                lnurl: None,
+                lightning_address: Some(alias.to_string()),
+                bolt12: None,
+                receiver_pubkey: None,
+            }],
+            updated_at: 1_700_000_000,
+            expires_at,
+            method_verifications: vec![],
+        };
+        sign_profile(profile, &kp.secret_key).unwrap()
+    }
+
+    // ── Test 1: Valid profile — success ───────────────────────────────────────
+
+    #[tokio::test]
+    async fn valid_profile_resolves_ok() {
+        let mut server = Server::new_async().await;
+        let signed = make_valid_signed("alice@test.com", None);
+        let body = serde_json::to_string(&signed).unwrap();
+
+        let _mock = server
+            .mock("GET", "/profile")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(&body)
+            .create_async()
+            .await;
+
+        let resolver = HttpResolver::new();
+        let url = format!("{}/profile", server.url());
+        let result = resolver.resolve_from_url(&url).await;
+
+        assert!(
+            result.is_ok(),
+            "valid profile should resolve successfully: {:?}",
+            result.err()
+        );
+        assert_eq!(result.unwrap().profile.alias, "alice@test.com");
+    }
+
+    // ── Test 2: Invalid signature — rejected ──────────────────────────────────
+
+    #[tokio::test]
+    async fn invalid_signature_rejected() {
+        let mut server = Server::new_async().await;
+        let mut signed = make_valid_signed("bob@test.com", None);
+        // Tamper: flip last hex char of the signature
+        let last = signed.signature.pop().unwrap();
+        signed.signature.push(if last == '0' { '1' } else { '0' });
+        let body = serde_json::to_string(&signed).unwrap();
+
+        let _mock = server
+            .mock("GET", "/profile")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(&body)
+            .create_async()
+            .await;
+
+        let resolver = HttpResolver::new();
+        let url = format!("{}/profile", server.url());
+        let result = resolver.resolve_from_url(&url).await;
+
+        assert!(result.is_err(), "tampered signature must be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("invalid signature") || err.contains("crypto") || err.contains("Invalid"),
+            "error must mention signature: {err}"
+        );
+    }
+
+    // ── Test 3: Expired profile — rejected ────────────────────────────────────
+
+    #[tokio::test]
+    async fn expired_profile_rejected() {
+        let mut server = Server::new_async().await;
+        // expires_at 1 hour in the past
+        let past = chrono::Utc::now().timestamp() - 3_600;
+        let signed = make_valid_signed("carol@test.com", Some(past));
+        let body = serde_json::to_string(&signed).unwrap();
+
+        let _mock = server
+            .mock("GET", "/profile")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(&body)
+            .create_async()
+            .await;
+
+        let resolver = HttpResolver::new();
+        let url = format!("{}/profile", server.url());
+        let result = resolver.resolve_from_url(&url).await;
+
+        assert!(result.is_err(), "expired profile must be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("expired"), "error must mention expiry: {err}");
+    }
+
+    // ── Test 4: 404 → AliasNotFound ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn not_found_404() {
+        let mut server = Server::new_async().await;
+
+        let _mock = server
+            .mock("GET", "/profile")
+            .with_status(404)
+            .create_async()
+            .await;
+
+        let resolver = HttpResolver::new();
+        let url = format!("{}/profile", server.url());
+        let result = resolver.resolve_from_url(&url).await;
+
+        assert!(result.is_err());
+        assert!(
+            matches!(result.unwrap_err(), SatsPathError::AliasNotFound(_)),
+            "404 must map to AliasNotFound"
+        );
+    }
+
+    // ── Test 5: 5xx server error → NetworkError ───────────────────────────────
+
+    #[tokio::test]
+    async fn server_error_5xx() {
+        let mut server = Server::new_async().await;
+
+        let _mock = server
+            .mock("GET", "/profile")
+            .with_status(503)
+            .create_async()
+            .await;
+
+        let resolver = HttpResolver::new();
+        let url = format!("{}/profile", server.url());
+        let result = resolver.resolve_from_url(&url).await;
+
+        assert!(result.is_err());
+        assert!(
+            matches!(result.unwrap_err(), SatsPathError::NetworkError(_)),
+            "5xx must map to NetworkError"
+        );
+    }
+
+    // ── Test 6: Malformed JSON → SerializationError ───────────────────────────
+
+    #[tokio::test]
+    async fn malformed_json_rejected() {
+        let mut server = Server::new_async().await;
+
+        let _mock = server
+            .mock("GET", "/profile")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"not": "a signed profile at all"}"#)
+            .create_async()
+            .await;
+
+        let resolver = HttpResolver::new();
+        let url = format!("{}/profile", server.url());
+        let result = resolver.resolve_from_url(&url).await;
+
+        assert!(result.is_err(), "malformed JSON must be rejected");
+        assert!(
+            matches!(result.unwrap_err(), SatsPathError::SerializationError(_)),
+            "malformed JSON must map to SerializationError"
+        );
     }
 }

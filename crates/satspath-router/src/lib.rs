@@ -7,7 +7,10 @@ pub mod router;
 pub mod scoring;
 
 pub use ark_routes::{plan_ark_route, ArkRoutePlan, SenderCapabilities};
-pub use lightning::{fetch_invoice, fetch_lnurl_metadata, LnurlPayMetadata};
+pub use lightning::{
+    fetch_invoice, fetch_lnurl_metadata, validate_bolt11_invoice, LnurlPayMetadata,
+    ValidatedInvoice,
+};
 pub use router::{
     select_route, select_route_with_fees, FeeRateSnapshot, RouteQuote, RouteRequest, SwapDirective,
 };

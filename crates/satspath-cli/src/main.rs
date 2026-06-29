@@ -94,7 +94,7 @@ enum Command {
     /// Decode a SatsPath payment URI
     Decode { uri: String },
 
-    /// Show routing decision with live mempool fees
+    /// Show routing decision with live mempool fees + scannable QR
     Quote { alias: String, amount_sats: u64 },
 
     /// Resolve, route, and build a public QR preview. No funds move by default.
@@ -116,7 +116,7 @@ enum Command {
         debug: bool,
     },
 
-    /// Generate an invite for an unregistered alias
+    /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
     Invite { alias: String, amount_sats: u64 },
 
     /// Ark direct receive/send and swap intents. Testnet-gated; mainnet execution disabled.

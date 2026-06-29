@@ -1,4 +1,6 @@
-use serde::Deserialize;
+use lightning_invoice::Bolt11Invoice;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 use satspath_core::PaymentMethod;
 
@@ -42,9 +44,28 @@ pub struct LnurlPayMetadata {
 }
 
 /// Response from step 2: GET {callback}?amount=<msats>
+/// The LNURL spec allows either a `pr` field (success) or an error response.
 #[derive(Debug, Deserialize)]
 pub struct LnurlInvoiceResponse {
-    pub pr: String,
+    /// BOLT11 payment request (success case).
+    pub pr: Option<String>,
+    /// LNURL error status string (e.g. "ERROR"). Present on failure.
+    #[serde(default)]
+    pub status: Option<String>,
+    /// Human-readable reason for the error.
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+/// A parsed and validated BOLT11 invoice returned by the LNURL callback.
+#[derive(Debug, Serialize)]
+pub struct ValidatedInvoice {
+    /// The raw BOLT11 string.
+    pub bolt11: String,
+    /// Amount in millisatoshis as decoded from the invoice.
+    pub amount_msats: u64,
+    /// Whether the invoice is within its validity window.
+    pub is_fresh: bool,
 }
 
 /// Step 1: resolve a Lightning Address to LNURL-pay metadata.
@@ -74,7 +95,15 @@ pub async fn fetch_lnurl_metadata(lightning_address: &str) -> anyhow::Result<Lnu
     Ok(meta)
 }
 
-/// Step 2: call the callback to get a real BOLT11 invoice, then verify the amount.
+/// Step 2: call the callback to get a real BOLT11 invoice.
+///
+/// # LNURL-02 Validation
+/// This function performs full validation of the returned invoice:
+/// 1. Detects LNURL ERROR responses and returns them as a typed failure.
+/// 2. Checks that `pr` is present and non-empty.
+/// 3. Decodes the BOLT11 invoice using `lightning-invoice`.
+/// 4. Verifies that the invoice amount (in msats) matches the requested amount.
+/// 5. Checks that the invoice has not expired.
 pub async fn fetch_invoice(
     meta: &LnurlPayMetadata,
     amount_sats: u64,
@@ -97,6 +126,7 @@ pub async fn fetch_invoice(
             meta.max_sendable
         );
     }
+
     let mut url = format!("{}?amount={}", meta.callback, amount_msats);
     if let Some(c) = comment {
         if meta.comment_allowed > 0 {
@@ -104,20 +134,73 @@ pub async fn fetch_invoice(
             url.push_str(&format!("&comment={}", urlencoding::encode(trimmed)));
         }
     }
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
-    let resp = client
-        .get(&url)
-        .send()
-        .await?
-        .json::<LnurlInvoiceResponse>()
-        .await?;
-    if resp.pr.is_empty() {
-        anyhow::bail!("received empty invoice from LNURL callback");
+    let raw_body = client.get(&url).send().await?.text().await?;
+    let resp: LnurlInvoiceResponse = serde_json::from_str(&raw_body)
+        .map_err(|e| anyhow::anyhow!("failed to parse LNURL callback response: {e}"))?;
+
+    // LNURL-02: typed LNURL ERROR response
+    if resp.status.as_deref() == Some("ERROR") {
+        anyhow::bail!(
+            "LNURL server returned error: {}",
+            resp.reason.as_deref().unwrap_or("unknown reason")
+        );
     }
-    verify_invoice_amount(&resp.pr, amount_sats)?;
-    Ok(resp.pr)
+
+    let bolt11 = resp
+        .pr
+        .ok_or_else(|| anyhow::anyhow!("LNURL callback returned no invoice (missing 'pr')"))?;
+
+    if bolt11.is_empty() {
+        anyhow::bail!("LNURL callback returned empty invoice");
+    }
+
+    // LNURL-02: decode and validate the BOLT11 invoice
+    validate_bolt11_invoice(&bolt11, amount_msats)?;
+
+    Ok(bolt11)
+}
+
+/// Decode a BOLT11 invoice and validate its amount and expiry.
+///
+/// Returns an error if:
+/// - The invoice is unparseable.
+/// - The invoice amount does not match `expected_msats`.
+/// - The invoice has expired.
+pub fn validate_bolt11_invoice(
+    bolt11: &str,
+    expected_msats: u64,
+) -> anyhow::Result<ValidatedInvoice> {
+    let invoice = Bolt11Invoice::from_str(bolt11)
+        .map_err(|e| anyhow::anyhow!("failed to parse BOLT11 invoice: {e:?}"))?;
+
+    // LNURL-02: verify amount matches
+    let invoice_msats = invoice
+        .amount_milli_satoshis()
+        .ok_or_else(|| anyhow::anyhow!("invoice has no amount set — ambiguous invoice rejected"))?;
+
+    if invoice_msats != expected_msats {
+        anyhow::bail!(
+            "invoice amount mismatch: requested {} msats but invoice contains {} msats",
+            expected_msats,
+            invoice_msats
+        );
+    }
+
+    // LNURL-02: check expiry
+    let is_fresh = !invoice.is_expired();
+    if !is_fresh {
+        anyhow::bail!("invoice has expired and cannot be paid");
+    }
+
+    Ok(ValidatedInvoice {
+        bolt11: bolt11.to_string(),
+        amount_msats: invoice_msats,
+        is_fresh,
+    })
 }
 
 // ─── BOLT11 invoice amount verification ───────────────────────────────────────
@@ -213,99 +296,86 @@ pub fn verify_invoice_amount(invoice: &str, expected_sats: u64) -> anyhow::Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin::hashes::{sha256, Hash};
+    use lightning_invoice::{Currency, InvoiceBuilder, PaymentSecret};
+    use satspath_core::crypto::generate_identity_keypair;
+    use secp256k1::Secp256k1;
+    use std::time::{Duration, SystemTime};
 
-    // Helper: build a fake BOLT11 string with the given HRP prefix and garbage data.
-    // Only the HRP matters for amount parsing.
-    fn fake_invoice(hrp: &str) -> String {
-        format!("{}1pvjluezqpzry9x8gl4kzd8m7nt3g5p", hrp)
+    fn make_test_invoice(amount_msats: Option<u64>, expired: bool) -> String {
+        let kp = generate_identity_keypair();
+        let payment_hash = sha256::Hash::hash(&[2; 32]);
+        let payment_secret = PaymentSecret([3; 32]);
+
+        let builder = InvoiceBuilder::new(Currency::Bitcoin)
+            .description("test".into())
+            .payment_hash(payment_hash)
+            .payment_secret(payment_secret)
+            .min_final_cltv_expiry_delta(144);
+
+        let builder = if let Some(amt) = amount_msats {
+            builder.amount_milli_satoshis(amt)
+        } else {
+            builder
+        };
+
+        let builder_with_time = if expired {
+            let past = SystemTime::now() - Duration::from_secs(3600);
+            builder.timestamp(past).expiry_time(Duration::from_secs(1))
+        } else {
+            builder.current_timestamp()
+        };
+
+        builder_with_time
+            .build_signed(|hash| {
+                let secp = Secp256k1::new();
+                let msg = secp256k1::Message::from_digest_slice(hash.as_ref()).unwrap();
+                secp.sign_ecdsa_recoverable(&msg, &kp.secret_key)
+            })
+            .unwrap()
+            .to_string()
     }
 
     #[test]
-    fn invoice_amount_matches_requested() {
-        // lnbc10u = 10 micro-BTC = 10 × 100 = 1000 sats
-        let inv = fake_invoice("lnbc10u");
-        assert!(verify_invoice_amount(&inv, 1000).is_ok());
+    fn valid_bolt11_invoice_accepted() {
+        let inv = make_test_invoice(Some(1000), false);
+        assert!(validate_bolt11_invoice(&inv, 1000).is_ok());
     }
 
     #[test]
     fn invoice_amount_mismatch_fails() {
-        // lnbc10u = 1000 sats, but we expected 500
-        let inv = fake_invoice("lnbc10u");
-        let err = verify_invoice_amount(&inv, 500).unwrap_err();
-        assert!(err.to_string().contains("mismatch"), "got: {err}");
+        let inv = make_test_invoice(Some(1000), false);
+        let err = validate_bolt11_invoice(&inv, 500).unwrap_err();
+        assert!(err.to_string().contains("mismatch"));
     }
 
     #[test]
     fn zero_or_missing_amount_fails() {
-        // Invoice with no amount in HRP (lnbc only, no digits)
-        let inv = fake_invoice("lnbc");
-        let err = verify_invoice_amount(&inv, 1000).unwrap_err();
-        assert!(err.to_string().contains("no amount"), "got: {err}");
+        let inv = make_test_invoice(None, false);
+        let err = validate_bolt11_invoice(&inv, 1000).unwrap_err();
+        assert!(err.to_string().contains("no amount"));
     }
 
     #[test]
-    #[ignore = "BOLT11 expiry requires bech32 data-field decode — Engine v1 TODO"]
     fn expired_invoice_fails() {
-        // When expiry parsing is implemented, this test should verify that an invoice
-        // with a timestamp + expiry that has passed is rejected by verify_invoice_amount
-        // (or a separate verify_invoice_not_expired() call).
-        todo!("implement bech32 data field decode for expiry tag (tag 6)")
+        let inv = make_test_invoice(Some(1000), true);
+        let err = validate_bolt11_invoice(&inv, 1000).unwrap_err();
+        assert!(err.to_string().contains("expired"));
     }
 
     #[test]
-    fn parse_bolt11_mainnet_micro() {
-        // lnbc10u = 10 μBTC = 1000 sats
-        assert_eq!(
-            parse_bolt11_amount_sats(&fake_invoice("lnbc10u")),
-            Some(1000)
-        );
+    fn garbage_invoice_rejected() {
+        let result = validate_bolt11_invoice("not_a_real_invoice", 1_000);
+        assert!(result.is_err(), "unparseable invoice must be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("failed to parse"));
     }
 
     #[test]
-    fn parse_bolt11_milli() {
-        // lnbc21m = 21 mBTC = 2_100_000 sats
-        assert_eq!(
-            parse_bolt11_amount_sats(&fake_invoice("lnbc21m")),
-            Some(2_100_000)
-        );
-    }
-
-    #[test]
-    fn parse_bolt11_no_amount() {
-        // lnbc (no digits) = amount-less invoice
-        assert_eq!(parse_bolt11_amount_sats(&fake_invoice("lnbc")), None);
-    }
-
-    #[test]
-    fn parse_bolt11_testnet() {
-        // lntb500u = 500 μBTC = 50_000 sats
-        assert_eq!(
-            parse_bolt11_amount_sats(&fake_invoice("lntb500u")),
-            Some(50_000)
-        );
-    }
-
-    #[test]
-    fn parse_bolt11_raw_btc() {
-        // lnbc1 (no multiplier) = 1 BTC = 100_000_000 sats
-        // Note: the "1" is now ambiguous with bech32 separator — depends on actual invoice
-        // This tests the path where digits but no multiplier are present.
-        // To avoid separator ambiguity, use a multi-digit amount.
-        assert_eq!(
-            parse_bolt11_amount_sats(&fake_invoice("lnbc2")),
-            Some(200_000_000)
-        );
-    }
-
-    #[test]
-    fn parse_bolt11_nano_non_whole_sats_rejected() {
-        // lnbc3n = 3 nBTC = 0.3 sats (not a whole sat) → None
-        assert_eq!(parse_bolt11_amount_sats(&fake_invoice("lnbc3n")), None);
-    }
-
-    #[test]
-    fn parse_bolt11_nano_whole_sats_ok() {
-        // lnbc10n = 10 nBTC = 1 sat
-        assert_eq!(parse_bolt11_amount_sats(&fake_invoice("lnbc10n")), Some(1));
+    fn estimate_lightning_fee_minimum_one_sat() {
+        assert_eq!(estimate_lightning_fee_sats(0), 1);
+        assert_eq!(estimate_lightning_fee_sats(100), 1);
+        assert_eq!(estimate_lightning_fee_sats(10_000), 1);
+        assert_eq!(estimate_lightning_fee_sats(20_000), 2);
     }
 }

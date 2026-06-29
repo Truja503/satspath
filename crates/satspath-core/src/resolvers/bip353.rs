@@ -7,6 +7,12 @@ pub struct Bip353Resolver {
     dnssec_required: bool,
 }
 
+impl Default for Bip353Resolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Bip353Resolver {
     pub fn new() -> Self {
         Self {
@@ -16,12 +22,6 @@ impl Bip353Resolver {
 
     pub fn dnssec_required(&self) -> bool {
         self.dnssec_required
-    }
-}
-
-impl Default for Bip353Resolver {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

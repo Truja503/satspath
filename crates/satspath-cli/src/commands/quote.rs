@@ -124,6 +124,9 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         PaymentMethod::Ark { pubkey, server, .. } => {
             println!("  Ark payment via {}", mask_address(server));
             println!("  Pubkey: {}", mask_pubkey(pubkey));
+            println!(
+                "  ⚠  [EXPERIMENTAL] Use --experimental-swaps --testnet to attempt execution."
+            );
             println!("  Use `satspath pay --mainnet-preview` for public pointer preview.");
         }
     }
