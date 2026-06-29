@@ -18,7 +18,20 @@ struct SwapStoreFile {
 /// Persistent, encrypted local store for in-progress swap records.
 ///
 /// Stored at `.satspath/swaps.enc` (AES-256-GCM encrypted JSON).
-/// Plaintext storage is available only through explicit test/dev APIs.
+///
+/// # Security contract (SWAPS-02)
+///
+/// - **`open_encrypted(key)`** (alias **`open_with_key(key)`**) — the only
+///   production constructors. Always encrypt with AES-256-GCM; the 32-byte key
+///   must be derived via PBKDF2/Argon2 from a user password before calling.
+/// - **`open_plaintext(path)`** — development / test ONLY. Writes raw JSON and
+///   is annotated accordingly. MUST NOT be used in production paths.
+/// - There is deliberately **no** keyless default constructor. The original
+///   `SwapStore::open()` that silently wrote plaintext (issue SWAPS-02) has been
+///   removed, so misuse is now a compile-time error.
+///
+/// Reads and writes fail closed: without a key — and outside the explicit
+/// plaintext dev mode — the store refuses to decrypt or encrypt.
 pub struct SwapStore {
     path: PathBuf,
     encryption_key: Option<[u8; 32]>,
@@ -26,18 +39,19 @@ pub struct SwapStore {
 }
 
 impl SwapStore {
-    /// Open the swap store at the default location (`.satspath/swaps.enc`).
-    pub fn open() -> Result<Self> {
-        Err(SwapError::Encryption(
-            "SwapStore::open requires an encryption key; use open_encrypted(key)".into(),
-        ))
-    }
-
-    /// Open the store with an AES-256 encryption key derived from user password.
-    /// The key should be derived via PBKDF2 (same scheme as ARK SDK's StorageCrypto).
+    /// Open the encrypted swap store at the default location with the given
+    /// AES-256 key. Fails closed — never falls back to plaintext.
+    ///
+    /// The key must be derived from a user password (e.g. PBKDF2-SHA256).
     pub fn open_encrypted(key: [u8; 32]) -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
         Ok(Self::open_encrypted_at(path, key))
+    }
+
+    /// Alias for [`SwapStore::open_encrypted`] — the production constructor named
+    /// by the SWAPS-02 security contract.
+    pub fn open_with_key(key: [u8; 32]) -> Result<Self> {
+        Self::open_encrypted(key)
     }
 
     /// Open an encrypted store at a custom path (for tests / dev).
@@ -49,8 +63,21 @@ impl SwapStore {
         }
     }
 
-    /// Open a plaintext store at a custom path (for tests / dev).
-    /// Sensitive records (preimage_hex, refund_key_hex, claim_key_hex) are still rejected.
+    /// Open the encrypted swap store at a custom path with the given AES-256 key.
+    ///
+    /// Useful when the caller controls the storage location (e.g. integration
+    /// tests that want to use a temp directory while still testing encryption).
+    pub fn open_with_key_at(path: PathBuf, key: [u8; 32]) -> Self {
+        Self::open_encrypted_at(path, key)
+    }
+
+    /// Open a plaintext (unencrypted) store at a custom path.
+    ///
+    /// # ⚠ DEVELOPMENT AND TESTING ONLY
+    ///
+    /// This constructor MUST NOT be used in production. It writes raw JSON to
+    /// disk without any encryption. Use `open_with_key` for all user-facing
+    /// flows.
     pub fn open_plaintext(path: PathBuf) -> Self {
         Self {
             path,
@@ -106,6 +133,7 @@ impl SwapStore {
         } else if let Some(key) = &self.encryption_key {
             encrypt(key, &json)?
         } else {
+            // Fail closed: no key and not the explicit plaintext dev mode.
             return Err(SwapError::Encryption(
                 "refusing to write swap store without encryption key".into(),
             ));
@@ -276,7 +304,7 @@ mod tests {
             preimage_hash_hex: None,
             refund_key_hex: None,
             claim_key_hex: None,
-            invoice: Some("lnbc100...".into()),
+            invoice: Some("lnbc10u1...".into()),
             lockup_address: Some("bc1q...".into()),
             expected_amount_sats: Some(10_100),
             timeout_block_height: Some(800_000),
@@ -351,6 +379,51 @@ mod tests {
         assert!(decrypt(&bad_key, &enc).is_err());
     }
 
+    /// SWAPS-02: verify the encrypted store correctly roundtrips data.
+    /// The plaintext constructor is explicitly for dev use only;
+    /// this test exercises the real encrypted path.
+    #[test]
+    fn encrypted_store_roundtrip() {
+        let dir = tempdir().unwrap();
+        let key = [0xABu8; 32];
+        let path = dir.path().join("swaps.enc");
+
+        let store = SwapStore::open_with_key_at(path.clone(), key);
+        store.upsert(&make_record("enc_swap_001")).unwrap();
+
+        // Re-open with same key — data must be readable.
+        let store2 = SwapStore::open_with_key_at(path.clone(), key);
+        let found = store2.get("enc_swap_001").unwrap().unwrap();
+        assert_eq!(found.id, "enc_swap_001");
+
+        // Open with wrong key — must fail, not return garbage.
+        let bad_key = [0x00u8; 32];
+        let store3 = SwapStore::open_with_key_at(path, bad_key);
+        let result = store3.get("enc_swap_001");
+        assert!(result.is_err(), "wrong key must not silently return data");
+    }
+
+    /// SWAPS-02: a plaintext file must not be readable as an encrypted store.
+    /// This guards against accidentally reading a legacy plaintext swaps.enc.
+    #[test]
+    fn encrypted_store_rejects_plaintext_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("swaps.enc");
+
+        // Write plaintext
+        let plain = SwapStore::open_plaintext(path.clone());
+        plain.upsert(&make_record("plain_001")).unwrap();
+
+        // Try to read as encrypted — must fail (not silently succeed)
+        let key = [0x42u8; 32];
+        let enc = SwapStore::open_with_key_at(path, key);
+        let result = enc.get("plain_001");
+        assert!(
+            result.is_err(),
+            "encrypted store must not accept plaintext files"
+        );
+    }
+
     #[test]
     fn swapstore_refuses_sensitive_plaintext_records() {
         let dir = tempdir().unwrap();
@@ -384,7 +457,7 @@ mod tests {
 
         // Same record with an encryption key must succeed.
         let key = [0x77u8; 32];
-        let encrypted_store = SwapStore::open_encrypted_at(dir.path().join("swaps_enc.enc"), key);
+        let encrypted_store = SwapStore::open_with_key_at(dir.path().join("swaps_enc.enc"), key);
         let mut sensitive = make_record("swap_sens");
         sensitive.preimage_hex = Some("deadbeef".repeat(8));
         assert!(

@@ -72,7 +72,8 @@ A `PaymentProfile` contains the public, shareable information about a user:
   "alias": "rodrigo@satspath.dev",
   "identity_pubkey": "<hex-encoded secp256k1 compressed pubkey>",
   "methods": [ ... ],
-  "updated_at": 1735000000
+  "updated_at": 1735000000,
+  "expires_at": 1736000000
 }
 ```
 
@@ -105,8 +106,10 @@ Before processing any payment, the receiver's profile MUST be verified:
 
 1. Parse `identity_pubkey` as a secp256k1 compressed public key.
 2. Compute `SHA256(canonical_json(profile))`.
-3. Verify the DER-encoded ECDSA signature against the digest and pubkey.
-4. If verification fails, reject with `InvalidSignature`.
+4. Check the `expires_at` timestamp (if present). If it is strictly in the past, reject with `ExpiredProfile`.
+5. If verification fails, reject with `InvalidSignature`.
+
+This validation MUST happen on both local registry lookups and remote HTTP fetches.
 
 ## Payment Methods
 
@@ -245,8 +248,6 @@ The actual payment execution happens in the underlying protocol.
 - Replace local registry with BIP-353 DNS TXT record lookup.
 - Support Nostr NIP-05 profile resolution.
 - Add BOLT12 offer fetching and invoice generation.
-- Implement real LNURL-pay two-step handshake.
 - Add Silent Payments as an on-chain method type.
 - Split payments across multiple rails.
-- Add expiry and revocation to profiles.
 - Implement key rotation with signature chain.

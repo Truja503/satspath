@@ -19,7 +19,7 @@ pub async fn cmd_demo() -> Result<()> {
     println!();
 
     step(3, "Show signed profile");
-    cmd_show("rodrigo@satspath.dev").await?;
+    cmd_show("rodrigo@satspath.dev", false).await?;
     println!();
 
     step(

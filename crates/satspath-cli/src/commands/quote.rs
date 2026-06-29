@@ -2,6 +2,7 @@ use anyhow::Result;
 
 use satspath_core::{
     crypto::verify_signed_profile,
+    evaluate_method_trust_for_profile,
     privacy::{mask_address, mask_identifier, mask_invoice, mask_pubkey},
     resolver::ProfileResolver,
     PaymentMethod,
@@ -15,20 +16,16 @@ use super::{
     qr::{bitcoin_uri, print_qr},
 };
 
-pub async fn cmd_quote(
-    alias: &str,
-    amount_sats: u64,
-    json: bool,
-    mainnet_preview: bool,
-    fetch_lnurl_invoice: bool,
-) -> Result<()> {
-    if mainnet_preview {
-        return cmd_preview(alias, amount_sats, true, json, fetch_lnurl_invoice).await;
-    }
-    if json {
-        anyhow::bail!("--json is currently supported with --mainnet-preview.");
-    }
+/// Emit the machine-readable quote contract as a single JSON object and nothing
+/// else, so the UX / API layer can consume it directly. Human-facing output
+/// stays in [`cmd_quote`].
+pub async fn cmd_quote_json(alias: &str, amount_sats: u64) -> Result<()> {
+    let response = satspath_router::quote(alias, amount_sats).await;
+    println!("{}", serde_json::to_string_pretty(&response)?);
+    Ok(())
+}
 
+pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     let resolver = get_resolver()?;
 
     println!("Resolving identifier '{}'...", mask_identifier(alias));
@@ -82,6 +79,19 @@ pub async fn cmd_quote(
     println!("  └─────────────────────────────────────────┘");
     println!("  Reason: {}", quote.reason);
 
+    // Ownership trust of the selected rail, re-verified client-side. Unifies
+    // method_verifications and any inline Ark pointer proof under one signal.
+    let trust = evaluate_method_trust_for_profile(
+        &signed.profile,
+        &quote.selected_method,
+        chrono::Utc::now().timestamp(),
+        None,
+    );
+    println!("  Ownership: {}", trust.badge());
+    if trust.is_suspicious() {
+        println!("  ⚠  This rail's ownership proof did not verify — treat with caution.");
+    }
+
     println!();
     match &quote.selected_method {
         PaymentMethod::Lightning { .. } => {
@@ -123,6 +133,9 @@ pub async fn cmd_quote(
         PaymentMethod::Ark { pubkey, server, .. } => {
             println!("  Ark payment via {}", mask_address(server));
             println!("  Pubkey: {}", mask_pubkey(pubkey));
+            println!(
+                "  ⚠  [EXPERIMENTAL] Use --experimental-swaps --testnet to attempt execution."
+            );
             println!("  Use `satspath pay --mainnet-preview` for public pointer preview.");
         }
     }

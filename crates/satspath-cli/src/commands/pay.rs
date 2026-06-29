@@ -129,10 +129,13 @@ pub async fn cmd_pay(
 
     if let Some(snap) = &quote.fee_snapshot {
         println!();
-        println!("Mempool fees (sat/vB)");
-        println!("  Next block (~10 min): {}", snap.fastest_sat_vb);
-        println!("  30 minutes          : {}", snap.half_hour_sat_vb);
-        println!("  60 minutes          : {}", snap.hour_sat_vb);
+        println!("  Mempool fees (sat/vB)");
+        println!("  ├─ Next block  (~10 min): {} sat/vB", snap.fastest_sat_vb);
+        println!(
+            "  ├─ 30 minutes           : {} sat/vB",
+            snap.half_hour_sat_vb
+        );
+        println!("  └─ 60 minutes           : {} sat/vB", snap.hour_sat_vb);
     }
 
     println!();
@@ -179,6 +182,8 @@ fn validate_pay_flags(
     Ok(())
 }
 
+// ─── Experimental Engine v0 ──────────────────────────────────────────────────
+
 async fn exec_experimental(
     directive: &SwapDirective,
     amount_sats: u64,
@@ -193,21 +198,26 @@ async fn exec_experimental(
         SwapDirective::LightningPayment { target_ln_address } => {
             let addr = target_ln_address.as_deref().ok_or_else(|| {
                 anyhow::anyhow!(
-                    "No verified Lightning Address in profile. Cannot create testnet intent."
+                    "No verified Lightning Address in profile. \
+                     Cannot create swap without a real payment pointer."
                 )
             })?;
             println!(
                 "  [Direct LN] Target: {}",
                 display_value(addr, mask_identifier, debug)
             );
-            println!("  Testnet LN execution is not automatic in this preview.");
+            println!("  Testnet LN node integration pending.");
+            println!("  Run with a real LN node to execute.");
         }
         SwapDirective::SubmarineSwap { target_invoice } => {
+            // Must have a real invoice — no fake fallback.
             let invoice = target_invoice.as_deref().ok_or_else(|| {
                 anyhow::anyhow!(
-                    "Submarine swap requires a real BOLT11 invoice. No verified invoice in profile."
+                    "Submarine swap requires a real BOLT11 invoice. \
+                     No verified invoice in profile. Cannot proceed."
                 )
             })?;
+
             println!("  [Submarine Swap] Ark/L1 -> Lightning");
             println!(
                 "  Invoice : {}",

@@ -267,7 +267,7 @@ impl BoltzClient {
             // Try to extract Boltz error message
             let msg = serde_json::from_str::<BoltzErrorResponse>(&body)
                 .map(|e| e.error)
-                .unwrap_or_else(|_| body.clone());
+                .unwrap_or(body);
             return Err(SwapError::BoltzApi {
                 status,
                 message: msg,

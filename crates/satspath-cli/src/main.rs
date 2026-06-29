@@ -37,7 +37,51 @@ enum Command {
     },
 
     /// Show a registered profile
-    Show { alias: String },
+    Show {
+        alias: String,
+        /// Fetch and re-verify domain-control proofs over the network
+        #[arg(long)]
+        verify_online: bool,
+    },
+
+    /// Print the ownership-proof challenge to sign for one method
+    Prove {
+        alias: String,
+        /// Index of the method in the profile (see `satspath show`)
+        #[arg(long, default_value_t = 0)]
+        method_index: usize,
+    },
+
+    /// Attach an ownership proof to a method and re-sign the profile
+    AttachProof {
+        alias: String,
+        #[arg(long, default_value_t = 0)]
+        method_index: usize,
+        /// Proof type: onchain | ark | domain | manual
+        #[arg(long = "type")]
+        proof_type: String,
+        /// issued_at value printed by `satspath prove` (required for onchain/ark)
+        #[arg(long)]
+        issued_at: Option<i64>,
+        /// Compressed secp256k1 pubkey that signed the challenge (onchain/ark)
+        #[arg(long)]
+        pubkey: Option<String>,
+        /// DER signature (hex) over the challenge (onchain/ark)
+        #[arg(long)]
+        signature: Option<String>,
+        /// Well-known URL to fetch+verify (domain; auto-derived for Lightning)
+        #[arg(long)]
+        url: Option<String>,
+        /// Token the served body must contain (domain; defaults to identity pubkey)
+        #[arg(long)]
+        nonce: Option<String>,
+        /// Verify a local copy of the served content instead of fetching (domain)
+        #[arg(long)]
+        body_file: Option<String>,
+        /// Optional validity window in seconds from issued_at
+        #[arg(long)]
+        expires_in: Option<i64>,
+    },
 
     /// Encode a universal SatsPath payment URI
     Encode {
@@ -50,34 +94,13 @@ enum Command {
     /// Decode a SatsPath payment URI
     Decode { uri: String },
 
-    /// Show routing decision with live mempool fees
+    /// Show routing decision with live mempool fees + scannable QR
     Quote {
         alias: String,
         amount_sats: u64,
-        /// Print machine-readable JSON. For now this is supported with --mainnet-preview.
+        /// Emit the machine-readable QuoteResponse as JSON (and nothing else)
         #[arg(long)]
         json: bool,
-        /// Use mainnet public-data preview rules. No execution.
-        #[arg(long)]
-        mainnet_preview: bool,
-        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
-        #[arg(long)]
-        fetch_lnurl_invoice: bool,
-    },
-
-    /// Build a mainnet-compatible public payment preview. No funds move.
-    Preview {
-        recipient: String,
-        amount_sats: u64,
-        /// Use real mainnet public data, never execution.
-        #[arg(long)]
-        mainnet: bool,
-        /// Print only valid JSON.
-        #[arg(long)]
-        json: bool,
-        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
-        #[arg(long)]
-        fetch_lnurl_invoice: bool,
     },
 
     /// Resolve, route, and build a public QR preview. No funds move by default.
@@ -99,7 +122,7 @@ enum Command {
         debug: bool,
     },
 
-    /// Generate an invite for an unregistered alias
+    /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
     Invite { alias: String, amount_sats: u64 },
 
     /// Ark direct receive/send and swap intents. Testnet-gated; mainnet execution disabled.
@@ -179,7 +202,40 @@ async fn main() -> Result<()> {
             ark_server.as_deref(),
             ark_pubkey.as_deref(),
         )?,
-        Command::Show { alias } => commands::cmd_show(&alias).await?,
+        Command::Show {
+            alias,
+            verify_online,
+        } => commands::cmd_show(&alias, verify_online).await?,
+        Command::Prove {
+            alias,
+            method_index,
+        } => commands::cmd_prove(&alias, method_index)?,
+        Command::AttachProof {
+            alias,
+            method_index,
+            proof_type,
+            issued_at,
+            pubkey,
+            signature,
+            url,
+            nonce,
+            body_file,
+            expires_in,
+        } => {
+            commands::cmd_attach_proof(
+                &alias,
+                method_index,
+                &proof_type,
+                issued_at,
+                pubkey.as_deref(),
+                signature.as_deref(),
+                url.as_deref(),
+                nonce.as_deref(),
+                body_file.as_deref(),
+                expires_in,
+            )
+            .await?
+        }
         Command::Encode {
             alias,
             amount_sats,
@@ -190,27 +246,12 @@ async fn main() -> Result<()> {
             alias,
             amount_sats,
             json,
-            mainnet_preview,
-            fetch_lnurl_invoice,
         } => {
-            commands::cmd_quote(
-                &alias,
-                amount_sats,
-                json,
-                mainnet_preview,
-                fetch_lnurl_invoice,
-            )
-            .await?
-        }
-        Command::Preview {
-            recipient,
-            amount_sats,
-            mainnet,
-            json,
-            fetch_lnurl_invoice,
-        } => {
-            commands::cmd_preview(&recipient, amount_sats, mainnet, json, fetch_lnurl_invoice)
-                .await?
+            if json {
+                commands::cmd_quote_json(&alias, amount_sats).await?
+            } else {
+                commands::cmd_quote(&alias, amount_sats).await?
+            }
         }
         Command::Pay {
             alias,
