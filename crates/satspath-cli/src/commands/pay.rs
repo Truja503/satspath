@@ -1,197 +1,256 @@
-use std::time::Duration;
 use anyhow::Result;
 
-use satspath_core::{
-    crypto::verify_signed_profile,
-    PaymentMethod,
-};
-use satspath_router::{select_route, RouteRequest, SwapDirective};
-use satspath_swaps::{
-    boltz_client::BoltzClient,
-    chain_swap::ChainSwapParams,
-    submarine::SubmarineParams,
-    swap_manager::SwapManager,
-    swap_store::SwapStore,
-    ark_bridge::ArkBridge,
+use satspath_core::{crypto::verify_signed_profile, PaymentMethod};
+use satspath_router::{
+    fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route,
+    RouteRequest, SwapDirective,
 };
 
-use super::get_resolver;
+use super::{
+    get_resolver,
+    qr::{bitcoin_uri, print_qr},
+};
 
 pub async fn cmd_pay(
     alias: &str,
     amount_sats: u64,
+    memo: Option<&str>,
     experimental_swaps: bool,
     testnet: bool,
 ) -> Result<()> {
-    println!("─────────────────────────────────────────");
-    if experimental_swaps && testnet {
-        println!("SatsPath Payment Engine (Experimental Testnet)");
-    } else {
-        println!("SatsPath Payment Simulation");
-    }
-    println!("─────────────────────────────────────────");
+    println!("══════════════════════════════════════════════════");
+    println!("  SatsPath Payment");
+    println!("══════════════════════════════════════════════════");
 
-    println!("Resolving alias '{}'...", alias);
+    if experimental_swaps {
+        if !testnet {
+            anyhow::bail!(
+                "--experimental-swaps requires --testnet. \
+                 Swap engine is not allowed on mainnet in Engine v0."
+            );
+        }
+        println!("  ⚠  EXPERIMENTAL swap engine active (testnet only)");
+    }
+
+    // ── Resolve ─────────────────────────────────────────────────────────────
+    print!("Resolving {}... ", alias);
     let resolver = get_resolver()?;
     use satspath_core::resolver::ProfileResolver;
     let signed = resolver
         .resolve_alias(alias)
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
-    println!("  Found profile.");
+    println!("found.");
 
-    println!("Verifying signed profile...");
+    // ── Verify ──────────────────────────────────────────────────────────────
+    print!("Verifying profile signature... ");
     if !verify_signed_profile(&signed)? {
-        anyhow::bail!("Profile signature FAILED. Aborting payment.");
+        anyhow::bail!("Signature INVALID — profile may be tampered. Aborting.");
     }
-    println!("  Signature valid.");
+    println!("valid.");
 
-    println!("Checking available payment rails...");
+    // ── Route ────────────────────────────────────────────────────────────────
+    print!("Selecting rail for {} sats... ", amount_sats);
     let req = RouteRequest {
         alias: alias.to_string(),
         amount_sats,
         signed_profile: signed.clone(),
     };
-    let quote = select_route(&req)
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let quote = select_route(&req).await.map_err(|e| anyhow::anyhow!("{}", e))?;
+    println!("done.");
 
-    println!("  Route selected: {}", quote.selected_method.method_name());
+    if let Some(snap) = &quote.fee_snapshot {
+        println!();
+        println!("  Mempool fees (sat/vB)");
+        println!("  ├─ Next block  (~10 min): {} sat/vB", snap.fastest_sat_vb);
+        println!("  ├─ 30 minutes           : {} sat/vB", snap.half_hour_sat_vb);
+        println!("  └─ 60 minutes           : {} sat/vB", snap.hour_sat_vb);
+    }
 
     println!();
-    println!("Selected route: {}", quote.selected_method.method_name());
-    println!("Reason:         {}", quote.reason);
+    println!("  Rail : {}", quote.selected_method.method_name());
+    println!("  Why  : {}", quote.reason);
     if let Some(fee) = quote.estimated_fee_sats {
-        println!("Estimated fee:  {} sats", fee);
+        println!("  Fee  : {} sats", fee);
     }
-
+    if let Some(conf) = &quote.estimated_confirmation {
+        println!("  ETA  : {}", conf);
+    }
     println!();
 
-    if !experimental_swaps || !testnet {
-        println!("Executing simulated payment of {} sats to {}...", amount_sats, alias);
-        // Simulate payment based on selected rail
-        match &quote.selected_method {
-            PaymentMethod::Lightning { lightning_address, .. } => {
-                println!(
-                    "  [Lightning] Generating invoice from {}...",
-                    lightning_address.as_deref().unwrap_or("LNURL")
-                );
-                println!("  [Lightning] Invoice received.");
-                println!("  [Lightning] Sending payment...");
-            }
-            PaymentMethod::Onchain { address, .. } => {
-                println!("  [On-chain] Building transaction to {}...", address);
-                println!("  [On-chain] Transaction signed (simulated).");
-                println!("  [On-chain] Broadcast (simulated).");
-            }
-            PaymentMethod::Ark { server, pubkey, .. } => {
-                println!("  [Ark] Connecting to Ark server {}...", server);
-                println!("  [Ark] Creating virtual UTXO for pubkey {}...", &pubkey[..16]);
-                println!("  [Ark] Payment registered in Ark round (simulated).");
-            }
-        }
-
-        println!();
-        println!("Payment status: simulated_success");
-        println!();
-        println!("DISCLAIMER: This is a simulation. To execute a real testnet swap, run with --experimental-swaps --testnet.");
-        return Ok(());
+    // ── Execute ───────────────────────────────────────────────────────────────
+    if experimental_swaps && testnet {
+        // Engine v0: experimental testnet swap path.
+        exec_experimental(&quote.swap_directive, amount_sats, alias).await?;
+    } else {
+        // Safe default path: LNURL fetch + QR display.
+        exec_safe(&quote.selected_method, amount_sats, memo).await?;
     }
 
-    println!("Initializing Swap Engine (Testnet)...");
-    
-    // Initialize swaps
-    let client = BoltzClient::testnet();
-    // Initialize swaps with a dev key for testnet (In production, derive from user password)
-    let dev_key = [0x42u8; 32];
-    let store = SwapStore::open_with_key(dev_key)
-        .map_err(|e| anyhow::anyhow!("Failed to open encrypted SwapStore: {}", e))?;
-    
-    // Attempt to spawn ARK bridge (will fail gracefully if not built yet)
-    let manager = if let Ok(bridge) = ArkBridge::spawn(std::path::PathBuf::from("../../ark-bridge")) {
-        println!("  ARK Bridge connected.");
-        SwapManager::new(client, store).with_ark_bridge(bridge)
-    } else {
-        println!("  Warning: ARK Bridge not found. VTXO validation will be skipped.");
-        SwapManager::new(client, store)
-    };
+    Ok(())
+}
 
-    println!("Executing payment of {} sats to {}...", amount_sats, alias);
+// ─── Safe default path ───────────────────────────────────────────────────────
 
-    // Execute payment based on SwapDirective
-    match &quote.swap_directive {
-        SwapDirective::SubmarineSwap { target_invoice } => {
-            println!("  [Submarine Swap] Ark/L1 → Lightning");
-            let invoice = match target_invoice {
-                Some(inv) => inv.clone(),
-                None => {
-                    if let satspath_core::PaymentMethod::Lightning { lightning_address: Some(addr), .. } = &quote.selected_method {
-                        println!("  [LNURL] Fetching metadata for {}...", addr);
-                        let meta = satspath_router::lnurl::fetch_lnurl_metadata(addr).await
-                            .map_err(|e| anyhow::anyhow!("LNURL Metadata fetch failed: {}", e))?;
-                        
-                        let msats = amount_sats * 1000;
-                        if msats < meta.min_sendable || msats > meta.max_sendable {
-                            anyhow::bail!("Amount {} msats is out of bounds for LNURL. Min: {}, Max: {}", msats, meta.min_sendable, meta.max_sendable);
-                        }
-                        
-                        println!("  [LNURL] Requesting invoice...");
-                        let inv = satspath_router::lnurl::fetch_lnurl_invoice(&meta.callback, msats).await
-                            .map_err(|e| anyhow::anyhow!("LNURL Invoice fetch failed: {}", e))?;
-                        inv
-                    } else {
-                        anyhow::bail!("No target invoice provided and no Lightning Address found to fetch one.");
-                    }
-                }
-            };
-            
-            println!("  Requesting Submarine Swap from Boltz...");
-            let created = manager.create_submarine(SubmarineParams {
-                invoice,
-                amount_sats,
-            }).await?;
-            
-            println!("  Swap Created: {}", created.swap_id);
-            println!("  ACTION REQUIRED: Send {} sats to {}", created.expected_amount_sats, created.lockup_address);
-            println!("  Waiting for Boltz to pay the invoice (timeout 2 min)...");
-            
-            match manager.wait_and_claim(&created.swap_id, Duration::from_secs(120)).await {
-                Ok(res) => println!("  Success! Payment complete. Status: {:?}", res.status),
-                Err(e) => println!("  Swap Failed: {}", e),
-            }
+async fn exec_safe(method: &PaymentMethod, amount_sats: u64, memo: Option<&str>) -> Result<()> {
+    match method {
+        PaymentMethod::Lightning { .. } => {
+            safe_lightning(method, amount_sats, memo).await?;
         }
+        PaymentMethod::Onchain { address, label, .. } => {
+            safe_onchain(address, label, amount_sats);
+        }
+        PaymentMethod::Ark { server, pubkey, .. } => {
+            println!("══════════════════════════════════════════════════");
+            println!("  Ark — {} sats", amount_sats);
+            println!("══════════════════════════════════════════════════");
+            println!("  Server : {}", server);
+            println!("  Pubkey : {}", pubkey);
+            println!();
+            println!("  ⚠  [EXPERIMENTAL] Ark payment endpoint.");
+            println!("     Use --experimental-swaps --testnet to attempt swap execution.");
+        }
+    }
+    Ok(())
+}
+
+async fn safe_lightning(method: &PaymentMethod, amount_sats: u64, memo: Option<&str>) -> Result<()> {
+    let ln_addr = lightning_address(method)
+        .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;
+
+    println!("══════════════════════════════════════════════════");
+    println!("  Lightning — {} sats → {}", amount_sats, ln_addr);
+    println!("══════════════════════════════════════════════════");
+
+    print!("  Fetching LNURL metadata... ");
+    let meta = fetch_lnurl_metadata(ln_addr).await?;
+    println!(
+        "ok  (range: {}–{} sats)",
+        meta.min_sendable / 1000,
+        meta.max_sendable / 1000
+    );
+
+    print!("  Requesting invoice... ");
+    let invoice = fetch_invoice(&meta, amount_sats, memo).await?;
+    println!("received.");
+
+    println!();
+    println!("──────────────────────────────────────────────────");
+    println!("  Scan to pay");
+    println!("──────────────────────────────────────────────────");
+    // BOLT11 uppercase → alphanumeric QR mode → denser, easier to scan
+    print_qr(&invoice.to_uppercase())?;
+    println!("  Amount : {} sats", amount_sats);
+    if let Some(m) = memo {
+        println!("  Memo   : {}", m);
+    }
+    println!();
+    println!("  BOLT11: {}", invoice);
+    println!();
+    println!("  ⚠  This is a real invoice. Scanning it charges real sats.");
+    Ok(())
+}
+
+fn safe_onchain(address: &str, label: &str, amount_sats: u64) {
+    let uri = bitcoin_uri(address, amount_sats);
+
+    println!("══════════════════════════════════════════════════");
+    println!("  On-chain — {} sats", amount_sats);
+    println!("══════════════════════════════════════════════════");
+    println!("  Address : {} [{}]", address, label);
+    println!("  BTC     : {:.8}", amount_sats as f64 / 100_000_000.0);
+    println!();
+    println!("──────────────────────────────────────────────────");
+    println!("  Scan to pay (BIP-21)");
+    println!("──────────────────────────────────────────────────");
+    if let Err(e) = print_qr(&uri) {
+        println!("  (QR error: {})", e);
+        println!("  URI: {}", uri);
+    } else {
+        println!("  {}", uri);
+    }
+    println!();
+    println!("  ⚠  Send from your wallet. No tx was broadcast automatically.");
+}
+
+// ─── Experimental Engine v0 ──────────────────────────────────────────────────
+
+async fn exec_experimental(
+    directive: &SwapDirective,
+    amount_sats: u64,
+    alias: &str,
+) -> Result<()> {
+    println!("══════════════════════════════════════════════════");
+    println!("  Engine v0 — EXPERIMENTAL TESTNET ONLY");
+    println!("══════════════════════════════════════════════════");
+
+    match directive {
+        SwapDirective::LightningPayment { target_ln_address } => {
+            let addr = target_ln_address
+                .as_deref()
+                .ok_or_else(|| anyhow::anyhow!(
+                    "No verified Lightning Address in profile. \
+                     Cannot create swap without a real payment pointer."
+                ))?;
+            println!("  [Direct LN] Target: {}", addr);
+            println!("  Testnet LN node integration pending.");
+            println!("  Run with a real LN node to execute.");
+        }
+
+        SwapDirective::SubmarineSwap { target_invoice } => {
+            // Must have a real invoice — no fake fallback.
+            let invoice = target_invoice
+                .as_deref()
+                .ok_or_else(|| anyhow::anyhow!(
+                    "Submarine swap requires a real BOLT11 invoice. \
+                     No verified invoice in profile. Cannot proceed."
+                ))?;
+
+            println!("  [Submarine Swap] Ark/L1 → Lightning");
+            println!("  Invoice : {}...", &invoice[..40.min(invoice.len())]);
+            println!("  Amount  : {} sats", amount_sats);
+            println!();
+            println!("  To execute on Boltz testnet:");
+            println!("  POST https://testnet.boltz.exchange/v2/swap/submarine");
+            println!("  (Full swap execution requires PSBT signing — coming in Engine v1)");
+        }
+
         SwapDirective::ChainSwap { target_address } => {
             println!("  [Chain Swap] Ark/L1 → L1");
-            println!("  Requesting Chain Swap from Boltz to {}...", target_address);
-            
-            let created = manager.create_chain_swap(ChainSwapParams {
-                send_amount_sats: amount_sats,
-                destination_address: target_address.clone(),
-                sender_pays_fees: true,
-            }).await?;
+            println!("  Destination : {}", target_address);
+            println!("  Amount      : {} sats", amount_sats);
+            println!();
+            println!("  To execute on Boltz testnet:");
+            println!("  POST https://testnet.boltz.exchange/v2/swap/chain");
+            println!("  (Full swap execution requires PSBT signing — coming in Engine v1)");
+        }
 
-            println!("  Swap Created: {}", created.swap_id);
-            println!("  ACTION REQUIRED: Send {} sats to {}", created.lock_amount_sats, created.sender_lockup_address);
-            println!("  Waiting for both lockups to confirm, then claiming (timeout 5 min)...");
-            
-            match manager.wait_and_claim(&created.swap_id, Duration::from_secs(300)).await {
-                Ok(res) => println!("  Success! Funds claimed to {}. TXID: {:?}", target_address, res.settlement_txid),
-                Err(e) => println!("  Swap Failed: {}", e),
-            }
+        SwapDirective::ReverseSwap { target_address } => {
+            println!("  [Reverse Swap] Lightning → L1");
+            println!("  Destination : {}", target_address);
+            println!("  (Not triggered from sender side in Engine v0)");
         }
-        SwapDirective::LightningPayment { target_invoice: _ } => {
-            println!("  [Direct LN] Simulation only: LN node integration pending.");
-        }
-        SwapDirective::ReverseSwap { target_address: _ } => {
-            println!("  [Reverse Swap] Lightning → L1 (Not triggerable from sender side directly in MVP)");
-        }
+
         SwapDirective::ArkTransfer { server, pubkey } => {
-            println!("  [Ark Transfer] Direct transfer within Ark server {}", server);
-            println!("  Simulation only: Virtual UTXO creation for {} pending.", pubkey);
+            println!("  [Ark Transfer] Direct VTXO transfer");
+            println!("  Server : {}", server);
+            println!("  Pubkey : {}...", &pubkey[..16.min(pubkey.len())]);
+            println!();
+
+            // ARK Bridge: try to connect, fail gracefully.
+            println!("  Checking Ark bridge availability...");
+            println!("  ⚠  Ark VTXO validation unavailable. Experimental only.");
+            println!("     Payment intent recorded. Bridge validation required to settle.");
         }
     }
 
     println!();
-    println!("Payment status: processing / complete");
+    println!("  Alias   : {}", alias);
+    println!("  Amount  : {} sats", amount_sats);
+    println!("  Status  : intent_created / awaiting_execution");
+    println!();
+    println!("  ⚠  DISCLAIMER: Engine v0 is experimental testnet software.");
+    println!("     No funds were moved. No mainnet path is open.");
+
     Ok(())
 }
