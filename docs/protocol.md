@@ -243,9 +243,19 @@ SatsPath is the **routing and resolution layer**, not the payment layer.
 It answers: "Given this identifier and amount, which rail should I use?"
 The actual payment execution happens in the underlying protocol.
 
+## BIP-353 DNS resolution (mainnet preview)
+
+SatsPath resolves DNSSEC-backed **BIP-353** payment instructions for domains the
+receiver controls: `₿user@domain` → `<user>.user._bitcoin-payment.<domain>` TXT →
+a `bitcoin:` (BIP-321) URI. DNSSEC is mandatory and resolution **fails closed** in
+the default `Strict` policy (no AD-bit trust). Consumer email domains (e.g.
+`gmail.com`) cannot use BIP-353 — they fall back to platform verification / the
+invite flow. See [bip353_dns_resolution.md](bip353_dns_resolution.md). This is a
+resolution layer only: no funds move, nothing is signed or broadcast.
+
 ## Future Work
 
-- Replace local registry with BIP-353 DNS TXT record lookup.
+- Plug a local DNSSEC-validating resolver into BIP-353 Strict mode.
 - Support Nostr NIP-05 profile resolution.
 - Add BOLT12 offer fetching and invoice generation.
 - Add Silent Payments as an on-chain method type.

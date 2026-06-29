@@ -78,3 +78,23 @@ When testing features on Mainnet for the first time:
 - Use tiny amounts only (e.g., `< 1000 sats`).
 - Verify routing paths locally before broadcasting.
 - Ensure that the local `.satspath/swaps.enc` vault is encrypting secrets via AES-GCM and not falling back silently to plaintext.
+
+## 5. BIP-353 DNS Resolution (Mainnet Preview)
+
+BIP-353 resolution is a **preview** layer: SatsPath resolves and displays
+DNSSEC-backed payment instructions but never pays, signs, or broadcasts.
+
+- **DNSSEC is mandatory.** The default `Strict` policy fails closed and does not
+  trust an upstream resolver's AD bit. `DevInsecure` mode is local-testing only,
+  requires `--allow-insecure-dns-for-dev`, and prints a loud warning.
+- **Ambiguity is invalid.** More than one `bitcoin:` TXT record at a name, or an
+  unknown `req-*` parameter, makes resolution fail.
+- **No private material** may ever appear in a published or resolved DNS payload
+  (`seed`, `xprv`/`tprv`, `mnemonic`, `macaroon`, `cert`, `api_key`, `claim_key`,
+  `refund_key`, `preimage`, …) — screened on both publish and resolve.
+- **Record changes require an identity-key signature.** Email access alone never
+  authorizes a DNS payment-instruction change.
+- **Consumer email domains** (e.g. `gmail.com`) cannot use BIP-353; they fall back
+  to platform verification / the invite flow.
+- **DNS-provider credentials are never committed** — only a trait + mock publisher
+  ship in this repo.
