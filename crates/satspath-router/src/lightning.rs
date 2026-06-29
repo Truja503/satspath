@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+use bech32::{primitives::decode::UncheckedHrpstring, Fe32};
 use satspath_core::PaymentMethod;
 
 pub fn is_lightning_available(method: &PaymentMethod) -> bool {
@@ -117,6 +118,7 @@ pub async fn fetch_invoice(
         anyhow::bail!("received empty invoice from LNURL callback");
     }
     verify_invoice_amount(&resp.pr, amount_sats)?;
+    verify_invoice_not_expired(&resp.pr)?;
     Ok(resp.pr)
 }
 
@@ -210,6 +212,77 @@ pub fn verify_invoice_amount(invoice: &str, expected_sats: u64) -> anyhow::Resul
     }
 }
 
+/// Verify a BOLT11 invoice timestamp + expiry tag against the current clock.
+///
+/// This is intentionally a minimal public-data parser: it reads the 35-bit
+/// timestamp and optional `x` expiry tag from the bech32 data section, strips
+/// the 104-group signature plus 6-group checksum trailer, and rejects malformed
+/// or expired invoices. It does not validate the payment signature.
+pub fn verify_invoice_not_expired(invoice: &str) -> anyhow::Result<()> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| anyhow::anyhow!("system clock before unix epoch: {e}"))?
+        .as_secs();
+    verify_invoice_not_expired_at(invoice, now)
+}
+
+fn verify_invoice_not_expired_at(invoice: &str, now: u64) -> anyhow::Result<()> {
+    let unchecked = UncheckedHrpstring::new(invoice)
+        .map_err(|e| anyhow::anyhow!("invalid BOLT11 bech32 invoice: {e}"))?;
+    let data: Vec<u8> = unchecked
+        .data_part_ascii()
+        .iter()
+        .map(|&b| Fe32::from_char_unchecked(b).to_u8())
+        .collect();
+
+    const TIMESTAMP_GROUPS: usize = 7;
+    const SIGNATURE_GROUPS: usize = 104;
+    const CHECKSUM_GROUPS: usize = 6;
+    const TRAILER_GROUPS: usize = SIGNATURE_GROUPS + CHECKSUM_GROUPS;
+
+    if data.len() < TIMESTAMP_GROUPS + TRAILER_GROUPS {
+        anyhow::bail!("malformed BOLT11 invoice: missing timestamp/signature trailer");
+    }
+
+    let timestamp = read_5bit_uint(&data[..TIMESTAMP_GROUPS]);
+    let tagged_end = data.len() - TRAILER_GROUPS;
+    let mut index = TIMESTAMP_GROUPS;
+    let mut expiry_seconds = 3_600_u64;
+    let expiry_tag = Fe32::from_char('x')
+        .map_err(|e| anyhow::anyhow!("internal BOLT11 tag error: {e}"))?
+        .to_u8();
+
+    while index < tagged_end {
+        if index + 3 > tagged_end {
+            anyhow::bail!("malformed BOLT11 invoice: truncated tagged field");
+        }
+        let tag = data[index];
+        let field_len = ((data[index + 1] as usize) << 5) | data[index + 2] as usize;
+        index += 3;
+        if index + field_len > tagged_end {
+            anyhow::bail!("malformed BOLT11 invoice: tagged field length exceeds invoice");
+        }
+        if tag == expiry_tag {
+            expiry_seconds = read_5bit_uint(&data[index..index + field_len]);
+        }
+        index += field_len;
+    }
+
+    let expires_at = timestamp
+        .checked_add(expiry_seconds)
+        .ok_or_else(|| anyhow::anyhow!("BOLT11 invoice expiry overflow"))?;
+    if expires_at <= now {
+        anyhow::bail!("BOLT11 invoice is expired");
+    }
+    Ok(())
+}
+
+fn read_5bit_uint(groups: &[u8]) -> u64 {
+    groups
+        .iter()
+        .fold(0_u64, |acc, group| (acc << 5) | u64::from(*group))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,12 +317,16 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "BOLT11 expiry requires bech32 data-field decode — Engine v1 TODO"]
     fn expired_invoice_fails() {
-        // When expiry parsing is implemented, this test should verify that an invoice
-        // with a timestamp + expiry that has passed is rejected by verify_invoice_amount
-        // (or a separate verify_invoice_not_expired() call).
-        todo!("implement bech32 data field decode for expiry tag (tag 6)")
+        let inv = fake_invoice_with_expiry(1_700_000_000, 60);
+        let err = verify_invoice_not_expired_at(&inv, 1_700_000_061).unwrap_err();
+        assert!(err.to_string().contains("expired"), "got: {err}");
+    }
+
+    #[test]
+    fn fresh_invoice_passes() {
+        let inv = fake_invoice_with_expiry(1_700_000_000, 60);
+        assert!(verify_invoice_not_expired_at(&inv, 1_700_000_059).is_ok());
     }
 
     #[test]
@@ -307,5 +384,26 @@ mod tests {
     fn parse_bolt11_nano_whole_sats_ok() {
         // lnbc10n = 10 nBTC = 1 sat
         assert_eq!(parse_bolt11_amount_sats(&fake_invoice("lnbc10n")), Some(1));
+    }
+
+    fn fake_invoice_with_expiry(timestamp: u64, expiry_seconds: u64) -> String {
+        let mut data = String::new();
+        data.push_str(&encode_5bit(timestamp, 7));
+        data.push('x');
+        data.push_str(&encode_5bit(2, 2));
+        data.push_str(&encode_5bit(expiry_seconds, 2));
+        data.push_str(&"q".repeat(110));
+        format!("lnbc10u1{data}")
+    }
+
+    fn encode_5bit(value: u64, groups: usize) -> String {
+        const CHARS: &[u8; 32] = b"qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+        (0..groups)
+            .rev()
+            .map(|shift| {
+                let index = ((value >> (shift * 5)) & 31) as usize;
+                CHARS[index] as char
+            })
+            .collect()
     }
 }

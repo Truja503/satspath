@@ -11,11 +11,24 @@ use satspath_router::{
 };
 
 use super::{
-    get_resolver,
+    cmd_preview, get_resolver,
     qr::{bitcoin_uri, print_qr},
 };
 
-pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
+pub async fn cmd_quote(
+    alias: &str,
+    amount_sats: u64,
+    json: bool,
+    mainnet_preview: bool,
+    fetch_lnurl_invoice: bool,
+) -> Result<()> {
+    if mainnet_preview {
+        return cmd_preview(alias, amount_sats, true, json, fetch_lnurl_invoice).await;
+    }
+    if json {
+        anyhow::bail!("--json is currently supported with --mainnet-preview.");
+    }
+
     let resolver = get_resolver()?;
 
     println!("Resolving identifier '{}'...", mask_identifier(alias));

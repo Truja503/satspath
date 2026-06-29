@@ -172,6 +172,35 @@ Input: alias, amount_sats, signed_profile
 5. Otherwise → error: no suitable rail
 ```
 
+## Mainnet Preview
+
+SatsPath Mainnet Preview is a public-data-only protocol mode:
+
+```
+identifier -> signed profile -> signature/expiry/ownership checks -> route decision -> payment pointer / QR
+```
+
+It may display:
+
+- `lightning:<address>` for Lightning Address preview,
+- `lnurl:<url>` for LNURL preview,
+- a BOLT11 invoice string only when explicitly fetched by the caller,
+- `bitcoin:<address>?amount=<btc>` for on-chain mainnet preview,
+- `satspath:ark?...&network=mainnet` for Ark public pointer preview.
+
+It must not:
+
+- sign transactions,
+- broadcast transactions,
+- execute Lightning payments,
+- execute Ark transfers,
+- execute swaps,
+- handle seeds, xprv/tprv, macaroons, certs, API secrets, claim keys, refund
+  keys, or wallet private keys.
+
+Mainnet execution is not part of v1 prototype behavior and no execution flag
+exists for mainnet.
+
 ## Invite Flow
 
 When the resolver cannot find a registered alias, the sender creates an invite

@@ -28,6 +28,8 @@ layer — not a wallet, not a custodian.
 ## What this prototype does
 
 - Resolve `alice@example.com` to a signed payment profile.
+- Support SatsPath v0 mainnet preview: resolve, verify, route, and display
+  mainnet-compatible payment instructions.
 - Encode/decode universal payment URIs (`satspath:v1:<base64url_json>`).
 - Sign profiles with secp256k1 identity keys.
 - Verify profile signatures before routing.
@@ -38,9 +40,33 @@ layer — not a wallet, not a custodian.
 - Generate invite links for unregistered users (receiver generates their own keys).
 - Full CLI: `init`, `register`, `show`, `encode`, `decode`, `quote`, `pay`, `invite`, `demo`.
 
+### Mainnet Preview
+
+SatsPath v0 supports mainnet preview only. It can resolve signed public payment
+profiles, validate public payment data, select a route, and display a payment
+pointer or QR for use in your own wallet.
+
+```bash
+satspath preview rodrigo@satspath.dev 1000 --mainnet
+satspath preview rodrigo@satspath.dev 1000 --mainnet --json
+satspath quote rodrigo@satspath.dev 1000 --mainnet-preview --json
+```
+
+Lightning Address / LNURL preview does not fetch a real BOLT11 invoice by
+default. To fetch one explicitly:
+
+```bash
+satspath preview rodrigo@getalby.com 1000 --mainnet --fetch-lnurl-invoice
+```
+
+Fetched invoices are displayed only as data. SatsPath never pays them.
+
 ## What this prototype does NOT do yet
 
 - Execute real Lightning, on-chain, or Ark payments.
+- Execute mainnet payments.
+- Sign Bitcoin transactions.
+- Broadcast Bitcoin transactions.
 - Enable mainnet Ark execution.
 - Verify email or domain ownership during registration.
 - Persist profiles to a decentralized registry (BIP-353, Nostr, DNS).
@@ -48,6 +74,26 @@ layer — not a wallet, not a custodian.
 - Implement BOLT12 invoice fetching.
 - Support Silent Payments or Split Payments.
 - Provide a wallet UI.
+
+## Mainnet Preview vs Mainnet Execution
+
+Mainnet Preview is allowed:
+
+- public data only,
+- profile signature and expiry checks,
+- public ownership proof checks where available,
+- Lightning Address / LNURL / BOLT11-as-data,
+- BIP21 on-chain URI generation,
+- Ark public pointer / intent URI generation,
+- QR/payment pointer display.
+
+Mainnet Execution is not implemented:
+
+- no `--execute-mainnet` flag exists,
+- no automatic payment execution exists,
+- no transaction signing or broadcasting path is exposed,
+- no seed phrases, xprv/tprv, macaroons, certs, API secrets, claim keys, or
+  refund keys are accepted into mainnet preview output.
 
 ---
 

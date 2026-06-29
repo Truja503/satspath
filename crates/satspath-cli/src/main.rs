@@ -51,7 +51,34 @@ enum Command {
     Decode { uri: String },
 
     /// Show routing decision with live mempool fees
-    Quote { alias: String, amount_sats: u64 },
+    Quote {
+        alias: String,
+        amount_sats: u64,
+        /// Print machine-readable JSON. For now this is supported with --mainnet-preview.
+        #[arg(long)]
+        json: bool,
+        /// Use mainnet public-data preview rules. No execution.
+        #[arg(long)]
+        mainnet_preview: bool,
+        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
+        #[arg(long)]
+        fetch_lnurl_invoice: bool,
+    },
+
+    /// Build a mainnet-compatible public payment preview. No funds move.
+    Preview {
+        recipient: String,
+        amount_sats: u64,
+        /// Use real mainnet public data, never execution.
+        #[arg(long)]
+        mainnet: bool,
+        /// Print only valid JSON.
+        #[arg(long)]
+        json: bool,
+        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
+        #[arg(long)]
+        fetch_lnurl_invoice: bool,
+    },
 
     /// Resolve, route, and build a public QR preview. No funds move by default.
     Pay {
@@ -159,7 +186,32 @@ async fn main() -> Result<()> {
             memo,
         } => commands::cmd_encode(&alias, amount_sats, memo.as_deref())?,
         Command::Decode { uri } => commands::cmd_decode(&uri)?,
-        Command::Quote { alias, amount_sats } => commands::cmd_quote(&alias, amount_sats).await?,
+        Command::Quote {
+            alias,
+            amount_sats,
+            json,
+            mainnet_preview,
+            fetch_lnurl_invoice,
+        } => {
+            commands::cmd_quote(
+                &alias,
+                amount_sats,
+                json,
+                mainnet_preview,
+                fetch_lnurl_invoice,
+            )
+            .await?
+        }
+        Command::Preview {
+            recipient,
+            amount_sats,
+            mainnet,
+            json,
+            fetch_lnurl_invoice,
+        } => {
+            commands::cmd_preview(&recipient, amount_sats, mainnet, json, fetch_lnurl_invoice)
+                .await?
+        }
         Command::Pay {
             alias,
             amount_sats,

@@ -36,6 +36,20 @@ control funds by itself. Wallets and nodes control funds.
 It must never contain private keys, seed phrases, macaroons, certificates, API
 secrets, or signing keys.
 
+## Mainnet Preview vs Mainnet Execution
+
+Mainnet Preview is supported as a safe public-data mode. A wallet or app can ask
+SatsPath to resolve a recipient, verify the signed profile, choose a rail, and
+return a mainnet-compatible payment pointer or QR payload.
+
+Mainnet Preview may return public instructions such as Lightning Address
+pointers, explicitly requested BOLT11 invoices as data, BIP21 `bitcoin:` URIs,
+or Ark `satspath:ark` intent URIs. The caller must use its own wallet to pay.
+
+Mainnet Execution is not implemented. SatsPath does not custody funds, does not
+sign Bitcoin transactions, does not broadcast transactions, and does not store
+wallet private keys.
+
 ## Platform
 
 The SatsPath Platform is optional. It can provide:
