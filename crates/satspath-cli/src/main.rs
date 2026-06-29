@@ -146,6 +146,18 @@ enum Command {
     /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
     Invite { alias: String, amount_sats: u64 },
 
+    /// Export a peer's signed profile as JSON (for sharing with another machine)
+    Export { alias: String },
+
+    /// Import a signed profile (verifying it) from a file, stdin, or an HTTPS URL
+    Import {
+        /// Path to a JSON file (omit to read from stdin)
+        file: Option<String>,
+        /// Fetch from an HTTPS URL instead of a file
+        #[arg(long)]
+        url: Option<String>,
+    },
+
     /// Ark direct receive/send and swap intents. Testnet-gated; mainnet execution disabled.
     Ark {
         #[command(subcommand)]
@@ -333,6 +345,10 @@ async fn main() -> Result<()> {
             .await?
         }
         Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
+        Command::Export { alias } => commands::cmd_export(&alias)?,
+        Command::Import { file, url } => {
+            commands::cmd_import(file.as_deref(), url.as_deref()).await?
+        }
         Command::Ark { command } => match command {
             ArkCommand::Receive(args) => {
                 commands::cmd_ark_receive(&args.alias, args.testnet, args.execute_testnet).await?
