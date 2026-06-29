@@ -44,9 +44,7 @@ pub fn decode_payment_request(uri: &str) -> Result<PaymentRequest> {
     } else if uri.starts_with(SATSPATH_SCHEME) {
         let alias = &uri[SATSPATH_SCHEME.len()..];
         if alias.is_empty() {
-            return Err(SatsPathError::InvalidPaymentUri(
-                "alias is empty".into(),
-            ));
+            return Err(SatsPathError::InvalidPaymentUri("alias is empty".into()));
         }
         Ok(PaymentRequest {
             version: 1,

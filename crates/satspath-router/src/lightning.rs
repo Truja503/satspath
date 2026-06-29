@@ -16,9 +16,9 @@ pub fn is_lightning_available(method: &PaymentMethod) -> bool {
 /// Extract a Lightning Address from a method if present.
 pub fn lightning_address(method: &PaymentMethod) -> Option<&str> {
     match method {
-        PaymentMethod::Lightning { lightning_address, .. } => {
-            lightning_address.as_deref()
-        }
+        PaymentMethod::Lightning {
+            lightning_address, ..
+        } => lightning_address.as_deref(),
         _ => None,
     }
 }

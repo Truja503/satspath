@@ -4,7 +4,8 @@ use crate::ark::{first_ark_method, is_ark_available};
 use crate::fees::{fetch_fee_estimate, FeeEstimate};
 use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available};
 use crate::onchain::{
-    estimate_onchain_fee_sats, first_onchain_method, is_onchain_available, is_onchain_fee_acceptable,
+    estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
+    is_onchain_fee_acceptable,
 };
 
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
@@ -83,9 +84,7 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
     Err(SatsPathError::NoRouteFound(format!(
         "No usable payment rail found for {} sats to {}. \
          Checked: Lightning (amount threshold), On-chain (fee: {} sat/vB), Ark.",
-        req.amount_sats,
-        req.alias,
-        fee_est.hour_fee,
+        req.amount_sats, req.alias, fee_est.hour_fee,
     )))
 }
 
@@ -202,25 +201,29 @@ mod tests {
             signed_profile: signed,
         };
         let quote = select_route_with_fees(&req, &low_fees()).unwrap();
-        assert!(matches!(quote.selected_method, PaymentMethod::Lightning { .. }));
+        assert!(matches!(
+            quote.selected_method,
+            PaymentMethod::Lightning { .. }
+        ));
     }
 
     #[test]
     fn chooses_onchain_for_large_amount_low_fees() {
-        let signed = make_profile(vec![
-            PaymentMethod::Onchain {
-                label: "BTC".into(),
-                address: "bc1q...".into(),
-                pubkey_hint: None,
-            },
-        ]);
+        let signed = make_profile(vec![PaymentMethod::Onchain {
+            label: "BTC".into(),
+            address: "bc1q...".into(),
+            pubkey_hint: None,
+        }]);
         let req = RouteRequest {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
             signed_profile: signed,
         };
         let quote = select_route_with_fees(&req, &low_fees()).unwrap();
-        assert!(matches!(quote.selected_method, PaymentMethod::Onchain { .. }));
+        assert!(matches!(
+            quote.selected_method,
+            PaymentMethod::Onchain { .. }
+        ));
     }
 
     #[test]
