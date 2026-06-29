@@ -4,6 +4,7 @@ mod init;
 mod invite;
 mod pay;
 mod quote;
+mod qr;
 mod register;
 mod show;
 
