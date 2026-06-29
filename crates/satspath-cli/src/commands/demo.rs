@@ -41,7 +41,8 @@ pub async fn cmd_demo() -> Result<()> {
     println!();
 
     step(7, "Simulate payment of 21,000 sats");
-    cmd_pay("rodrigo@satspath.dev", 21_000, None, false, false).await?;
+
+  cmd_pay("rodrigo@satspath.dev", 21_000, None, false, false).await?;
     println!();
 
     step(8, "Try paying an unknown user (julian@example.com)");
