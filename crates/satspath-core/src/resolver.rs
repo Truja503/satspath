@@ -84,6 +84,7 @@ mod tests {
                         bolt12: None,
                     }],
                     updated_at: 1_700_000_000,
+                    expires_at: None,
                 };
                 Ok(sign_profile(profile, &kp.secret_key).unwrap())
             } else {

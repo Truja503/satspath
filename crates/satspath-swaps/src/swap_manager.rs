@@ -9,7 +9,7 @@ use crate::submarine::{
     create_submarine, wait_submarine, SubmarineParams, SubmarineSwapCreated,
 };
 use crate::swap_store::SwapStore;
-use crate::types::{SwapKind, SwapRecord, SwapResult, SwapStatus};
+use crate::types::{SwapKind, SwapRecord, SwapResult};
 
 /// SwapManager orchestrates the lifecycle of Boltz swaps.
 ///

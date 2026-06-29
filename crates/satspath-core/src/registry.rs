@@ -89,7 +89,10 @@ use crate::resolver::ProfileResolver;
 impl ProfileResolver for Registry {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
         // We clone to return an owned value, as ProfileResolver returns owned data
-        self.resolve_alias(alias).cloned()
+        let signed = self.resolve_alias(alias).cloned()?;
+        // SEC-01: enforce profile expiry before returning.
+        crate::crypto::check_profile_expiry(&signed.profile)?;
+        Ok(signed)
     }
 }
 
@@ -112,6 +115,7 @@ mod tests {
                 bolt12: None,
             }],
             updated_at: 1_700_000_000,
+            expires_at: None,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

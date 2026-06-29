@@ -261,6 +261,7 @@ mod tests {
             identity_pubkey: pubkey_hex,
             methods,
             updated_at: 1_700_000_000,
+            expires_at: None,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

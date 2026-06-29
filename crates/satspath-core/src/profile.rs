@@ -54,6 +54,11 @@ pub struct PaymentProfile {
     pub methods: Vec<PaymentMethod>,
     /// Unix timestamp of last update
     pub updated_at: i64,
+    /// Optional Unix timestamp after which this profile should be considered
+    /// expired and must not be used for routing.
+    /// `None` means the profile does not expire (non-expiring).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
 }
 
 /// A payment profile together with the owner's signature over its contents.

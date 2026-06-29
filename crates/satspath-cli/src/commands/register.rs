@@ -69,6 +69,7 @@ pub fn cmd_register(
         identity_pubkey: pubkey_hex.clone(),
         methods,
         updated_at: chrono::Utc::now().timestamp(),
+        expires_at: None, // Non-expiring by default; set via profile update.
     };
 
     let signed = sign_profile(profile, &kp.secret_key)?;

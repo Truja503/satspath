@@ -1,6 +1,4 @@
-use rand::RngCore;
 use secp256k1::{Secp256k1, SecretKey};
-use sha2::{Digest, Sha256};
 use std::time::Duration;
 
 use crate::boltz_client::{BoltzClient, SubmarineSwapRequest};
@@ -207,7 +205,8 @@ async fn attempt_submarine_refund(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rand::RngCore;
+    use sha2::{Digest, Sha256};
 
     #[test]
     fn preimage_hash_is_sha256() {

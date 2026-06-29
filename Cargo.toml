@@ -27,3 +27,4 @@ url = "2"
 rand = "0.8"
 bitcoin = { version = "0.32", features = ["serde"] }
 aes-gcm = "0.10"
+lightning-invoice = { version = "0.32", features = ["std"] }

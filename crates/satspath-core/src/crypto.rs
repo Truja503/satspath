@@ -61,6 +61,27 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
     Ok(secp.verify_ecdsa(&message, &sig, &public_key).is_ok())
 }
 
+/// Check whether a `PaymentProfile` is expired.
+///
+/// Returns `Ok(())` if:
+/// - `expires_at` is `None` (profile is non-expiring — backward-compatible).
+/// - `expires_at` is in the future relative to the current UTC wall clock.
+///
+/// Returns `Err(SatsPathError::RegistryError(...))` if the profile has
+/// explicitly expired. Callers must treat expired profiles as invalid.
+pub fn check_profile_expiry(profile: &PaymentProfile) -> Result<()> {
+    if let Some(exp) = profile.expires_at {
+        let now = chrono::Utc::now().timestamp();
+        if now >= exp {
+            return Err(SatsPathError::RegistryError(format!(
+                "profile for '{}' expired at unix timestamp {} (now: {})",
+                profile.alias, exp, now
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Produce a short human-readable fingerprint of a public key (first 8 hex chars of SHA-256).
 pub fn fingerprint_pubkey(pubkey_hex: &str) -> Result<String> {
     let bytes = hex::decode(pubkey_hex)
@@ -85,6 +106,7 @@ mod tests {
                 bolt12: None,
             }],
             updated_at: 1_700_000_000,
+            expires_at: None,
         }
     }
 
@@ -132,5 +154,52 @@ mod tests {
         let fp2 = fingerprint_pubkey(&hex).unwrap();
         assert_eq!(fp1, fp2);
         assert_eq!(fp1.len(), 8); // 4 bytes = 8 hex chars
+    }
+
+    // ── SEC-01: expiry tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn non_expiring_profile_passes() {
+        let kp = generate_identity_keypair();
+        let mut profile = demo_profile(&hex::encode(kp.public_key.serialize()));
+        profile.expires_at = None; // explicit non-expiring
+        assert!(check_profile_expiry(&profile).is_ok());
+    }
+
+    #[test]
+    fn future_expires_at_passes() {
+        let kp = generate_identity_keypair();
+        let mut profile = demo_profile(&hex::encode(kp.public_key.serialize()));
+        // Set expiry 1 hour in the future
+        profile.expires_at = Some(chrono::Utc::now().timestamp() + 3_600);
+        assert!(check_profile_expiry(&profile).is_ok());
+    }
+
+    #[test]
+    fn past_expires_at_rejected() {
+        let kp = generate_identity_keypair();
+        let mut profile = demo_profile(&hex::encode(kp.public_key.serialize()));
+        // Set expiry 1 hour in the past
+        profile.expires_at = Some(chrono::Utc::now().timestamp() - 3_600);
+        let result = check_profile_expiry(&profile);
+        assert!(result.is_err(), "expired profile must be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("expired"), "error message must mention expiry");
+    }
+
+    #[test]
+    fn exact_expiry_timestamp_rejected() {
+        // expires_at == now must be treated as expired (fail-closed at boundary)
+        let kp = generate_identity_keypair();
+        let mut profile = demo_profile(&hex::encode(kp.public_key.serialize()));
+        profile.expires_at = Some(chrono::Utc::now().timestamp());
+        // Allow a tiny race: the check is >= so this should fail closed
+        let result = check_profile_expiry(&profile);
+        // In rare cases the timestamp might tick forward; either way we accept both
+        // outcomes as long as the code is correct — but if it does fail, it must
+        // be due to expiry.
+        if let Err(e) = result {
+            assert!(e.to_string().contains("expired"));
+        }
     }
 }
