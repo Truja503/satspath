@@ -1,20 +1,18 @@
 use anyhow::Result;
-use qrcode::render::unicode;
-use qrcode::QrCode;
 
 use satspath_core::{crypto::verify_signed_profile, PaymentMethod};
 use satspath_router::{
     fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route, RouteRequest,
 };
 
-use super::open_registry;
+use super::{open_registry, qr::{bitcoin_uri, print_qr}};
 
 pub async fn cmd_pay(alias: &str, amount_sats: u64, memo: Option<&str>) -> Result<()> {
-    separator();
+    println!("══════════════════════════════════════════════════");
     println!("  SatsPath — Live Payment");
-    separator();
+    println!("══════════════════════════════════════════════════");
 
-    // ── 1. Resolve ──────────────────────────────────────────────────────────
+    // ── Resolve ─────────────────────────────────────────────────────────────
     print!("Resolving {}... ", alias);
     let registry = open_registry()?;
     let signed = registry
@@ -22,15 +20,15 @@ pub async fn cmd_pay(alias: &str, amount_sats: u64, memo: Option<&str>) -> Resul
         .map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("found.");
 
-    // ── 2. Verify signature ─────────────────────────────────────────────────
+    // ── Verify ──────────────────────────────────────────────────────────────
     print!("Verifying profile signature... ");
     if !verify_signed_profile(signed)? {
-        anyhow::bail!("signature INVALID — profile may be tampered. Aborting.");
+        anyhow::bail!("Signature INVALID — profile may be tampered. Aborting.");
     }
     println!("valid.");
 
-    // ── 3. Route selection ──────────────────────────────────────────────────
-    println!("Selecting payment rail for {} sats...", amount_sats);
+    // ── Route ────────────────────────────────────────────────────────────────
+    print!("Selecting rail for {} sats... ", amount_sats);
     let req = RouteRequest {
         alias: alias.to_string(),
         amount_sats,
@@ -39,42 +37,51 @@ pub async fn cmd_pay(alias: &str, amount_sats: u64, memo: Option<&str>) -> Resul
     let quote = select_route(&req)
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+    println!("done.");
+
+    // Fee table
+    if let Some(snap) = &quote.fee_snapshot {
+        println!();
+        println!("  Mempool fees (sat/vB)");
+        println!("  ├─ Next block  (~10 min): {} sat/vB", snap.fastest_sat_vb);
+        println!("  ├─ 30 minutes           : {} sat/vB", snap.half_hour_sat_vb);
+        println!("  └─ 60 minutes           : {} sat/vB", snap.hour_sat_vb);
+    }
 
     println!();
-    println!("  Rail selected : {}", quote.selected_method.method_name());
-    println!("  Reason        : {}", quote.reason);
+    println!("  Rail : {}", quote.selected_method.method_name());
+    println!("  Why  : {}", quote.reason);
     if let Some(fee) = quote.estimated_fee_sats {
-        println!("  Estimated fee : {} sats", fee);
+        println!("  Fee  : {} sats", fee);
     }
     if let Some(conf) = &quote.estimated_confirmation {
-        println!("  Confirmation  : {}", conf);
+        println!("  ETA  : {}", conf);
     }
 
-    // ── 4. Execute against selected rail ────────────────────────────────────
+    // ── Execute per rail ─────────────────────────────────────────────────────
     println!();
     match &quote.selected_method {
         PaymentMethod::Lightning { .. } => {
-            pay_via_lightning(&quote.selected_method, amount_sats, memo).await?;
+            pay_lightning(&quote.selected_method, amount_sats, memo).await?;
         }
         PaymentMethod::Onchain { address, label, .. } => {
-            println!("On-chain payment to: {} [{}]", address, label);
-            println!();
-            println!("Scan address QR:");
-            print_qr(address)?;
-            println!();
-            println!("DISCLAIMER: No real transaction was broadcast. Send manually from your wallet.");
+            pay_onchain(address, label, amount_sats)?;
         }
         PaymentMethod::Ark { server, pubkey, .. } => {
-            println!("Ark payment via server: {}", server);
-            println!("Pubkey: {}", pubkey);
-            println!("(Ark integration not yet live — coming next.)");
+            println!("══════════════════════════════════════════════════");
+            println!("  Ark payment");
+            println!("══════════════════════════════════════════════════");
+            println!("  Server : {}", server);
+            println!("  Pubkey : {}", pubkey);
+            println!();
+            println!("  (Ark client not yet integrated — coming next.)");
         }
     }
 
     Ok(())
 }
 
-async fn pay_via_lightning(
+async fn pay_lightning(
     method: &PaymentMethod,
     amount_sats: u64,
     memo: Option<&str>,
@@ -82,64 +89,53 @@ async fn pay_via_lightning(
     let ln_addr = lightning_address(method)
         .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;
 
-    println!("Lightning Address : {}", ln_addr);
+    println!("══════════════════════════════════════════════════");
+    println!("  Lightning — {} sats to {}", amount_sats, ln_addr);
+    println!("══════════════════════════════════════════════════");
 
-    // Step 1: fetch LNURL metadata
-    print!("Fetching LNURL metadata... ");
+    print!("  Fetching LNURL metadata... ");
     let meta = fetch_lnurl_metadata(ln_addr).await?;
-    println!("ok.");
-    println!(
-        "  Range: {} – {} sats",
-        meta.min_sendable / 1000,
-        meta.max_sendable / 1000
-    );
+    println!("ok  (range: {}–{} sats)", meta.min_sendable / 1000, meta.max_sendable / 1000);
 
-    // Step 2: fetch real BOLT11 invoice
-    print!("Requesting invoice for {} sats... ", amount_sats);
+    print!("  Requesting invoice... ");
     let invoice = fetch_invoice(&meta, amount_sats, memo).await?;
     println!("received.");
 
-    // Step 3: display
     println!();
-    thin_separator();
-    println!("  BOLT11 Invoice");
-    thin_separator();
-    println!("{}", invoice);
-    println!();
-    thin_separator();
-    println!("  Scan QR to pay");
-    thin_separator();
-    // BOLT11 must be uppercase for QR alphanumeric mode (smaller QR)
+    println!("──────────────────────────────────────────────────");
+    println!("  Scan to pay");
+    println!("──────────────────────────────────────────────────");
     print_qr(&invoice.to_uppercase())?;
-    println!();
-    println!("Open any Lightning wallet and scan the QR above.");
-    println!("Amount : {} sats", amount_sats);
+    println!("  Amount : {} sats", amount_sats);
     if let Some(m) = memo {
-        println!("Memo   : {}", m);
+        println!("  Memo   : {}", m);
     }
     println!();
-    println!("NOTE: This is a real invoice. Scanning it will charge real sats.");
+    println!("  BOLT11:");
+    println!("  {}", invoice);
+    println!();
+    println!("  ⚠  This is a real invoice. Scanning it charges real sats.");
 
     Ok(())
 }
 
-fn print_qr(data: &str) -> Result<()> {
-    let code = QrCode::new(data.as_bytes())
-        .map_err(|e| anyhow::anyhow!("QR encode error: {}", e))?;
-    let image = code
-        .render::<unicode::Dense1x2>()
-        .dark_color(unicode::Dense1x2::Dark)
-        .light_color(unicode::Dense1x2::Light)
-        .quiet_zone(true)
-        .build();
-    println!("{}", image);
-    Ok(())
-}
+fn pay_onchain(address: &str, label: &str, amount_sats: u64) -> Result<()> {
+    let uri = bitcoin_uri(address, amount_sats);
 
-fn separator() {
     println!("══════════════════════════════════════════════════");
-}
-
-fn thin_separator() {
+    println!("  On-chain — {} sats", amount_sats);
+    println!("══════════════════════════════════════════════════");
+    println!("  Address : {} [{}]", address, label);
+    println!("  BTC     : {:.8}", amount_sats as f64 / 100_000_000.0);
+    println!();
     println!("──────────────────────────────────────────────────");
+    println!("  Scan to pay (BIP-21 URI)");
+    println!("──────────────────────────────────────────────────");
+    print_qr(&uri)?;
+    println!("  {}", uri);
+    println!();
+    println!("  ⚠  Send from your wallet to the address above.");
+    println!("     No transaction was broadcast automatically.");
+
+    Ok(())
 }
