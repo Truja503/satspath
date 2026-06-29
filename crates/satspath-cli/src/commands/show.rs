@@ -4,13 +4,25 @@ use satspath_core::{
     crypto::{fingerprint_pubkey, verify_signed_profile},
     evaluate_method_trust,
     privacy::{mask_address, mask_identifier, mask_invoice, mask_pubkey},
-    MethodTrust, PaymentMethod,
+    stored_status_for_method, well_known_url_of, MethodTrust, PaymentMethod,
 };
 
 use super::get_resolver;
 use satspath_core::resolver::ProfileResolver;
 
-pub async fn cmd_show(alias: &str) -> Result<()> {
+/// Fetch the body served at a well-known URL (for online re-verification).
+async fn fetch_text(url: &str) -> Result<String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+    let resp = client.get(url).send().await?;
+    if !resp.status().is_success() {
+        anyhow::bail!("HTTP {}", resp.status());
+    }
+    Ok(resp.text().await?)
+}
+
+pub async fn cmd_show(alias: &str, verify_online: bool) -> Result<()> {
     let resolver = get_resolver()?;
     let signed = resolver
         .resolve_alias(alias)
@@ -37,22 +49,28 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
     );
     println!("Updated at:     {}", signed.profile.updated_at);
 
-    // Per-method ownership trust, re-verified client-side (no network here, so
-    // domain-control proofs are reported as "needs fetch" rather than trusted).
-    let trusts: Vec<MethodTrust> = signed
-        .profile
-        .methods
-        .iter()
-        .map(|m| {
-            evaluate_method_trust(
-                m,
-                &signed.profile.identity_pubkey,
-                &signed.profile.method_verifications,
-                now,
-                None,
-            )
-        })
-        .collect();
+    // Per-method ownership trust, re-verified client-side. Domain-control proofs
+    // need their well-known URL fetched to confirm; with --verify-online we fetch
+    // it, otherwise they show as "claimed · domain control (re-verify on fetch)".
+    let mut trusts: Vec<MethodTrust> = Vec::with_capacity(signed.profile.methods.len());
+    for method in &signed.profile.methods {
+        let body: Option<String> = if verify_online {
+            let status = stored_status_for_method(&signed.profile.method_verifications, method);
+            match well_known_url_of(status) {
+                Some(url) => fetch_text(url).await.ok(),
+                None => None,
+            }
+        } else {
+            None
+        };
+        trusts.push(evaluate_method_trust(
+            method,
+            &signed.profile.identity_pubkey,
+            &signed.profile.method_verifications,
+            now,
+            body.as_deref(),
+        ));
+    }
 
     let verified = trusts.iter().filter(|t| t.is_verified()).count();
     let self_asserted = trusts.iter().filter(|t| t.is_self_asserted()).count();
@@ -119,31 +137,34 @@ fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
             if let Some(hint) = pubkey_hint {
                 println!("      Pubkey hint: {}", mask_pubkey(hint));
             }
-            PaymentMethod::Ark {
-                label,
-                server,
-                pubkey,
-                vtxo_pointer,
-                proof,
-                expires_at,
-            } => {
-                println!("  - {} [Ark]", label);
-                println!("      Server: {}", mask_address(server));
-                println!("      Pubkey: {}", mask_pubkey(pubkey));
-                if vtxo_pointer.is_some() {
-                    println!("      VTXO pointer: present");
+            if descriptor_hint.is_some() {
+                println!("      Descriptor hint: present");
+            }
+        }
+        PaymentMethod::Ark {
+            label,
+            server,
+            pubkey,
+            vtxo_pointer,
+            proof,
+            expires_at,
+        } => {
+            println!("  - {} [Ark]   {}", label, trust.badge());
+            println!("      Server: {}", mask_address(server));
+            println!("      Pubkey: {}", mask_pubkey(pubkey));
+            if vtxo_pointer.is_some() {
+                println!("      VTXO pointer: present");
+            }
+            println!(
+                "      Ark ownership proof: {}",
+                if proof.is_some() {
+                    "claimed"
+                } else {
+                    "not provided"
                 }
-                println!(
-                    "      Ownership proof: {}",
-                    if proof.is_some() {
-                        "claimed"
-                    } else {
-                        "not provided"
-                    }
-                );
-                if let Some(expires_at) = expires_at {
-                    println!("      Expires at: {}", expires_at);
-                }
+            );
+            if let Some(expires_at) = expires_at {
+                println!("      Expires at: {}", expires_at);
             }
         }
     }

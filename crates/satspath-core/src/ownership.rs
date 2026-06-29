@@ -370,6 +370,79 @@ pub fn upsert_method_verification(
     }
 }
 
+/// The canonical well-known URL that a Lightning method's domain should serve to
+/// prove control: `https://<domain>/.well-known/satspath/<user>`. Returns `None`
+/// for methods without a Lightning Address.
+pub fn well_known_url_for_method(method: &PaymentMethod) -> Option<String> {
+    match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(addr),
+            ..
+        } => {
+            let (user, domain) = addr.split_once('@')?;
+            Some(format!(
+                "https://{}/.well-known/satspath/{}",
+                domain.trim().to_ascii_lowercase(),
+                user.trim().to_ascii_lowercase()
+            ))
+        }
+        _ => None,
+    }
+}
+
+/// Build a verified domain-control attestation from content the caller fetched
+/// (or is serving) at `url`. The proof commits to `sha256(fetched_body)`; the
+/// served content must contain both `nonce` and the identity pubkey, binding the
+/// page to this identity.
+///
+/// The attestation is verified against `fetched_body` before being returned, so
+/// a wrong host, missing identity binding, or mismatched body is rejected up
+/// front. Note the proof itself stores only the URL, nonce, and body hash — never
+/// the body — so any resolver re-fetches and re-checks independently.
+#[allow(clippy::too_many_arguments)]
+pub fn attach_well_known_proof(
+    method: &PaymentMethod,
+    identity_pubkey: &str,
+    proof_type: ProofType,
+    url: &str,
+    nonce: &str,
+    fetched_body: &str,
+    verified_at: i64,
+    expires_at: Option<i64>,
+) -> Result<MethodVerification> {
+    if !matches!(
+        proof_type,
+        ProofType::DomainWellKnown | ProofType::LightningAddressChallenge
+    ) {
+        return Err(SatsPathError::OwnershipProofUnsupported(
+            "attach_well_known_proof only handles domain-control proof types".into(),
+        ));
+    }
+    let descriptor = method.ownership_descriptor();
+    let expected_body_hash = hex::encode(Sha256::digest(fetched_body.as_bytes()));
+    let verification = MethodVerification {
+        method_descriptor: descriptor,
+        status: VerificationStatus::Verified {
+            proof_type,
+            verified_at,
+            expires_at,
+            proof: OwnershipProof::WellKnownChallenge {
+                url: url.to_string(),
+                nonce: nonce.to_string(),
+                expected_body_hash,
+            },
+        },
+    };
+    verify_method_verification(
+        method,
+        identity_pubkey,
+        &verification,
+        verified_at,
+        Some(fetched_body),
+    )?;
+    Ok(verification)
+}
+
 // ─── Verification (client-side) ───────────────────────────────────────────────
 
 /// Re-verify a stored [`MethodVerification`] against its method and identity.
@@ -677,6 +750,20 @@ pub fn pubkey_controls_address(
     }
 
     Ok(false)
+}
+
+/// The well-known URL a domain-control proof commits to, if this status carries
+/// one. Lets an online verifier know what to fetch before re-checking.
+pub fn well_known_url_of(status: &VerificationStatus) -> Option<&str> {
+    if let VerificationStatus::Verified {
+        proof: OwnershipProof::WellKnownChallenge { url, .. },
+        ..
+    } = status
+    {
+        Some(url)
+    } else {
+        None
+    }
 }
 
 /// Resolve the stored verification (if any) for a given method within a profile,
@@ -1495,6 +1582,104 @@ mod tests {
             ProofType::ManualAttestation,
             &identity.pubkey_hex,
             "00",
+            NOW,
+            None,
+        );
+        assert!(matches!(
+            res,
+            Err(SatsPathError::OwnershipProofUnsupported(_))
+        ));
+    }
+
+    // ── Domain-control mint (FASE 4) ──────────────────────────────────────────
+
+    #[test]
+    fn well_known_url_derives_from_lightning_address() {
+        let method = ln_method("Alice@Example.com");
+        assert_eq!(
+            well_known_url_for_method(&method).as_deref(),
+            Some("https://example.com/.well-known/satspath/alice")
+        );
+        // Non-Lightning methods have no canonical well-known URL.
+        let onchain = onchain_method(&p2wpkh(&key(), Network::Bitcoin));
+        assert!(well_known_url_for_method(&onchain).is_none());
+    }
+
+    #[test]
+    fn attach_well_known_proof_verifies_domain_control() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let url = well_known_url_for_method(&method).unwrap();
+        let nonce = &identity.pubkey_hex;
+        let body = format!("satspath identity {} nonce {nonce}", identity.pubkey_hex);
+
+        let v = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::LightningAddressChallenge,
+            &url,
+            nonce,
+            &body,
+            NOW,
+            None,
+        )
+        .unwrap();
+
+        let tier = verify_method_verification(&method, &identity.pubkey_hex, &v, NOW, Some(&body))
+            .unwrap();
+        assert_eq!(tier, TrustTier::DomainControl);
+    }
+
+    #[test]
+    fn attach_well_known_proof_rejects_wrong_host() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let nonce = &identity.pubkey_hex;
+        let body = format!("identity={} nonce={nonce}", identity.pubkey_hex);
+        // URL host (attacker.com) does not match the LN address domain.
+        let res = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::LightningAddressChallenge,
+            "https://attacker.com/.well-known/satspath/alice",
+            nonce,
+            &body,
+            NOW,
+            None,
+        );
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn attach_well_known_proof_rejects_body_without_identity() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let url = well_known_url_for_method(&method).unwrap();
+        // Body has the nonce literal but not the identity pubkey.
+        let res = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::LightningAddressChallenge,
+            &url,
+            "some-nonce",
+            "some-nonce but no identity here",
+            NOW,
+            None,
+        );
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn attach_well_known_proof_rejects_signature_type() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let res = attach_well_known_proof(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::OnchainAddressSignature,
+            "https://example.com/x",
+            "n",
+            "body",
             NOW,
             None,
         );
