@@ -5,3 +5,4 @@ target/
 keys.json
 registry.local.json
 Cargo.lock
+node_modules/

@@ -1,0 +1,23 @@
+{
+  "name": "satspath-ark-bridge",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "JSON-RPC bridge: exposes ARK client-side validation SDK to satspath-swaps (Rust)",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node --loader ts-node/esm src/index.ts",
+    "build": "tsc",
+    "start:dist": "node dist/index.js"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
+    "@scure/base": "^1.2.6",
+    "@scure/btc-signer": "^1.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.9.3",
+    "ts-node": "^10.9.2"
+  }
+}

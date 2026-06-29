@@ -4,6 +4,7 @@ use std::fs;
 
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
+    display_hint,
     PaymentMethod, PaymentProfile,
 };
 
@@ -24,25 +25,20 @@ pub fn cmd_register(
     let kp = generate_identity_keypair();
     let pubkey_hex = hex::encode(kp.public_key.serialize());
     let secret_hex = hex::encode(kp.secret_key.secret_bytes());
-
     let domain = alias.splitn(2, '@').nth(1).unwrap_or("example.com");
 
-    // Resolve what Lightning data to use
     let effective_ln = ln_address.unwrap_or(alias);
-    let mut methods: Vec<PaymentMethod> = vec![
-        PaymentMethod::Lightning {
-            label: if ln_address.is_some() {
-                format!("Lightning Address ({})", effective_ln)
-            } else {
-                "Lightning Address".into()
-            },
-            lnurl: None,
-            lightning_address: Some(effective_ln.to_string()),
-            bolt12: None,
+    let mut methods: Vec<PaymentMethod> = vec![PaymentMethod::Lightning {
+        label: if ln_address.is_some() {
+            format!("Lightning Address ({})", effective_ln)
+        } else {
+            "Lightning Address".into()
         },
-    ];
+        lnurl: None,
+        lightning_address: Some(effective_ln.to_string()),
+        bolt12: None,
+    }];
 
-    // On-chain: use provided real address or generate placeholder
     if let Some(addr) = onchain_address {
         methods.push(PaymentMethod::Onchain {
             label: "Bitcoin (primary)".into(),
@@ -77,24 +73,23 @@ pub fn cmd_register(
 
     let signed = sign_profile(profile, &kp.secret_key)?;
     let fp = fingerprint_pubkey(&pubkey_hex)?;
-
     registry.register_profile(signed)?;
 
     let keys_path = satspath_dir().join("keys.json");
     let mut keys: Value = if keys_path.exists() {
         serde_json::from_str(&fs::read_to_string(&keys_path)?)?
     } else {
-        json!({ "warning": "DEMO keys only.", "keys": {} })
+        json!({ "warning": "DEMO keys only. Never use with real funds.", "keys": {} })
     };
     keys["keys"][alias] = json!({
         "pubkey": pubkey_hex,
         "secret_key_hex": secret_hex,
-        "warning": "DEMO USE ONLY. Never use with real funds.",
+        "warning": "DEMO USE ONLY.",
     });
     fs::write(&keys_path, serde_json::to_string_pretty(&keys)?)?;
 
-    println!("Registered: {}", alias);
-    println!("Identity pubkey: {}", pubkey_hex);
+    println!("Registered: {} ({})", alias, display_hint(alias));
+    println!("Identity pubkey: {}...", &pubkey_hex[..16]);
     println!("Fingerprint:     {}", fp);
     if let Some(la) = ln_address {
         println!("Lightning wired: {} → {}", alias, la);

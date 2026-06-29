@@ -5,15 +5,17 @@ use satspath_core::{
     PaymentMethod,
 };
 
-use super::open_registry;
+use super::get_resolver;
+use satspath_core::resolver::ProfileResolver;
 
-pub fn cmd_show(alias: &str) -> Result<()> {
-    let registry = open_registry()?;
-    let signed = registry
+pub async fn cmd_show(alias: &str) -> Result<()> {
+    let resolver = get_resolver()?;
+    let signed = resolver
         .resolve_alias(alias)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let valid = verify_signed_profile(signed)?;
+    let valid = verify_signed_profile(&signed)?;
     let fp = fingerprint_pubkey(&signed.profile.identity_pubkey)?;
 
     println!("Alias:          {}", signed.profile.alias);

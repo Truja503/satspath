@@ -1,8 +1,16 @@
 pub mod codec;
 pub mod crypto;
 pub mod errors;
+pub mod peer_registry;
 pub mod profile;
 pub mod registry;
+pub mod resolver;
+pub mod resolvers;
+
+pub use peer_registry::{
+    canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,
+    PeerPointers, PeerRecord, PeerRegistryBackend,
+};
 
 pub use errors::{Result, SatsPathError};
 pub use profile::{Invite, PaymentMethod, PaymentProfile, PaymentRequest, SignedPaymentProfile};

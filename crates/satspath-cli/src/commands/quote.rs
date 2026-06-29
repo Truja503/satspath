@@ -5,19 +5,21 @@ use satspath_router::{
     fetch_invoice, fetch_lnurl_metadata, lightning::lightning_address, select_route, RouteRequest,
 };
 
-use super::{open_registry, qr::{bitcoin_uri, print_qr}};
+use super::{get_resolver, qr::{bitcoin_uri, print_qr}};
+use satspath_core::resolver::ProfileResolver;
 
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
-    let registry = open_registry()?;
+    let resolver = get_resolver()?;
 
-    print!("Resolving '{}'... ", alias);
-    let signed = registry
+    println!("Resolving alias '{}'...", alias);
+    let signed = resolver
         .resolve_alias(alias)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("found.");
 
     print!("Verifying signature... ");
-    if !verify_signed_profile(signed)? {
+    if !verify_signed_profile(&signed)? {
         anyhow::bail!("Signature INVALID. Profile may be tampered.");
     }
     println!("valid.");
@@ -28,12 +30,10 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         amount_sats,
         signed_profile: signed.clone(),
     };
-    let quote = select_route(&req)
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let quote = select_route(&req).await.map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("done.");
 
-    // ── Fee table (when we have a snapshot) ────────────────────────────────
+    // ── Live fee table ──────────────────────────────────────────────────────
     if let Some(snap) = &quote.fee_snapshot {
         println!();
         println!("  Mempool fees (sat/vB)");
@@ -56,25 +56,22 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     println!("  └─────────────────────────────────────────┘");
     println!("  Reason: {}", quote.reason);
 
-    // ── QR for the selected method ──────────────────────────────────────────
+    // ── QR for selected method ──────────────────────────────────────────────
     println!();
     match &quote.selected_method {
         PaymentMethod::Lightning { .. } => {
             let ln_addr = lightning_address(&quote.selected_method)
                 .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;
 
-            print!("  Fetching real invoice from {}... ", ln_addr);
+            print!("  Fetching invoice from {}... ", ln_addr);
             let meta = fetch_lnurl_metadata(ln_addr).await?;
             let invoice = fetch_invoice(&meta, amount_sats, None).await?;
             println!("received.");
-
             println!();
-            println!("  Scan to pay — Lightning invoice ({} sats)", amount_sats);
+            println!("  Scan to pay — Lightning ({} sats)", amount_sats);
             println!("  ─────────────────────────────────────────");
-            // BOLT11 uppercase = alphanumeric QR mode → smaller, easier to scan
             print_qr(&invoice.to_uppercase())?;
-            println!("  {}", &invoice[..40]);
-            println!("  ...{}", &invoice[invoice.len().saturating_sub(20)..]);
+            println!("  {}...", &invoice[..40.min(invoice.len())]);
         }
 
         PaymentMethod::Onchain { address, .. } => {
@@ -87,8 +84,8 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
 
         PaymentMethod::Ark { pubkey, server, .. } => {
             println!("  Ark payment via {}", server);
-            println!("  Pubkey: {}", pubkey);
-            println!("  (Ark QR coming once real Ark client is integrated)");
+            println!("  Pubkey: {}...", &pubkey[..16.min(pubkey.len())]);
+            println!("  ⚠  [EXPERIMENTAL] Use --experimental-swaps --testnet to attempt execution.");
         }
     }
 

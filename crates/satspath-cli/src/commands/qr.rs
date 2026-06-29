@@ -2,7 +2,6 @@ use anyhow::Result;
 use qrcode::render::unicode;
 use qrcode::QrCode;
 
-/// Print a QR code to stdout from any string payload.
 pub fn print_qr(data: &str) -> Result<()> {
     let code = QrCode::new(data.as_bytes())
         .map_err(|e| anyhow::anyhow!("QR encode error: {}", e))?;
@@ -16,8 +15,7 @@ pub fn print_qr(data: &str) -> Result<()> {
     Ok(())
 }
 
-/// Build a BIP-21 Bitcoin URI with amount.
-/// `bitcoin:bc1q...?amount=0.00021000`
+/// BIP-21 Bitcoin URI: `bitcoin:<address>?amount=<btc>`
 pub fn bitcoin_uri(address: &str, amount_sats: u64) -> String {
     let btc = amount_sats as f64 / 100_000_000.0;
     format!("bitcoin:{}?amount={:.8}", address, btc)

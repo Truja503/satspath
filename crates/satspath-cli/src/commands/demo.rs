@@ -20,7 +20,7 @@ pub async fn cmd_demo() -> Result<()> {
     println!();
 
     step(3, "Show signed profile");
-    cmd_show("rodrigo@satspath.dev")?;
+    cmd_show("rodrigo@satspath.dev").await?;
     println!();
 
     step(4, "Encode universal payment request (21,000 sats, memo: coffee)");
@@ -41,7 +41,8 @@ pub async fn cmd_demo() -> Result<()> {
     println!();
 
     step(7, "Simulate payment of 21,000 sats");
-    cmd_pay("rodrigo@satspath.dev", 21_000, None).await?;
+
+  cmd_pay("rodrigo@satspath.dev", 21_000, None, false, false).await?;
     println!();
 
     step(8, "Try paying an unknown user (julian@example.com)");
