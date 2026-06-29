@@ -74,6 +74,7 @@ pub fn cmd_register(
         methods: methods.clone(),
         updated_at: chrono::Utc::now().timestamp(),
         expires_at: None,
+        method_verifications: Vec::new(),
     };
 
     let signed = sign_profile(profile, &kp.secret_key)?;

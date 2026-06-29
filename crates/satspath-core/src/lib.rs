@@ -1,6 +1,7 @@
 pub mod codec;
 pub mod crypto;
 pub mod errors;
+pub mod ownership;
 pub mod peer_registry;
 pub mod platform;
 pub mod pointer;
@@ -12,6 +13,12 @@ pub mod resolvers;
 pub mod validation;
 
 pub use errors::{Result, SatsPathError};
+pub use ownership::{
+    build_manual_attestation, build_signature_attestation, ownership_challenge_message,
+    pubkey_controls_address, stored_status_for_method, validate_method_verification,
+    validate_ownership_proof, verify_method_verification, MethodVerification, OwnershipProof,
+    ProofType, TrustTier, VerificationStatus,
+};
 pub use peer_registry::{
     canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,
     PeerPointers, PeerRecord, PeerRegistryBackend,

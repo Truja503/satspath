@@ -23,6 +23,15 @@ pub enum SatsPathError {
     #[error("private material rejected: {0}")]
     PrivateMaterialRejected(String),
 
+    #[error("ownership proof invalid: {0}")]
+    OwnershipProofInvalid(String),
+
+    #[error("ownership proof expired")]
+    OwnershipProofExpired,
+
+    #[error("ownership proof unsupported: {0}")]
+    OwnershipProofUnsupported(String),
+
     #[error("no payment methods available")]
     NoPaymentMethods,
 
