@@ -142,7 +142,7 @@ impl ArkBridge {
             stdout.read_line(&mut line).map_err(SwapError::Io)?;
         }
 
-        let resp: RpcResponse<R> = serde_json::from_str(&line).map_err(|e| SwapError::Json(e))?;
+        let resp: RpcResponse<R> = serde_json::from_str(&line).map_err(SwapError::Json)?;
 
         if let Some(err) = resp.error {
             return Err(SwapError::Key(format!(

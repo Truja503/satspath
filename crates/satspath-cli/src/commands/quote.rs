@@ -15,7 +15,6 @@ use super::{
     qr::{bitcoin_uri, print_qr},
 };
 
-
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     let resolver = get_resolver()?;
 

@@ -31,7 +31,6 @@ pub fn cmd_register(
     let kp = generate_identity_keypair();
     let pubkey_hex = hex::encode(kp.public_key.serialize());
 
-
     let lightning_address = lightning_address.unwrap_or(&alias);
     validate_lightning_address(lightning_address).map_err(|e| anyhow::anyhow!("{}", e))?;
 

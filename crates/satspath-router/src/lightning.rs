@@ -296,41 +296,44 @@ pub fn verify_invoice_amount(invoice: &str, expected_sats: u64) -> anyhow::Resul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lightning_invoice::{InvoiceBuilder, Currency, PaymentSecret};
-    use satspath_core::crypto::generate_identity_keypair;
-    use std::time::{SystemTime, Duration};
-    use secp256k1::Secp256k1;
     use bitcoin::hashes::{sha256, Hash};
+    use lightning_invoice::{Currency, InvoiceBuilder, PaymentSecret};
+    use satspath_core::crypto::generate_identity_keypair;
+    use secp256k1::Secp256k1;
+    use std::time::{Duration, SystemTime};
 
     fn make_test_invoice(amount_msats: Option<u64>, expired: bool) -> String {
         let kp = generate_identity_keypair();
         let payment_hash = sha256::Hash::hash(&[2; 32]);
         let payment_secret = PaymentSecret([3; 32]);
-        
+
         let builder = InvoiceBuilder::new(Currency::Bitcoin)
             .description("test".into())
             .payment_hash(payment_hash)
             .payment_secret(payment_secret)
             .min_final_cltv_expiry_delta(144);
-            
+
         let builder = if let Some(amt) = amount_msats {
             builder.amount_milli_satoshis(amt)
         } else {
             builder
         };
-        
+
         let builder_with_time = if expired {
             let past = SystemTime::now() - Duration::from_secs(3600);
             builder.timestamp(past).expiry_time(Duration::from_secs(1))
         } else {
             builder.current_timestamp()
         };
-        
-        builder_with_time.build_signed(|hash| {
-            let secp = Secp256k1::new();
-            let msg = secp256k1::Message::from_digest_slice(hash.as_ref()).unwrap();
-            secp.sign_ecdsa_recoverable(&msg, &kp.secret_key)
-        }).unwrap().to_string()
+
+        builder_with_time
+            .build_signed(|hash| {
+                let secp = Secp256k1::new();
+                let msg = secp256k1::Message::from_digest_slice(hash.as_ref()).unwrap();
+                secp.sign_ecdsa_recoverable(&msg, &kp.secret_key)
+            })
+            .unwrap()
+            .to_string()
     }
 
     #[test]

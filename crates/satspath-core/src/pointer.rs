@@ -76,7 +76,7 @@ pub fn build_qr_payload(pointer: &PaymentPointer, amount_sats: u64) -> Result<St
             url.to_string()
         }
         PaymentPointer::Bolt11Invoice {
-            invoice,
+            invoice: _,
             amount_sats: Some(invoice_amount),
         } if *invoice_amount != amount_sats => {
             return Err(SatsPathError::InvalidPaymentPointer(format!(
