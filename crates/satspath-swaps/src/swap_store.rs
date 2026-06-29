@@ -37,11 +37,16 @@ impl SwapStore {
     /// The key should be derived via PBKDF2 (same scheme as ARK SDK's StorageCrypto).
     pub fn open_encrypted(key: [u8; 32]) -> Result<Self> {
         let path = satspath_dir()?.join("swaps.enc");
-        Ok(Self {
+        Ok(Self::open_encrypted_at(path, key))
+    }
+
+    /// Open an encrypted store at a custom path (for tests / dev).
+    pub fn open_encrypted_at(path: PathBuf, key: [u8; 32]) -> Self {
+        Self {
             path,
             encryption_key: Some(key),
             allow_plaintext: false,
-        })
+        }
     }
 
     /// Open a plaintext store at a custom path (for tests / dev).
@@ -52,6 +57,11 @@ impl SwapStore {
             encryption_key: None,
             allow_plaintext: true,
         }
+    }
+
+    /// Open a plaintext store at a custom path (for tests / dev).
+    pub fn open_plaintext_for_tests(path: PathBuf) -> Self {
+        Self::open_plaintext(path)
     }
 
     // ── Read ─────────────────────────────────────────────────────────────────

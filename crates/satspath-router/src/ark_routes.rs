@@ -132,6 +132,7 @@ mod tests {
                 methods,
                 updated_at: 1,
                 expires_at: None,
+                method_verifications: Vec::new(),
             },
             signature: "sig".into(),
         }

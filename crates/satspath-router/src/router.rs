@@ -427,5 +427,4 @@ mod tests {
             SatsPathError::NoRouteFound(_)
         ));
     }
-
 }
