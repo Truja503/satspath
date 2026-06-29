@@ -397,29 +397,32 @@ mod tests {
         let req = RouteRequest {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
-            signed_profile: signed.clone(),
+            signed_profile: signed,
         };
 
-        // Exactly at threshold — should choose on-chain
-        let at_threshold = FeeEstimate {
+        let at = FeeEstimate {
             fastest_fee: 20,
             half_hour_fee: 15,
             hour_fee: 10,
             economy_fee: 5,
             minimum_fee: 1,
         };
-        let q = select_route_with_fees(&req, &at_threshold).unwrap();
-        assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
+        assert!(matches!(
+            select_route_with_fees(&req, &at).unwrap().selected_method,
+            PaymentMethod::Onchain { .. }
+        ));
 
-        // One above — no on-chain method and no Ark → error
-        let above_threshold = FeeEstimate {
+        let above = FeeEstimate {
             fastest_fee: 21,
             half_hour_fee: 16,
             hour_fee: 11,
             economy_fee: 6,
             minimum_fee: 2,
         };
-        let err = select_route_with_fees(&req, &above_threshold).unwrap_err();
-        assert!(matches!(err, SatsPathError::NoRouteFound(_)));
+        assert!(matches!(
+            select_route_with_fees(&req, &above).unwrap_err(),
+            SatsPathError::NoRouteFound(_)
+        ));
     }
+
 }
