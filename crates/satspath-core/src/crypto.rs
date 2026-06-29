@@ -86,11 +86,13 @@ mod tests {
             identity_pubkey: pubkey_hex.into(),
             methods: vec![PaymentMethod::Lightning {
                 label: "Lightning".into(),
-                lnurl: None,
                 lightning_address: Some("test@example.com".into()),
+                lnurl: None,
                 bolt12: None,
+                receiver_pubkey: None,
             }],
             updated_at: 1_700_000_000,
+            expires_at: None,
         }
     }
 

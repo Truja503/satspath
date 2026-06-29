@@ -2,6 +2,7 @@ pub mod codec;
 pub mod crypto;
 pub mod errors;
 pub mod peer_registry;
+pub mod platform;
 pub mod pointer;
 pub mod privacy;
 pub mod profile;
@@ -15,8 +16,14 @@ pub use peer_registry::{
     canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,
     PeerPointers, PeerRecord, PeerRegistryBackend,
 };
+pub use platform::{
+    EmailChallenge, EmailVerifier, ProfilePublisher, PublishReceipt, VerifiedIdentifier,
+};
 pub use pointer::{BitcoinNetwork, PaymentPointer};
-pub use profile::{Invite, PaymentMethod, PaymentProfile, PaymentRequest, SignedPaymentProfile};
+pub use profile::{
+    ClaimPolicy, Invite, InviteRecord, InviteStatus, PaymentMethod, PaymentProfile, PaymentRequest,
+    SignedPaymentProfile,
+};
 
 use sha2::{Digest, Sha256};
 
@@ -42,5 +49,47 @@ pub fn create_invite(alias: &str, amount_sats: u64) -> Invite {
         warning: "The receiver must claim this payment by generating their own keys locally. \
                   SatsPath never holds or generates keys on behalf of users."
             .into(),
+    }
+}
+
+pub fn create_invite_record(
+    identifier: &str,
+    amount_sats: u64,
+    memo: Option<String>,
+    sender_fingerprint: String,
+    ttl_seconds: i64,
+) -> InviteRecord {
+    let now = chrono::Utc::now().timestamp();
+    InviteRecord {
+        invite_id: uuid::Uuid::new_v4().to_string(),
+        identifier_hash: privacy::identifier_hash(identifier),
+        display_hint: privacy::mask_identifier(identifier),
+        amount_sats,
+        memo,
+        sender_fingerprint,
+        status: InviteStatus::Created,
+        created_at: now,
+        expires_at: now + ttl_seconds,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_user_invite_record_contains_no_private_material() {
+        let invite = create_invite_record(
+            "someone@gmail.com",
+            1_000,
+            Some("coffee".into()),
+            "sender-fp".into(),
+            600,
+        );
+        assert_eq!(invite.status, InviteStatus::Created);
+        assert_eq!(invite.display_hint, "s***@gmail.com");
+        assert!(!format!("{invite:?}").contains("seed"));
+        assert!(!format!("{invite:?}").contains("xprv"));
+        assert!(invite.expires_at > invite.created_at);
     }
 }

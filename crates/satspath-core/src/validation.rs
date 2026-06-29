@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use crate::errors::{Result, SatsPathError};
 use crate::pointer::BitcoinNetwork;
+use crate::profile::{ClaimPolicy, PaymentMethod, PaymentProfile};
 
 pub const LARGE_PREVIEW_AMOUNT_SATS: u64 = 100_000_000;
 pub const MAX_PREVIEW_AMOUNT_SATS: u64 = 21_000_000 * 100_000_000;
@@ -107,6 +108,115 @@ pub fn assert_no_private_material(payload: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn validate_claim_policy(policy: &ClaimPolicy) -> Result<()> {
+    match policy {
+        ClaimPolicy::SingleSig { receiver_pubkey } => validate_compressed_pubkey(receiver_pubkey),
+        ClaimPolicy::Multisig {
+            threshold,
+            pubkeys,
+            descriptor,
+        } => {
+            if *threshold == 0 || usize::from(*threshold) > pubkeys.len() {
+                return Err(SatsPathError::InvalidPaymentPointer(
+                    "invalid multisig threshold".into(),
+                ));
+            }
+            for pubkey in pubkeys {
+                validate_compressed_pubkey(pubkey)?;
+            }
+            if let Some(descriptor) = descriptor {
+                assert_no_private_material(descriptor)?;
+            }
+            Ok(())
+        }
+        ClaimPolicy::FutureTaproot {
+            internal_key,
+            script_policy_hint,
+        } => {
+            validate_compressed_pubkey(internal_key)?;
+            if let Some(hint) = script_policy_hint {
+                assert_no_private_material(hint)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
+    assert_no_private_material(&profile.alias)?;
+    validate_compressed_pubkey(&profile.identity_pubkey)?;
+    if let Some(expires_at) = profile.expires_at {
+        if expires_at <= profile.updated_at {
+            return Err(SatsPathError::InvalidPaymentPointer(
+                "profile expires before it is updated".into(),
+            ));
+        }
+    }
+
+    for method in &profile.methods {
+        match method {
+            PaymentMethod::Lightning {
+                lightning_address,
+                lnurl,
+                bolt12,
+                receiver_pubkey,
+                ..
+            } => {
+                if let Some(address) = lightning_address {
+                    validate_lightning_address(address)?;
+                }
+                if let Some(url) = lnurl {
+                    let parsed = url::Url::parse(url)
+                        .map_err(|e| SatsPathError::InvalidPaymentPointer(e.to_string()))?;
+                    if !matches!(parsed.scheme(), "https" | "http") {
+                        return Err(SatsPathError::InvalidPaymentPointer(
+                            "LNURL must be http(s)".into(),
+                        ));
+                    }
+                }
+                if let Some(invoice) = bolt12 {
+                    assert_no_private_material(invoice)?;
+                }
+                if let Some(pubkey) = receiver_pubkey {
+                    validate_compressed_pubkey(pubkey)?;
+                }
+            }
+            PaymentMethod::Onchain {
+                network,
+                address,
+                pubkey_hint,
+                descriptor_hint,
+                ..
+            } => {
+                validate_bitcoin_address(address, *network)?;
+                if let Some(pubkey) = pubkey_hint {
+                    validate_compressed_pubkey(pubkey)?;
+                }
+                if let Some(descriptor) = descriptor_hint {
+                    assert_no_private_material(descriptor)?;
+                }
+            }
+            PaymentMethod::Ark {
+                server,
+                pubkey,
+                vtxo_pointer,
+                ..
+            } => {
+                if server.trim().is_empty() {
+                    return Err(SatsPathError::InvalidPaymentPointer(
+                        "Ark server is required".into(),
+                    ));
+                }
+                validate_compressed_pubkey(pubkey)?;
+                if let Some(vtxo) = vtxo_pointer {
+                    assert_no_private_material(vtxo)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,5 +255,33 @@ mod tests {
     fn lightning_address_parsed() {
         assert!(validate_lightning_address("rodrigo@example.com").is_ok());
         assert!(validate_lightning_address("not-an-address").is_err());
+    }
+
+    #[test]
+    fn profile_rejects_private_material() {
+        let profile = PaymentProfile {
+            alias: "alice@example.com".into(),
+            identity_pubkey: VALID_PUBKEY.into(),
+            methods: vec![PaymentMethod::Lightning {
+                label: "LN".into(),
+                lightning_address: Some("alice@example.com".into()),
+                lnurl: None,
+                bolt12: Some("secret xprv payload".into()),
+                receiver_pubkey: None,
+            }],
+            updated_at: 1,
+            expires_at: Some(2),
+        };
+        assert!(validate_public_profile(&profile).is_err());
+    }
+
+    #[test]
+    fn multisig_claim_policy_validates_pubkeys() {
+        let policy = ClaimPolicy::Multisig {
+            threshold: 2,
+            pubkeys: vec![VALID_PUBKEY.into(), VALID_PUBKEY.into()],
+            descriptor: Some("wsh(sortedmulti(2,...))".into()),
+        };
+        assert!(validate_claim_policy(&policy).is_ok());
     }
 }
