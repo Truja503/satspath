@@ -15,22 +15,33 @@ use satspath_swaps::{
     ark_bridge::ArkBridge,
 };
 
-use super::open_registry;
+use super::get_resolver;
 
-pub async fn cmd_pay(alias: &str, amount_sats: u64) -> Result<()> {
+pub async fn cmd_pay(
+    alias: &str,
+    amount_sats: u64,
+    experimental_swaps: bool,
+    testnet: bool,
+) -> Result<()> {
     println!("─────────────────────────────────────────");
-    println!("SatsPath Payment Engine");
+    if experimental_swaps && testnet {
+        println!("SatsPath Payment Engine (Experimental Testnet)");
+    } else {
+        println!("SatsPath Payment Simulation");
+    }
     println!("─────────────────────────────────────────");
 
     println!("Resolving alias '{}'...", alias);
-    let registry = open_registry()?;
-    let signed = registry
+    let resolver = get_resolver()?;
+    use satspath_core::resolver::ProfileResolver;
+    let signed = resolver
         .resolve_alias(alias)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
     println!("  Found profile.");
 
     println!("Verifying signed profile...");
-    if !verify_signed_profile(signed)? {
+    if !verify_signed_profile(&signed)? {
         anyhow::bail!("Profile signature FAILED. Aborting payment.");
     }
     println!("  Signature valid.");
@@ -55,11 +66,46 @@ pub async fn cmd_pay(alias: &str, amount_sats: u64) -> Result<()> {
     }
 
     println!();
+
+    if !experimental_swaps || !testnet {
+        println!("Executing simulated payment of {} sats to {}...", amount_sats, alias);
+        // Simulate payment based on selected rail
+        match &quote.selected_method {
+            PaymentMethod::Lightning { lightning_address, .. } => {
+                println!(
+                    "  [Lightning] Generating invoice from {}...",
+                    lightning_address.as_deref().unwrap_or("LNURL")
+                );
+                println!("  [Lightning] Invoice received.");
+                println!("  [Lightning] Sending payment...");
+            }
+            PaymentMethod::Onchain { address, .. } => {
+                println!("  [On-chain] Building transaction to {}...", address);
+                println!("  [On-chain] Transaction signed (simulated).");
+                println!("  [On-chain] Broadcast (simulated).");
+            }
+            PaymentMethod::Ark { server, pubkey, .. } => {
+                println!("  [Ark] Connecting to Ark server {}...", server);
+                println!("  [Ark] Creating virtual UTXO for pubkey {}...", &pubkey[..16]);
+                println!("  [Ark] Payment registered in Ark round (simulated).");
+            }
+        }
+
+        println!();
+        println!("Payment status: simulated_success");
+        println!();
+        println!("DISCLAIMER: This is a simulation. To execute a real testnet swap, run with --experimental-swaps --testnet.");
+        return Ok(());
+    }
+
     println!("Initializing Swap Engine (Testnet)...");
     
     // Initialize swaps
     let client = BoltzClient::testnet();
-    let store = SwapStore::open().unwrap_or_else(|_| SwapStore::open_plaintext(std::env::current_dir().unwrap().join(".satspath/swaps.json")));
+    // Initialize swaps with a dev key for testnet (In production, derive from user password)
+    let dev_key = [0x42u8; 32];
+    let store = SwapStore::open_with_key(dev_key)
+        .map_err(|e| anyhow::anyhow!("Failed to open encrypted SwapStore: {}", e))?;
     
     // Attempt to spawn ARK bridge (will fail gracefully if not built yet)
     let manager = if let Ok(bridge) = ArkBridge::spawn(std::path::PathBuf::from("../../ark-bridge")) {
@@ -76,7 +122,28 @@ pub async fn cmd_pay(alias: &str, amount_sats: u64) -> Result<()> {
     match &quote.swap_directive {
         SwapDirective::SubmarineSwap { target_invoice } => {
             println!("  [Submarine Swap] Ark/L1 → Lightning");
-            let invoice = target_invoice.clone().unwrap_or_else(|| "lnbc100...".to_string());
+            let invoice = match target_invoice {
+                Some(inv) => inv.clone(),
+                None => {
+                    if let satspath_core::PaymentMethod::Lightning { lightning_address: Some(addr), .. } = &quote.selected_method {
+                        println!("  [LNURL] Fetching metadata for {}...", addr);
+                        let meta = satspath_router::lnurl::fetch_lnurl_metadata(addr).await
+                            .map_err(|e| anyhow::anyhow!("LNURL Metadata fetch failed: {}", e))?;
+                        
+                        let msats = amount_sats * 1000;
+                        if msats < meta.min_sendable || msats > meta.max_sendable {
+                            anyhow::bail!("Amount {} msats is out of bounds for LNURL. Min: {}, Max: {}", msats, meta.min_sendable, meta.max_sendable);
+                        }
+                        
+                        println!("  [LNURL] Requesting invoice...");
+                        let inv = satspath_router::lnurl::fetch_lnurl_invoice(&meta.callback, msats).await
+                            .map_err(|e| anyhow::anyhow!("LNURL Invoice fetch failed: {}", e))?;
+                        inv
+                    } else {
+                        anyhow::bail!("No target invoice provided and no Lightning Address found to fetch one.");
+                    }
+                }
+            };
             
             println!("  Requesting Submarine Swap from Boltz...");
             let created = manager.create_submarine(SubmarineParams {

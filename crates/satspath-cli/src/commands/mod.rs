@@ -33,3 +33,20 @@ pub(crate) fn open_registry() -> Result<Registry> {
     }
     Ok(Registry::open(&dir)?)
 }
+
+use satspath_core::resolver::ChainResolver;
+use satspath_core::resolvers::http::HttpResolver;
+
+pub(crate) fn get_resolver() -> Result<ChainResolver> {
+    let mut chain = ChainResolver::new();
+    
+    // Add local registry first
+    if let Ok(reg) = open_registry() {
+        chain = chain.push(reg);
+    }
+    
+    // Add public HTTP resolver fallback
+    chain = chain.push(HttpResolver::new());
+    
+    Ok(chain)
+}

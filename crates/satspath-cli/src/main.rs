@@ -48,10 +48,16 @@ enum Command {
         amount_sats: u64,
     },
 
-    /// Simulate a payment to an alias
+    /// Simulate or execute a payment to an alias
     Pay {
         alias: String,
         amount_sats: u64,
+        
+        #[arg(long, help = "Enable experimental swap engine for execution")]
+        experimental_swaps: bool,
+        
+        #[arg(long, help = "Acknowledge running on testnet (required with --experimental-swaps)")]
+        testnet: bool,
     },
 
     /// Generate an invite for an unregistered alias
@@ -71,7 +77,7 @@ async fn main() -> Result<()> {
     match cli.command {
         Command::Init => commands::cmd_init()?,
         Command::Register { alias } => commands::cmd_register(&alias)?,
-        Command::Show { alias } => commands::cmd_show(&alias)?,
+        Command::Show { alias } => commands::cmd_show(&alias).await?,
         Command::Encode { alias, amount_sats, memo } => {
             commands::cmd_encode(&alias, amount_sats, memo.as_deref())?
         }
@@ -79,8 +85,8 @@ async fn main() -> Result<()> {
         Command::Quote { alias, amount_sats } => {
             commands::cmd_quote(&alias, amount_sats).await?
         }
-        Command::Pay { alias, amount_sats } => {
-            commands::cmd_pay(&alias, amount_sats).await?
+        Command::Pay { alias, amount_sats, experimental_swaps, testnet } => {
+            commands::cmd_pay(&alias, amount_sats, experimental_swaps, testnet).await?
         }
         Command::Invite { alias, amount_sats } => {
             commands::cmd_invite(&alias, amount_sats)?

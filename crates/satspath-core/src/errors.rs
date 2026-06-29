@@ -32,6 +32,12 @@ pub enum SatsPathError {
     #[error("crypto error: {0}")]
     CryptoError(String),
 
+    #[error("network error: {0}")]
+    NetworkError(String),
+
+    #[error("invalid route: {0}")]
+    InvalidRoute(String),
+
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
 

@@ -171,7 +171,7 @@ pub struct ChainSwapLeg {
 
 // --- Chain Swap Quote (renegotiation) ---
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChainSwapQuoteResponse {
     pub amount: u64,

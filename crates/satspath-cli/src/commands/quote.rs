@@ -3,18 +3,20 @@ use anyhow::Result;
 use satspath_core::crypto::verify_signed_profile;
 use satspath_router::{select_route, RouteRequest};
 
-use super::open_registry;
+use super::get_resolver;
+use satspath_core::resolver::ProfileResolver;
 
 pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
-    let registry = open_registry()?;
+    let resolver = get_resolver()?;
 
     println!("Resolving alias '{}'...", alias);
-    let signed = registry
+    let signed = resolver
         .resolve_alias(alias)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     println!("Verifying signature...");
-    if !verify_signed_profile(signed)? {
+    if !verify_signed_profile(&signed)? {
         anyhow::bail!("Signature verification FAILED. Profile may be tampered.");
     }
     println!("Signature valid.");

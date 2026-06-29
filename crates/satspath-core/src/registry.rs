@@ -82,6 +82,17 @@ impl Registry {
     }
 }
 
+use async_trait::async_trait;
+use crate::resolver::ProfileResolver;
+
+#[async_trait]
+impl ProfileResolver for Registry {
+    async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
+        // We clone to return an owned value, as ProfileResolver returns owned data
+        self.resolve_alias(alias).cloned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
