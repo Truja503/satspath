@@ -22,6 +22,12 @@ enum Command {
     /// Register an alias and create a signed payment profile
     Register {
         alias: String,
+        /// Real Lightning Address to wire up (e.g. trujasx@blink.sv)
+        #[arg(long)]
+        ln_address: Option<String>,
+        /// Real on-chain Bitcoin address
+        #[arg(long)]
+        onchain: Option<String>,
     },
 
     /// Show a registered profile
@@ -42,16 +48,18 @@ enum Command {
         uri: String,
     },
 
-    /// Get a route quote for an alias and amount
+    /// Get a route quote for an alias and amount (fetches live mempool fees)
     Quote {
         alias: String,
         amount_sats: u64,
     },
 
-    /// Simulate a payment to an alias
+    /// Resolve alias, select best rail, fetch real invoice, and display QR
     Pay {
         alias: String,
         amount_sats: u64,
+        #[arg(long)]
+        memo: Option<String>,
     },
 
     /// Generate an invite for an unregistered alias
@@ -70,7 +78,9 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Command::Init => commands::cmd_init()?,
-        Command::Register { alias } => commands::cmd_register(&alias)?,
+        Command::Register { alias, ln_address, onchain } => {
+            commands::cmd_register(&alias, ln_address.as_deref(), onchain.as_deref())?
+        }
         Command::Show { alias } => commands::cmd_show(&alias)?,
         Command::Encode { alias, amount_sats, memo } => {
             commands::cmd_encode(&alias, amount_sats, memo.as_deref())?
@@ -79,8 +89,8 @@ async fn main() -> Result<()> {
         Command::Quote { alias, amount_sats } => {
             commands::cmd_quote(&alias, amount_sats).await?
         }
-        Command::Pay { alias, amount_sats } => {
-            commands::cmd_pay(&alias, amount_sats).await?
+        Command::Pay { alias, amount_sats, memo } => {
+            commands::cmd_pay(&alias, amount_sats, memo.as_deref()).await?
         }
         Command::Invite { alias, amount_sats } => {
             commands::cmd_invite(&alias, amount_sats)?
