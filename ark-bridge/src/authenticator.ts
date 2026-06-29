@@ -1,16 +1,39 @@
+import crypto from "node:crypto";
+
 /**
- * MockWalletAuthenticator — provides PBKDF2 key derivation for the bridge.
- * The bridge needs deriveMasterKey to initialize the storage master key.
+ * Mock Authenticator for the Arkade SDK.
+ * Implements PBKDF2 as requested for robust wallet key derivation.
  */
-
-import { pbkdf2Sync } from "node:crypto";
-
 export class MockWalletAuthenticator {
+  private static readonly ITERATIONS = 100000;
+  private static readonly KEY_LENGTH = 32; // 256 bits for AES-256
+  private static readonly DIGEST = "sha256";
+
   /**
-   * Derive a 32-byte AES-256 master key from a password and salt via PBKDF2-SHA256.
-   * Uses 100,000 iterations — same parameters as the ARK SDK's production authenticator.
+   * Derives a High-Entropy Master Key from a simple password and salt.
+   * 
+   * @param password User's secret password.
+   * @param salt Cryptographic salt (should be unique per wallet).
+   * @returns Derived Buffer key.
    */
   static deriveMasterKey(password: string, salt: Buffer): Buffer {
-    return pbkdf2Sync(password, salt, 100_000, 32, "sha256");
+    if (salt.length < 16) {
+      throw new Error("Security Error: Robust salt must be at least 16 bytes.");
+    }
+
+    return crypto.pbkdf2Sync(
+      password,
+      salt,
+      this.ITERATIONS,
+      this.KEY_LENGTH,
+      this.DIGEST
+    );
+  }
+
+  /**
+   * Helper to generate a new robust random salt.
+   */
+  static generateRandomSalt(length = 32): Buffer {
+    return crypto.randomBytes(length);
   }
 }

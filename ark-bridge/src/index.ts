@@ -23,19 +23,19 @@
  */
 
 import * as readline from "node:readline";
-import { ArkdIndexerProvider } from "../../src/arkdProvider.js";
-import { BitcoinRpcProvider } from "../../src/bitcoinRpc.js";
+import { ArkdIndexerProvider } from "./arkdProvider.js";
+import { BitcoinRpcProvider } from "./bitcoinRpc.js";
 import {
   reconstructAndValidateVtxoDAG,
   verifyVtxoComplete,
-} from "../../src/vtxoDAGVerification.js";
+} from "./vtxoDAGVerification.js";
 import {
   onReceiveVtxo,
   executeSovereignExit,
   setStorageMasterKey,
   getBroadcastSequence,
-} from "../../src/sovereignStorage.js";
-import { MockWalletAuthenticator } from "../../src/authenticator.js";
+} from "./sovereignStorage.js";
+import { MockWalletAuthenticator } from "./authenticator.js";
 
 // ─── In-memory StorageProvider ───────────────────────────────────────────────
 // For production, replace with encrypted file storage (LocalStorage equivalent for Node.js).
@@ -237,7 +237,7 @@ async function handleValidateDag(params: {
   return {
     valid: true,
     commitment_txid: result.commitmentTxid,
-    chain_length: result.diagnostics.filter(d => d.startsWith("  ✓")).length,
+    chain_length: result.diagnostics.filter((d: string) => d.startsWith("  ✓")).length,
     diagnostics: result.diagnostics,
   };
 }
