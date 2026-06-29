@@ -77,6 +77,17 @@ impl ProofType {
     }
 }
 
+impl TrustTier {
+    /// A short, human-readable label for display.
+    pub fn label(self) -> &'static str {
+        match self {
+            TrustTier::Cryptographic => "cryptographic",
+            TrustTier::DomainControl => "domain control",
+            TrustTier::SelfAsserted => "self-asserted",
+        }
+    }
+}
+
 /// The concrete evidence carried by a proof. Public material only.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "proof")]
@@ -620,6 +631,105 @@ pub fn stored_status_for_method<'a>(
         .unwrap_or(&VerificationStatus::Unverified)
 }
 
+// ─── Display-facing trust evaluation ──────────────────────────────────────────
+
+/// The trust outcome for a single method, computed for display.
+///
+/// This is what a UI surfaces next to each payment method. It is deliberately
+/// honest: a stored `Verified` status is **never** trusted blindly — it is
+/// re-checked here, and a proof that no longer verifies is reported as
+/// [`MethodTrust::Invalid`] rather than silently shown as verified.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MethodTrust {
+    /// No proof attached — a bare claim.
+    Unverified,
+    /// A proof re-verified successfully (offline) at the given tier.
+    Verified(TrustTier),
+    /// A domain-control proof is attached, but confirming it needs a fetch of the
+    /// well-known URL that was not supplied to this call.
+    NeedsNetworkCheck(TrustTier),
+    /// A proof is attached but FAILED verification — treat the method as hostile.
+    Invalid(String),
+    /// A proof is attached but has expired.
+    Expired,
+}
+
+impl MethodTrust {
+    /// A short, stable badge string for terminal display.
+    pub fn badge(&self) -> String {
+        match self {
+            MethodTrust::Unverified => "○ unverified (claim only)".to_string(),
+            MethodTrust::Verified(tier) => format!("✓ verified · {}", tier.label()),
+            MethodTrust::NeedsNetworkCheck(tier) => {
+                format!("◌ claimed · {} (re-verify on fetch)", tier.label())
+            }
+            MethodTrust::Invalid(_) => "✗ INVALID PROOF".to_string(),
+            MethodTrust::Expired => "✗ proof expired".to_string(),
+        }
+    }
+
+    /// True only when an attached proof verified here and now.
+    pub fn is_verified(&self) -> bool {
+        matches!(self, MethodTrust::Verified(_))
+    }
+
+    /// True if a proof is attached but should be actively distrusted.
+    pub fn is_suspicious(&self) -> bool {
+        matches!(self, MethodTrust::Invalid(_) | MethodTrust::Expired)
+    }
+}
+
+/// Evaluate the display trust of one method against a profile's attestations.
+///
+/// `well_known_body` is the content the caller fetched from a domain-control
+/// proof's URL, if any. When a domain-control proof is present but no body was
+/// supplied, the result is [`MethodTrust::NeedsNetworkCheck`] — honest about the
+/// fact that confirmation requires a fetch this call did not perform.
+pub fn evaluate_method_trust(
+    method: &PaymentMethod,
+    identity_pubkey: &str,
+    verifications: &[MethodVerification],
+    now: i64,
+    well_known_body: Option<&str>,
+) -> MethodTrust {
+    let (proof_type, expires_at) = match stored_status_for_method(verifications, method) {
+        VerificationStatus::Unverified => return MethodTrust::Unverified,
+        VerificationStatus::Verified {
+            proof_type,
+            expires_at,
+            ..
+        } => (*proof_type, *expires_at),
+    };
+
+    if let Some(exp) = expires_at {
+        if now >= exp {
+            return MethodTrust::Expired;
+        }
+    }
+
+    let needs_network = matches!(
+        proof_type,
+        ProofType::DomainWellKnown | ProofType::LightningAddressChallenge
+    );
+    if needs_network && well_known_body.is_none() {
+        return MethodTrust::NeedsNetworkCheck(proof_type.trust_tier());
+    }
+
+    let descriptor = method.ownership_descriptor();
+    let Some(verification) = verifications
+        .iter()
+        .find(|v| v.method_descriptor == descriptor)
+    else {
+        return MethodTrust::Unverified;
+    };
+
+    match verify_method_verification(method, identity_pubkey, verification, now, well_known_body) {
+        Ok(tier) => MethodTrust::Verified(tier),
+        Err(SatsPathError::OwnershipProofExpired) => MethodTrust::Expired,
+        Err(e) => MethodTrust::Invalid(e.to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1112,6 +1222,144 @@ mod tests {
         let method = ln_method("alice@example.com");
         let status = stored_status_for_method(&[], &method);
         assert!(matches!(status, VerificationStatus::Unverified));
+    }
+
+    // ── Display-facing trust evaluation (FASE 2) ──────────────────────────────
+
+    #[test]
+    fn evaluate_trust_unverified_when_no_proof() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let trust = evaluate_method_trust(&method, &identity.pubkey_hex, &[], NOW, None);
+        assert_eq!(trust, MethodTrust::Unverified);
+        assert!(!trust.is_verified());
+        assert_eq!(trust.badge(), "○ unverified (claim only)");
+    }
+
+    #[test]
+    fn evaluate_trust_verified_cryptographic() {
+        let identity = key();
+        let addr_key = key();
+        let address = p2wpkh(&addr_key, Network::Bitcoin);
+        let method = onchain_method(&address);
+        let v = build_signature_attestation(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::OnchainAddressSignature,
+            &addr_key.secret,
+            NOW,
+            None,
+        )
+        .unwrap();
+
+        let trust = evaluate_method_trust(
+            &method,
+            &identity.pubkey_hex,
+            std::slice::from_ref(&v),
+            NOW,
+            None,
+        );
+        assert_eq!(trust, MethodTrust::Verified(TrustTier::Cryptographic));
+        assert!(trust.is_verified());
+        assert!(trust.badge().contains("cryptographic"));
+    }
+
+    #[test]
+    fn evaluate_trust_reports_invalid_for_tampered_proof() {
+        let identity = key();
+        let addr_key = key();
+        let address = p2wpkh(&addr_key, Network::Bitcoin);
+        let method = onchain_method(&address);
+        let mut v = build_signature_attestation(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::OnchainAddressSignature,
+            &addr_key.secret,
+            NOW,
+            None,
+        )
+        .unwrap();
+        if let VerificationStatus::Verified { proof, .. } = &mut v.status {
+            if let OwnershipProof::MessageSignature { signature, .. } = proof {
+                // Corrupt the signature so re-verification fails.
+                *signature = "00".to_string();
+            }
+        }
+        let trust = evaluate_method_trust(
+            &method,
+            &identity.pubkey_hex,
+            std::slice::from_ref(&v),
+            NOW,
+            None,
+        );
+        assert!(matches!(trust, MethodTrust::Invalid(_)));
+        assert!(trust.is_suspicious());
+        assert_eq!(trust.badge(), "✗ INVALID PROOF");
+    }
+
+    #[test]
+    fn evaluate_trust_reports_expired() {
+        let identity = key();
+        let addr_key = key();
+        let address = p2wpkh(&addr_key, Network::Bitcoin);
+        let method = onchain_method(&address);
+        let v = build_signature_attestation(
+            &method,
+            &identity.pubkey_hex,
+            ProofType::OnchainAddressSignature,
+            &addr_key.secret,
+            NOW,
+            Some(NOW + 100),
+        )
+        .unwrap();
+        let trust = evaluate_method_trust(
+            &method,
+            &identity.pubkey_hex,
+            std::slice::from_ref(&v),
+            NOW + 200,
+            None,
+        );
+        assert_eq!(trust, MethodTrust::Expired);
+        assert!(trust.is_suspicious());
+    }
+
+    #[test]
+    fn evaluate_trust_well_known_needs_network_then_verifies() {
+        let identity = key();
+        let method = ln_method("alice@example.com");
+        let nonce = "n";
+        let body = format!("identity={} nonce={nonce}", identity.pubkey_hex);
+        let mut v = well_known(
+            "https://example.com/.well-known/satspath",
+            nonce,
+            &body,
+            ProofType::LightningAddressChallenge,
+        );
+        v.method_descriptor = method.ownership_descriptor();
+
+        // Without the fetched body: honest "needs network check".
+        let offline = evaluate_method_trust(
+            &method,
+            &identity.pubkey_hex,
+            std::slice::from_ref(&v),
+            NOW,
+            None,
+        );
+        assert_eq!(
+            offline,
+            MethodTrust::NeedsNetworkCheck(TrustTier::DomainControl)
+        );
+        assert!(offline.badge().contains("re-verify on fetch"));
+
+        // With the fetched body: verified.
+        let online = evaluate_method_trust(
+            &method,
+            &identity.pubkey_hex,
+            std::slice::from_ref(&v),
+            NOW,
+            Some(&body),
+        );
+        assert_eq!(online, MethodTrust::Verified(TrustTier::DomainControl));
     }
 
     // ── Serde / tamper-evidence through the identity signature ────────────────
