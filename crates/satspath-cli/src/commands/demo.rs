@@ -1,8 +1,6 @@
 use anyhow::Result;
 
-use super::{
-    cmd_decode, cmd_init, cmd_invite, cmd_pay, cmd_quote, cmd_register, cmd_show,
-};
+use super::{cmd_decode, cmd_init, cmd_invite, cmd_pay, cmd_quote, cmd_register, cmd_show};
 
 pub async fn cmd_demo() -> Result<()> {
     println!("══════════════════════════════════════════════════");
@@ -23,7 +21,10 @@ pub async fn cmd_demo() -> Result<()> {
     cmd_show("rodrigo@satspath.dev").await?;
     println!();
 
-    step(4, "Encode universal payment request (21,000 sats, memo: coffee)");
+    step(
+        4,
+        "Encode universal payment request (21,000 sats, memo: coffee)",
+    );
     let uri = satspath_core::codec::encode_payment_request(
         "rodrigo@satspath.dev",
         Some(21_000),

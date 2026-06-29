@@ -1,8 +1,8 @@
 use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
-use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -141,9 +141,7 @@ impl ArkBridge {
             stdout.read_line(&mut line).map_err(SwapError::Io)?;
         }
 
-        let resp: RpcResponse<R> = serde_json::from_str(&line).map_err(|e| {
-            SwapError::Json(e)
-        })?;
+        let resp: RpcResponse<R> = serde_json::from_str(&line).map_err(|e| SwapError::Json(e))?;
 
         if let Some(err) = resp.error {
             return Err(SwapError::Key(format!(
@@ -152,9 +150,8 @@ impl ArkBridge {
             )));
         }
 
-        resp.result.ok_or_else(|| {
-            SwapError::Key(format!("ARK bridge returned neither result nor error"))
-        })
+        resp.result
+            .ok_or_else(|| SwapError::Key(format!("ARK bridge returned neither result nor error")))
     }
 
     // ─── API Wrapper ──────────────────────────────────────────────────────────

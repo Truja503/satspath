@@ -4,8 +4,7 @@ use std::fs;
 
 use satspath_core::{
     crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
-    display_hint,
-    PaymentMethod, PaymentProfile,
+    display_hint, PaymentMethod, PaymentProfile,
 };
 
 use super::{open_registry, satspath_dir};

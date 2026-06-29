@@ -130,8 +130,11 @@ mod tests {
     fn duplicate_registration_fails() {
         let dir = tempfile::tempdir().unwrap();
         let mut reg = Registry::open(dir.path()).unwrap();
-        reg.register_profile(make_signed("bob@example.com")).unwrap();
-        let err = reg.register_profile(make_signed("bob@example.com")).unwrap_err();
+        reg.register_profile(make_signed("bob@example.com"))
+            .unwrap();
+        let err = reg
+            .register_profile(make_signed("bob@example.com"))
+            .unwrap_err();
         assert!(matches!(err, SatsPathError::AliasAlreadyRegistered(_)));
     }
 
@@ -148,7 +151,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut reg = Registry::open(dir.path()).unwrap();
         assert!(!reg.is_registered("carol@example.com"));
-        reg.register_profile(make_signed("carol@example.com")).unwrap();
+        reg.register_profile(make_signed("carol@example.com"))
+            .unwrap();
         assert!(reg.is_registered("carol@example.com"));
     }
 
@@ -157,7 +161,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         {
             let mut reg = Registry::open(dir.path()).unwrap();
-            reg.register_profile(make_signed("persist@example.com")).unwrap();
+            reg.register_profile(make_signed("persist@example.com"))
+                .unwrap();
         }
         let reg2 = Registry::open(dir.path()).unwrap();
         assert!(reg2.is_registered("persist@example.com"));

@@ -3,8 +3,8 @@ mod encode;
 mod init;
 mod invite;
 mod pay;
-mod quote;
 mod qr;
+mod quote;
 mod register;
 mod show;
 

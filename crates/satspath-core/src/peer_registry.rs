@@ -103,7 +103,12 @@ impl PeerRecord {
 
         for method in &p.methods {
             match method {
-                crate::profile::PaymentMethod::Lightning { lightning_address, lnurl, bolt12, .. } => {
+                crate::profile::PaymentMethod::Lightning {
+                    lightning_address,
+                    lnurl,
+                    bolt12,
+                    ..
+                } => {
                     if lightning.is_none() {
                         let (ptype, value) = if let Some(la) = lightning_address {
                             ("lightning_address".into(), la.clone())
@@ -149,7 +154,11 @@ impl PeerRecord {
             profile_signature: signed.signature.clone(),
             updated_at: p.updated_at,
             expires_at: None,
-            pointers: PeerPointers { lightning, onchain, ark },
+            pointers: PeerPointers {
+                lightning,
+                onchain,
+                ark,
+            },
         }
     }
 }
@@ -330,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    fn local_registry_persists(  ) {
+    fn local_registry_persists() {
         let dir = tempfile::tempdir().unwrap();
         let record = PeerRecord {
             version: 1,
@@ -340,7 +349,11 @@ mod tests {
             profile_signature: "sig2".into(),
             updated_at: 1_700_000_000,
             expires_at: None,
-            pointers: PeerPointers { lightning: None, onchain: None, ark: None },
+            pointers: PeerPointers {
+                lightning: None,
+                onchain: None,
+                ark: None,
+            },
         };
         {
             let mut reg = LocalPeerRegistry::open(dir.path()).unwrap();

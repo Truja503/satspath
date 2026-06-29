@@ -1,31 +1,112 @@
-# SatsPath Swap Engine & ARK Bridge Integration
+# SatsPath Engine v0 — Walkthrough
 
-Hemos completado exitosamente la implementación del motor de interoperabilidad **`satspath-swaps`** y la integración nativa del **ARK SDK** mediante un Bridge JSON-RPC.
+## What Engine v0 is
 
-## 1. El Swap Engine (`satspath-swaps`)
+SatsPath Engine v0 is an experimental signed payment resolver and router. It is **not** a production wallet or automatic payment engine.
 
-Se creó un nuevo crate en el workspace encargado exclusivamente de manejar los intercambios entre capas mediante la API de Boltz v2.
+It can:
+- Resolve a local or peer-registered signed profile
+- Select a payment rail (Lightning, on-chain, Ark) based on live mempool fees
+- Fetch a real LNURL invoice and display a scannable QR code
+- Display a BIP-21 URI with a QR code for on-chain payments
+- Preview which swap directive would be needed (testnet only, no execution)
 
-- **BoltzClient:** Un cliente HTTP/REST asíncrono y WebSocket que negocia los fees, los límites y crea las transacciones de intercambio (`Submarine`, `Reverse` y `Chain`).
-- **Persistencia Segura (AES-256-GCM):** Todos los secretos criptográficos generados en el lado del cliente (por ejemplo, los *preimages* de hash y llaves temporales de reclamo/reembolso) se cifran mediante `AES256-GCM` y se guardan en `.satspath/swaps.enc` o `swaps.json` según el entorno, garantizando la custodia segura antes de que las transacciones se asienten on-chain.
-- **Flujos Implementados:**
-  - `submarine.rs`: De Bitcoin On-chain / Ark VTXO hacia Lightning Network (el usuario envía a un lockup, Boltz paga el invoice).
-  - `reverse.rs`: De Lightning Network hacia Bitcoin On-chain (Boltz retiene los fondos hasta que se revela el preimage).
-  - `chain_swap.rs`: Entre capas On-chain o Ark, utilizando firmas Schnorr y Taproot Key-path para una máxima privacidad cooperativa y permitiendo offboarding de VTXOs.
+It cannot (and intentionally does not):
+- Move funds automatically
+- Sign Bitcoin transactions
+- Broadcast anything to the network
+- Store or generate seed phrases
+- Execute mainnet swaps
 
-## 2. ARK JSON-RPC Bridge
+## Swap engine status — Engine v0 scaffolding only
 
-Para reutilizar la lógica ya probada en TypeScript para la validación de los VTXO DAGs de Arkade y la preparación de las salidas soberanas, implementamos un Bridge:
+The `satspath-swaps` crate is an **experimental testnet-only scaffold** for Boltz Exchange v2 swap integration.
 
-- **TypeScript Daemon (`ark-bridge`):** Un proceso en Node.js que importa directamente el SDK de validación nativo (incluyendo `reconstructAndValidateVtxoDAG` y `onReceiveVtxo`).
-- **Rust Client (`ark_bridge.rs`):** El SwapManager invoca este bridge comunicándose a través de `stdin`/`stdout` usando el estándar `JSON-RPC`.
-- **Integración:** Antes de aceptar un VTXO o iniciar un swap desde Arkade, el Rust CLI puede solicitar de forma síncrona la validación completa del DAG y asegurar que los datos soberanos estén almacenados en el disco local a través del bridge.
+**Claim and refund transaction construction is not implemented (Engine v1 work).**  
+**Mainnet payment execution is not implemented.**
 
-## 3. Router y CLI
+- PSBT signing is not implemented
+- Mainnet execution paths are closed
+- The swap engine is only reachable via `--experimental-swaps --testnet`
+- Without those flags, no swap code runs at all
 
-- **Actualización del Router:** La selección de rutas en `router.rs` ahora expone un `SwapDirective` detallado (`SubmarineSwap`, `ChainSwap`, `ArkTransfer`, etc.) y calcula dinámicamente un **Dust Threshold** on-chain, rebotando automáticamente transacciones antieconómicas basándose en los `sat/vB` actuales de la mempool.
-- **CLI (`pay.rs`):** Se abandonó el modelo 100% simulado. Ahora el CLI inicializa el `BoltzClient` y el `SwapManager`, levanta el `ArkBridge` (si está compilado), y manda peticiones reales de intercambio de red a Boltz Testnet. 
+## Default behavior — what `satspath pay` does
 
-> [!NOTE]
-> Las transacciones en el CLI en este MVP están configuradas apuntando a **Boltz Testnet** por defecto y el CLI detiene el proceso solicitando al usuario depositar manualmente fondos on-chain de prueba (Testnet BTC). 
-> La construcción completa local de transacciones Taproot con firmas combinadas MuSig2 queda documentada (Phase 4b) en el código fuente para una iteración posterior si se agrega un monedero nativo en Rust.
+```
+satspath pay rodrigodiazgt7@gmail.com 1000
+```
+
+1. Resolves the alias to a signed local profile
+2. Verifies the identity signature (ECDSA/secp256k1)
+3. Fetches live mempool fee rates from mempool.space
+4. Selects the best payment rail based on fees and amount
+5. For Lightning: performs LNURL-pay two-step fetch → real BOLT11 invoice → QR
+6. For on-chain: builds BIP-21 URI → QR
+
+**SatsPath does not send any funds. No keys are touched. No transactions are signed or broadcast. The displayed invoice/URI is for the user to scan with their own wallet.**
+
+## Experimental swap engine — testnet intent preview only
+
+```
+satspath pay rodrigodiazgt7@gmail.com 1000 --experimental-swaps --testnet
+```
+
+1. Same resolution and routing
+2. Shows swap directive intent only
+3. Does NOT execute the swap
+4. Does NOT build any transaction
+5. `--experimental-swaps` without `--testnet` is rejected with a hard error
+
+**No funds are moved. This is a preview of what a swap would look like.**
+
+## Persistence and secrets
+
+- All local state lives in `.satspath/` (gitignored — never committed)
+- `LocalPeerRegistry` stores SHA-256(canonical_identifier) as the DB key — raw email is never stored as primary key
+- `SwapStore` writes sensitive swap secrets (`preimage_hex`, `refund_key_hex`, `claim_key_hex`) only when an AES-256-GCM encryption key is provided
+- Writing sensitive swap material to plaintext storage is rejected at the record level
+- No private keys, seeds, macaroons, or API tokens are committed to this repository
+
+## ARK bridge status
+
+The `ark-bridge/` directory contains a JSON-RPC bridge skeleton that would connect the Rust CLI to the ARK client-side validation SDK.
+
+**Current status:**
+- The TypeScript bridge compiles and handles all protocol methods with stub responses
+- VTXO DAG validation is not implemented (requires the full Ark SDK — tracked as Engine v1)
+- The Rust `ArkBridge::spawn()` call is non-fatal: if the bridge is unavailable, the CLI continues in pointer/intent mode and prints a clear warning
+- Ark payments in Engine v0 display the payment pointer and an explicit experimental warning
+
+## What is implemented vs. what is not
+
+| Feature | Status |
+|---------|--------|
+| Signed profile resolution (local registry) | ✅ |
+| secp256k1 identity signature verification | ✅ |
+| Live mempool fee fetch (mempool.space) | ✅ |
+| Lightning rail selection (amount < 100k sats) | ✅ |
+| On-chain rail (fastestFee ≤ 20 sat/vB = next block) | ✅ |
+| Ark fallback (high fees) | ✅ |
+| LNURL-pay two-step invoice fetch | ✅ |
+| BOLT11 invoice amount verification (HRP parse) | ✅ |
+| Terminal QR code (Dense1x2 unicode) | ✅ |
+| BIP-21 on-chain URI with QR | ✅ |
+| LocalPeerRegistry (SHA-256 keyed, no raw email) | ✅ |
+| SwapStore AES-256-GCM encryption | ✅ |
+| SwapStore sensitive-record guard (plaintext rejected) | ✅ |
+| Boltz API client (testnet scaffolding) | ✅ scaffold |
+| Submarine/Reverse/Chain swap creation scaffolding | ✅ scaffold |
+| Claim/Refund transaction construction | ❌ Engine v1 |
+| PSBT signing | ❌ Engine v1 |
+| BOLT11 expiry verification (needs bech32 data decode) | ❌ Engine v1 |
+| Ark VTXO DAG validation | ❌ Engine v1 |
+| Mainnet swap execution | ❌ Intentionally closed |
+
+## Engine v1 scope (future work)
+
+- PSBT construction and signing (rust-bitcoin + BDK)
+- BOLT11 expiry parsing via bech32 data field decode
+- Ark VTXO DAG validation via full ARK SDK
+- Cooperative Taproot/MuSig2 spend for chain swaps
+- Refund recovery for failed swaps
+- BIP-353 DNS-based payment address resolution

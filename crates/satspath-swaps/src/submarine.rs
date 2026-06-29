@@ -148,12 +148,10 @@ pub async fn wait_submarine(
         SwapStatus::InvoiceFailedToPay => {
             // Attempt automatic refund
             let refund_txid = attempt_submarine_refund(client, store, swap_id).await;
-            store.update_status(
-                swap_id,
-                SwapStatus::TransactionRefunded,
-                refund_txid.ok(),
-            )?;
-            Err(SwapError::InvoiceFailedToPay { id: swap_id.to_string() })
+            store.update_status(swap_id, SwapStatus::TransactionRefunded, refund_txid.ok())?;
+            Err(SwapError::InvoiceFailedToPay {
+                id: swap_id.to_string(),
+            })
         }
         other => {
             let label = other.label().to_string();

@@ -9,7 +9,9 @@ pub fn estimate_onchain_fee_sats(fee_rate_sat_vb: u64) -> u64 {
 
 /// Check whether an on-chain address is available in the method list.
 pub fn is_onchain_available(methods: &[PaymentMethod]) -> bool {
-    methods.iter().any(|m| matches!(m, PaymentMethod::Onchain { .. }))
+    methods
+        .iter()
+        .any(|m| matches!(m, PaymentMethod::Onchain { .. }))
 }
 
 /// Find the first available on-chain method.

@@ -23,7 +23,11 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
     println!("Fingerprint:    {}", fp);
     println!(
         "Signature valid: {}",
-        if valid { "yes" } else { "NO — profile may be tampered!" }
+        if valid {
+            "yes"
+        } else {
+            "NO — profile may be tampered!"
+        }
     );
     println!("Updated at:     {}", signed.profile.updated_at);
     println!();
@@ -58,7 +62,11 @@ pub async fn cmd_show(alias: &str) -> Result<()> {
                     println!("      Pubkey hint: {}", hint);
                 }
             }
-            PaymentMethod::Ark { label, server, pubkey } => {
+            PaymentMethod::Ark {
+                label,
+                server,
+                pubkey,
+            } => {
                 println!("  - {} [Ark]", label);
                 println!("      Server: {}", server);
                 println!("      Pubkey: {}", pubkey);
