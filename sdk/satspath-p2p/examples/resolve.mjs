@@ -7,22 +7,31 @@
 
 import { SatsPathP2PNode } from "../src/index.js";
 
-const alias = process.argv[2];
+const args = process.argv.slice(2);
+const json = args.includes("--json");
+const timeoutIdx = args.indexOf("--timeout-ms");
+const timeoutMs =
+  timeoutIdx >= 0 && args[timeoutIdx + 1]
+    ? Number.parseInt(args[timeoutIdx + 1], 10)
+    : 20000;
+const alias = args.find((arg) => !arg.startsWith("--") && arg !== String(timeoutMs));
 if (!alias) {
-  console.error("usage: node examples/resolve.mjs <alias>");
+  console.error("usage: node examples/resolve.mjs <alias> [--json] [--timeout-ms <ms>]");
   process.exit(1);
 }
 
 const node = new SatsPathP2PNode();
-console.log("SatsPath P2P node address:", node.address);
-console.log(`Resolving ${alias} over Holepunch...`);
+if (!json) {
+  console.log("SatsPath P2P node address:", node.address);
+  console.log(`Resolving ${alias} over Holepunch...`);
+}
 
 try {
-  const signed = await node.resolve(alias, { timeoutMs: 20000 });
-  console.log("✓ Resolved and signature-verified:");
+  const signed = await node.resolve(alias, { timeoutMs });
+  if (!json) console.log("✓ Resolved and signature-verified:");
   console.log(JSON.stringify(signed, null, 2));
 } catch (e) {
-  console.error("✗", e.message);
+  console.error(json ? e.message : `✗ ${e.message}`);
   process.exitCode = 1;
 } finally {
   await node.destroy();
