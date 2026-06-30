@@ -200,19 +200,52 @@
     const btn = $("p-save"), msg = $("p-msg"), err = $("p-err");
     hide(msg); hide(err); btn.disabled = true;
     try {
+      let alias = $("p-alias").value.trim() || undefined;
+      
+      // If alias is provided, we must verify it first
+      if (alias) {
+        // 1. Get challenge
+        const cRes = await fetch("/v1/profile/challenge", {
+          method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ alias })
+        });
+        const cData = await cRes.json();
+        if (cData.error) throw new Error(cData.error);
+        
+        // 2. Prompt user for token (in mock, the token is the alias itself)
+        const token = prompt(cData.message + "\n\nEnter verification token for " + alias + ":");
+        if (!token) throw new Error("Verification cancelled.");
+        
+        // 3. Verify
+        const vRes = await fetch("/v1/profile/verify", {
+          method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ alias, token: token.trim() })
+        });
+        const vData = await vRes.json();
+        if (vData.error) throw new Error(vData.error);
+        
+        // At this point, the alias is saved and verified.
+        // We will just exclude alias from the PUT /v1/profile payload below.
+        alias = undefined;
+      }
+
       const payload = {
-        alias: $("p-alias").value.trim() || undefined,
+        alias,
         lightning_address: $("p-ln").value.trim() || undefined,
         onchain_address: $("p-onchain").value.trim() || undefined,
         ark_server: $("p-ark-server").value.trim() || undefined,
         ark_pubkey: $("p-ark-pubkey").value.trim() || undefined,
       };
-      const r = await fetch("/v1/profile", {
-        method: "PUT", headers: {"content-type": "application/json"}, body: JSON.stringify(payload)
-      });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error);
-      msg.textContent = "Profile signed and saved" + (d.signature_valid ? " · valid signature ✓" : "") + " · email is used as an identifier until verified by DNS, Nostr/NIP-05, or a platform resolver";
+      
+      // Only PUT if we have methods to save
+      if (payload.lightning_address || payload.onchain_address || payload.ark_server || payload.alias) {
+        const r = await fetch("/v1/profile", {
+          method: "PUT", headers: {"content-type": "application/json"}, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        msg.textContent = "Profile signed and saved" + (d.signature_valid ? " · valid signature ✓" : "") + " · email is used as an identifier until verified by DNS, Nostr/NIP-05, or a platform resolver";
+      } else {
+        msg.textContent = "Alias verified and saved. Add methods to sign profile.";
+      }
       show(msg);
     } catch (e) { err.textContent = e.message; show(err); }
     finally { btn.disabled = false; }

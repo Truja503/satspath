@@ -187,6 +187,12 @@ struct AliasRequest {
 }
 
 #[derive(Debug, Deserialize)]
+struct VerifyRequest {
+    alias: String,
+    token: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct QuoteRequest {
     recipient: String,
     amount_sats: u64,
@@ -386,6 +392,22 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
                 Err(e) => json_error(StatusCode(400), e),
             }
         }
+        (Method::Post, "/v1/profile/challenge") => {
+            match read_json::<AliasRequest>(&mut request)
+                .and_then(|body| create_challenge(state, body))
+            {
+                Ok(resp) => json_response(StatusCode(200), &resp),
+                Err(e) => json_error(StatusCode(400), e),
+            }
+        }
+        (Method::Post, "/v1/profile/verify") => {
+            match read_json::<VerifyRequest>(&mut request)
+                .and_then(|body| verify_challenge(state, body))
+            {
+                Ok(resp) => json_response(StatusCode(200), &resp),
+                Err(e) => json_error(StatusCode(400), e),
+            }
+        }
         (Method::Post, "/v1/profile/methods") => {
             match read_json::<ProfileUpdateRequest>(&mut request)
                 .and_then(|body| update_profile_methods(state, body))
@@ -434,12 +456,45 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
 
 fn update_profile(state: &AppState, body: ProfileUpdateRequest) -> Result<ProfileResponse> {
     let mut wallet = load_or_create_identity(&state.home)?;
+    // Alias must be verified first through /v1/profile/verify
     if let Some(alias) = &body.alias {
-        assert_no_private_material(alias)?;
-        wallet.alias = Some(alias.clone());
+        if Some(alias.clone()) != wallet.alias {
+            anyhow::bail!("alias must be verified through /v1/profile/challenge and /v1/profile/verify before updating");
+        }
     }
     apply_method_updates(&mut wallet, &state.network, body, true)?;
     sign_and_store(&state.home, &mut wallet, &state.network)?;
+    save_wallet(&state.home, &wallet)?;
+    profile_response(state)
+}
+
+fn create_challenge(_state: &AppState, body: AliasRequest) -> Result<serde_json::Value> {
+    use satspath_core::platform::{EmailVerifier, MockEmailVerifier};
+    let verifier = MockEmailVerifier { now: chrono::Utc::now().timestamp(), ttl_seconds: 600 };
+    let challenge = verifier.create_challenge(&body.alias)?;
+    Ok(serde_json::json!({
+        "challenge_id": challenge.challenge_id,
+        "message": "A mock verification code was sent. (MOCK: use the email address itself as the token)",
+    }))
+}
+
+fn verify_challenge(state: &AppState, body: VerifyRequest) -> Result<ProfileResponse> {
+    use satspath_core::platform::{EmailVerifier, MockEmailVerifier};
+    let verifier = MockEmailVerifier { now: chrono::Utc::now().timestamp(), ttl_seconds: 600 };
+    let verified = verifier.verify_challenge(&body.token)?;
+    
+    if verified.identifier_hash != satspath_core::privacy::identifier_hash(&body.alias) {
+        anyhow::bail!("invalid verification token for this alias");
+    }
+
+    let mut wallet = load_or_create_identity(&state.home)?;
+    wallet.alias = Some(body.alias);
+    wallet.updated_at = Some(chrono::Utc::now().timestamp());
+    
+    // Only sign and store if there are methods already. Otherwise just save the wallet state.
+    if wallet.lightning_address.is_some() || wallet.onchain_address.is_some() || wallet.ark_server.is_some() {
+        sign_and_store(&state.home, &mut wallet, &state.network)?;
+    }
     save_wallet(&state.home, &wallet)?;
     profile_response(state)
 }
