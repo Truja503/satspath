@@ -76,7 +76,8 @@ async function main() {
           swarm.destroy();
           process.exit(0);
         } catch (err) {
-          // Ignore bad data from peers
+          console.error("JSON Parse Error on end:", err);
+          console.error("Data was:", fullData);
         }
       });
       
@@ -91,7 +92,10 @@ async function main() {
              clearTimeout(timeout);
              swarm.destroy();
              process.exit(0);
-           } catch (e) {}
+           } catch (e) {
+             console.error("JSON Parse Error on timeout:", e);
+             console.error("Data was:", fullData);
+           }
         }
       }, 1000);
     });
