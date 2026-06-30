@@ -1,0 +1,152 @@
+name: Docker Build & Scan
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+    paths:
+      - "Dockerfile"
+      - "ark-bridge/Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/**"
+      - "ark-bridge/src/**"
+      - "ark-bridge/package*.json"
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_CLI: ${{ github.repository_owner }}/satspath-cli
+  IMAGE_BRIDGE: ${{ github.repository_owner }}/satspath-ark-bridge
+
+jobs:
+  # ── Build & scan the Rust CLI image ────────────────────────────────────────
+  build-cli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta-cli
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_CLI }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build CLI image (with cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          dockerfile: Dockerfile
+          target: runtime
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-cli.outputs.tags }}
+          labels: ${{ steps.meta-cli.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Build provenance attestations
+          provenance: true
+          sbom: true
+
+      - name: Run Trivy vulnerability scan (CLI image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_CLI }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-cli.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"   # Report but don't fail; set to "1" for gates
+
+      - name: Upload Trivy scan results (CLI)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-cli.sarif
+          category: trivy-cli
+
+  # ── Build & scan the ARK Bridge image ──────────────────────────────────────
+  build-bridge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta-bridge
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BRIDGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build Bridge image (with cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          dockerfile: ark-bridge/Dockerfile
+          target: runtime
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-bridge.outputs.tags }}
+          labels: ${{ steps.meta-bridge.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Run Trivy vulnerability scan (Bridge image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_BRIDGE }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-bridge.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
+      - name: Upload Trivy scan results (Bridge)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-bridge.sarif
+          category: trivy-bridge

@@ -203,21 +203,30 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
                 vtxo_pointer,
                 proof,
                 expires_at,
+                opaque_uri,
                 ..
             } => {
-                let pointer = ArkReceivePointer {
-                    server: server.clone(),
-                    receiver_pubkey: pubkey.clone(),
-                    vtxo_pointer: vtxo_pointer.clone(),
-                    proof: proof.clone(),
-                    expires_at: *expires_at,
-                };
-                let now = chrono::Utc::now().timestamp();
-                validate_ark_receive_pointer(&pointer, now)?;
-                if proof.is_some() && !verify_ark_ownership_proof(&profile.alias, &pointer, now)? {
-                    return Err(SatsPathError::InvalidSignature);
+                if let Some(uri) = opaque_uri {
+                    // Arkade opaque URI path — server + pubkey are empty sentinels.
+                    // Validate only the public URI; ownership proof is not possible.
+                    crate::ark::validate_arkade_opaque_uri(uri)?;
+                } else {
+                    // Full server + pubkey path — existing validation.
+                    let pointer = ArkReceivePointer {
+                        server: server.clone(),
+                        receiver_pubkey: pubkey.clone(),
+                        vtxo_pointer: vtxo_pointer.clone(),
+                        proof: proof.clone(),
+                        expires_at: *expires_at,
+                    };
+                    let now = chrono::Utc::now().timestamp();
+                    validate_ark_receive_pointer(&pointer, now)?;
+                    if proof.is_some() && !verify_ark_ownership_proof(&profile.alias, &pointer, now)? {
+                        return Err(SatsPathError::InvalidSignature);
+                    }
                 }
             }
+
         }
     }
 

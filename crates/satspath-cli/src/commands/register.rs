@@ -66,6 +66,7 @@ pub fn cmd_register(
                 vtxo_pointer: None,
                 proof: None,
                 expires_at: None,
+                opaque_uri: None,
             });
         }
         (None, None) => {}

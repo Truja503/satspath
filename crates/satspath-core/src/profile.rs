@@ -41,7 +41,16 @@ pub enum PaymentMethod {
         proof: Option<ArkOwnershipProof>,
         #[serde(default)]
         expires_at: Option<i64>,
+        /// Opaque Arkade receive URI (`ark1q…` address or `ark:` URI).
+        ///
+        /// Set when the user registered via `--arkade-uri` and only a public
+        /// receive string is available from Arkade.money.  When `Some`, the
+        /// method is always `PreviewOnly` / `execution: manual_wallet`.
+        /// `server` and `pubkey` will be empty strings in this case.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        opaque_uri: Option<String>,
     },
+
 }
 
 fn default_bitcoin_network() -> BitcoinNetwork {

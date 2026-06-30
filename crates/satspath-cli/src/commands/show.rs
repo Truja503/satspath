@@ -147,25 +147,32 @@ fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
             vtxo_pointer,
             proof,
             expires_at,
+            opaque_uri,
         } => {
             println!("  - {} [Ark]   {}", label, trust.badge());
-            println!("      Server: {}", mask_address(server));
-            println!("      Pubkey: {}", mask_pubkey(pubkey));
-            if vtxo_pointer.is_some() {
-                println!("      VTXO pointer: present");
-            }
-            println!(
-                "      Ark ownership proof: {}",
-                if proof.is_some() {
-                    "claimed"
-                } else {
-                    "not provided"
+            if let Some(uri) = opaque_uri {
+                println!("      Arkade receive URI: {}…", &uri[..uri.len().min(24)]);
+                println!("      Execution: manual_wallet (preview only)");
+            } else {
+                println!("      Server: {}", mask_address(server));
+                println!("      Pubkey: {}", mask_pubkey(pubkey));
+                if vtxo_pointer.is_some() {
+                    println!("      VTXO pointer: present");
                 }
-            );
-            if let Some(expires_at) = expires_at {
-                println!("      Expires at: {}", expires_at);
+                println!(
+                    "      Ark ownership proof: {}",
+                    if proof.is_some() {
+                        "claimed"
+                    } else {
+                        "not provided"
+                    }
+                );
+                if let Some(expires_at) = expires_at {
+                    println!("      Expires at: {}", expires_at);
+                }
             }
         }
+
     }
     // Surface the failure reason so a suspicious method is actionable.
     if let MethodTrust::Invalid(reason) = trust {
