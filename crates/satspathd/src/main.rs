@@ -12,10 +12,15 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use qrcode::{Color, QrCode};
 use satspath_core::ark::validate_ark_server_url;
+use satspath_core::bip321::{parse_bip321, ParsedBip321Uri};
+use satspath_core::bip353::{resolve_bip353_with, Bip353Resolution, DnssecPolicy, DohTxtResolver};
 use satspath_core::crypto::{
     fingerprint_pubkey, generate_identity_keypair, sign_profile, verify_signed_profile,
 };
+use satspath_core::peer_registry::{LocalPeerRegistry, PeerRecord, PeerRegistryBackend};
+use satspath_core::privacy::mask_identifier;
 use satspath_core::registry::Registry;
 use satspath_core::resolver::ChainResolver;
 use satspath_core::resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
@@ -24,6 +29,7 @@ use satspath_core::validation::{
     validate_compressed_pubkey, validate_lightning_address,
 };
 use satspath_core::{BitcoinNetwork, PaymentMethod, PaymentProfile, SignedPaymentProfile};
+use satspath_router::QuoteResponse;
 use serde::{Deserialize, Serialize};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
@@ -51,6 +57,9 @@ struct Cli {
     /// Start the optional Holepunch P2P profile publisher bridge.
     #[arg(long)]
     p2p: bool,
+    /// Do not open the wallet UI in a browser on startup.
+    #[arg(long)]
+    no_open: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -78,6 +87,7 @@ struct AppState {
     home: PathBuf,
     bind: SocketAddr,
     network: String,
+    open_ui: bool,
     p2p: Arc<Mutex<P2pBridge>>,
 }
 
@@ -103,9 +113,51 @@ struct StatusResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct NodeResponse {
+    status: StatusResponse,
+    profile: ProfileResponse,
+    peers: PeersResponse,
+    connections: ConnectionsResponse,
+}
+
+#[derive(Debug, Serialize)]
+struct PeersResponse {
+    active_count: usize,
+    peers: Vec<PeerView>,
+}
+
+#[derive(Debug, Serialize)]
+struct PeerView {
+    identifier_hash: String,
+    display_hint: String,
+    identity_fingerprint: Option<String>,
+    updated_at: i64,
+    expires_at: Option<i64>,
+    active: bool,
+    methods: Vec<String>,
+    record: PeerRecord,
+}
+
+#[derive(Debug, Serialize)]
+struct ConnectionsResponse {
+    active_count: usize,
+    connections: Vec<ConnectionView>,
+}
+
+#[derive(Debug, Serialize)]
+struct ConnectionView {
+    kind: &'static str,
+    status: String,
+    active: bool,
+    detail: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct P2pStatus {
     enabled: bool,
     status: String,
+    active: bool,
+    pid: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -137,6 +189,21 @@ struct QuoteRequest {
     amount_sats: u64,
 }
 
+#[derive(Debug, Deserialize)]
+struct PayRequest {
+    recipient: String,
+    amount_sats: u64,
+    #[serde(default)]
+    memo: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct DnsResolveRequest {
+    name: String,
+    #[serde(default)]
+    allow_insecure_dns_for_dev: bool,
+}
+
 #[derive(Debug, Serialize)]
 struct ProfileResponse {
     wallet: WalletState,
@@ -149,6 +216,62 @@ struct PreviewResponse<T: Serialize> {
     mode: &'static str,
     warnings: Vec<&'static str>,
     quote: T,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+enum PayResponse {
+    WalletHandoff {
+        decision_protocol: &'static str,
+        recipient: String,
+        amount_sats: u64,
+        quote: QuoteResponse,
+        payment_payload: String,
+        qr_svg: String,
+        handoff: WalletHandoff,
+        safety: SafetyStatus,
+    },
+    InviteCreated {
+        decision_protocol: &'static str,
+        recipient_hint: String,
+        amount_sats: u64,
+        quote: QuoteResponse,
+        safety: SafetyStatus,
+    },
+    NoRoute {
+        decision_protocol: &'static str,
+        reason: String,
+        quote: QuoteResponse,
+        safety: SafetyStatus,
+    },
+    InvalidSignature {
+        decision_protocol: &'static str,
+        quote: QuoteResponse,
+        safety: SafetyStatus,
+    },
+}
+
+#[derive(Debug, Serialize)]
+struct WalletHandoff {
+    mode: &'static str,
+    instruction: &'static str,
+    opens_external_wallet: bool,
+    daemon_executes_payment: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
+enum DnsResolveResponse {
+    Ok {
+        resolution: Bip353Resolution,
+        parsed: ParsedBip321Uri,
+    },
+    Error {
+        name: String,
+        error: String,
+        strict_mode: bool,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -198,6 +321,7 @@ async fn main() -> Result<()> {
         home,
         bind,
         network,
+        open_ui: !cli.no_open,
         p2p: Arc::new(Mutex::new(bridge)),
     };
 
@@ -207,6 +331,11 @@ async fn main() -> Result<()> {
 
 async fn serve(state: AppState) -> Result<()> {
     let server = Server::http(state.bind).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let url = format!("http://{}/", state.bind);
+    println!("Wallet UI → {url}");
+    if state.open_ui {
+        open_browser(&url);
+    }
     let state = Arc::new(state);
     for request in server.incoming_requests() {
         let state = Arc::clone(&state);
@@ -221,11 +350,19 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let method = request.method().clone();
     let path = request.url().split('?').next().unwrap_or("/").to_string();
     let response = match (method, path.as_str()) {
+        (Method::Options, _) => empty_response(StatusCode(204)),
+        (Method::Get, "/") => html_response(INDEX_HTML),
+        (Method::Get, "/v1/receive") => json_result(StatusCode(200), receive_view(state)),
         (Method::Get, "/health") => {
             json_response(StatusCode(200), &serde_json::json!({"ok": true}))
         }
+        (Method::Get, "/v1/node") => json_result(StatusCode(200), node_response(state)),
         (Method::Get, "/v1/status") => json_result(StatusCode(200), status_response(state)),
         (Method::Get, "/v1/profile") => json_result(StatusCode(200), profile_response(state)),
+        (Method::Get, "/v1/peers") => json_result(StatusCode(200), peers_response(state)),
+        (Method::Get, "/v1/connections") => {
+            json_result(StatusCode(200), connections_response(state))
+        }
         (Method::Put, "/v1/profile") | (Method::Post, "/v1/profile") => {
             match read_json::<ProfileUpdateRequest>(&mut request)
                 .and_then(|body| update_profile(state, body))
@@ -252,6 +389,14 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             Ok(body) => json_response(StatusCode(200), &quote_response(state, body).await),
             Err(e) => json_error(StatusCode(400), e),
         },
+        (Method::Post, "/v1/pay") => match read_json::<PayRequest>(&mut request) {
+            Ok(body) => json_response(StatusCode(200), &pay_response(state, body).await),
+            Err(e) => json_error(StatusCode(400), e),
+        },
+        (Method::Post, "/v1/dns/resolve") => match read_json::<DnsResolveRequest>(&mut request) {
+            Ok(body) => json_response(StatusCode(200), &dns_resolve_response(body).await),
+            Err(e) => json_error(StatusCode(400), e),
+        },
         (Method::Post, "/v1/preview") => match read_json::<QuoteRequest>(&mut request) {
             Ok(body) => {
                 let quote = quote_response(state, body).await;
@@ -275,7 +420,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
 fn update_profile(state: &AppState, body: ProfileUpdateRequest) -> Result<ProfileResponse> {
     let mut wallet = load_or_create_identity(&state.home)?;
     if let Some(alias) = &body.alias {
-        assert_no_private_material(&alias)?;
+        assert_no_private_material(alias)?;
         wallet.alias = Some(alias.clone());
     }
     apply_method_updates(&mut wallet, &state.network, body, true)?;
@@ -377,6 +522,110 @@ async fn quote_response(state: &AppState, body: QuoteRequest) -> satspath_router
     satspath_router::quote_with_resolver(&resolver, &body.recipient, body.amount_sats).await
 }
 
+async fn pay_response(state: &AppState, body: PayRequest) -> PayResponse {
+    if let Err(e) = validate_amount_sats(body.amount_sats) {
+        let quote = QuoteResponse::NoRoute {
+            reason: e.to_string(),
+        };
+        return PayResponse::NoRoute {
+            decision_protocol: "satspathd.v1",
+            reason: e.to_string(),
+            quote,
+            safety: safety_status(),
+        };
+    }
+    if let Some(memo) = &body.memo {
+        if let Err(e) = assert_no_private_material(memo) {
+            let quote = QuoteResponse::NoRoute {
+                reason: e.to_string(),
+            };
+            return PayResponse::NoRoute {
+                decision_protocol: "satspathd.v1",
+                reason: e.to_string(),
+                quote,
+                safety: safety_status(),
+            };
+        }
+    }
+
+    let quote = quote_response(
+        state,
+        QuoteRequest {
+            recipient: body.recipient.clone(),
+            amount_sats: body.amount_sats,
+        },
+    )
+    .await;
+
+    match quote.clone() {
+        QuoteResponse::Ok { qr, .. } => match qr_svg(&qr) {
+            Ok(qr_svg) => PayResponse::WalletHandoff {
+                decision_protocol: "satspathd.v1",
+                recipient: body.recipient,
+                amount_sats: body.amount_sats,
+                quote,
+                payment_payload: qr,
+                qr_svg,
+                handoff: WalletHandoff {
+                    mode: "external_wallet",
+                    instruction: "Open or scan payment_payload with a wallet you control.",
+                    opens_external_wallet: true,
+                    daemon_executes_payment: false,
+                },
+                safety: safety_status(),
+            },
+            Err(e) => PayResponse::NoRoute {
+                decision_protocol: "satspathd.v1",
+                reason: e.to_string(),
+                quote,
+                safety: safety_status(),
+            },
+        },
+        QuoteResponse::NotRegistered { .. } => PayResponse::InviteCreated {
+            decision_protocol: "satspathd.v1",
+            recipient_hint: mask_identifier(&body.recipient),
+            amount_sats: body.amount_sats,
+            quote,
+            safety: safety_status(),
+        },
+        QuoteResponse::NoRoute { reason } => PayResponse::NoRoute {
+            decision_protocol: "satspathd.v1",
+            reason,
+            quote,
+            safety: safety_status(),
+        },
+        QuoteResponse::InvalidSignature { .. } => PayResponse::InvalidSignature {
+            decision_protocol: "satspathd.v1",
+            quote,
+            safety: safety_status(),
+        },
+    }
+}
+
+async fn dns_resolve_response(body: DnsResolveRequest) -> DnsResolveResponse {
+    let policy = if body.allow_insecure_dns_for_dev {
+        DnssecPolicy::DevInsecure
+    } else {
+        DnssecPolicy::Strict
+    };
+    let resolver = DohTxtResolver::new();
+    match resolve_bip353_with(&resolver, &body.name, policy, now()).await {
+        Ok(resolution) => match parse_bip321(&resolution.bitcoin_uri) {
+            Ok(parsed) => DnsResolveResponse::Ok { resolution, parsed },
+            Err(e) => DnsResolveResponse::Error {
+                name: body.name,
+                error: e.to_string(),
+                strict_mode: policy == DnssecPolicy::Strict,
+            },
+        },
+        Err(e) => DnsResolveResponse::Error {
+            name: body.name,
+            error: e.to_string(),
+            strict_mode: policy == DnssecPolicy::Strict,
+        },
+    }
+}
+
 fn profile_response(state: &AppState) -> Result<ProfileResponse> {
     let wallet = load_wallet(&state.home)?;
     let signed_profile = match wallet.alias.as_deref() {
@@ -396,6 +645,91 @@ fn profile_response(state: &AppState) -> Result<ProfileResponse> {
     })
 }
 
+fn node_response(state: &AppState) -> Result<NodeResponse> {
+    Ok(NodeResponse {
+        status: status_response(state)?,
+        profile: profile_response(state)?,
+        peers: peers_response(state)?,
+        connections: connections_response(state)?,
+    })
+}
+
+fn peers_response(state: &AppState) -> Result<PeersResponse> {
+    let registry = LocalPeerRegistry::open(&state.home)?;
+    let mut peers = Vec::new();
+    for hash in registry.list_hashes()? {
+        if let Some(record) = registry.get_hash(&hash) {
+            peers.push(peer_view(record));
+        }
+    }
+    peers.sort_by_key(|b| std::cmp::Reverse(b.updated_at));
+    let active_count = peers.iter().filter(|peer| peer.active).count();
+    Ok(PeersResponse {
+        active_count,
+        peers,
+    })
+}
+
+fn peer_view(record: PeerRecord) -> PeerView {
+    let active = record
+        .expires_at
+        .map(|expires_at| expires_at > now())
+        .unwrap_or(true);
+    let identity_fingerprint = fingerprint_pubkey(&record.identity_pubkey).ok();
+    let mut methods = Vec::new();
+    if record.pointers.lightning.is_some() {
+        methods.push("Lightning".into());
+    }
+    if record.pointers.onchain.is_some() {
+        methods.push("Onchain".into());
+    }
+    if record.pointers.ark.is_some() {
+        methods.push("Ark".into());
+    }
+    PeerView {
+        identifier_hash: record.identifier_hash.clone(),
+        display_hint: record.display_hint.clone(),
+        identity_fingerprint,
+        updated_at: record.updated_at,
+        expires_at: record.expires_at,
+        active,
+        methods,
+        record,
+    }
+}
+
+fn connections_response(state: &AppState) -> Result<ConnectionsResponse> {
+    let peers = peers_response(state)?;
+    let p2p = p2p_status(state);
+    let mut connections = Vec::new();
+    connections.push(ConnectionView {
+        kind: "p2p_bridge",
+        status: p2p.status.clone(),
+        active: p2p.active,
+        detail: p2p.pid.map(|pid| format!("pid:{pid}")),
+    });
+    connections.push(ConnectionView {
+        kind: "peer_registry",
+        status: format!("{} active peer(s)", peers.active_count),
+        active: peers.active_count > 0,
+        detail: Some(
+            state
+                .home
+                .join("peers/registry.local.json")
+                .display()
+                .to_string(),
+        ),
+    });
+    let active_count = connections
+        .iter()
+        .filter(|connection| connection.active)
+        .count();
+    Ok(ConnectionsResponse {
+        active_count,
+        connections,
+    })
+}
+
 fn status_response(state: &AppState) -> Result<StatusResponse> {
     let wallet = load_wallet(&state.home)?;
     let methods = build_methods(&wallet, &state.network)
@@ -407,7 +741,7 @@ fn status_response(state: &AppState) -> Result<StatusResponse> {
         .as_deref()
         .map(fingerprint_pubkey)
         .transpose()?;
-    let p2p = state.p2p.lock().expect("p2p mutex poisoned");
+    let p2p = p2p_status(state);
     Ok(StatusResponse {
         daemon: "satspathd",
         version: env!("CARGO_PKG_VERSION"),
@@ -420,16 +754,52 @@ fn status_response(state: &AppState) -> Result<StatusResponse> {
         methods,
         p2p: P2pStatus {
             enabled: p2p.enabled,
-            status: p2p.status.clone(),
+            status: p2p.status,
+            active: p2p.active,
+            pid: p2p.pid,
         },
-        safety: SafetyStatus {
-            moves_funds: false,
-            signs_bitcoin_transactions: false,
-            broadcasts_transactions: false,
-            stores_wallet_seeds_or_spending_keys: false,
-            manages_signed_profiles: true,
-        },
+        safety: safety_status(),
     })
+}
+
+fn p2p_status(state: &AppState) -> P2pStatus {
+    let mut p2p = state.p2p.lock().expect("p2p mutex poisoned");
+    let mut active = false;
+    let mut pid = None;
+    if let Some(child) = p2p.child.as_mut() {
+        pid = Some(child.id());
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                p2p.status = format!("exited: {status}");
+                p2p.child = None;
+            }
+            Ok(None) => {
+                active = true;
+                if p2p.status == "disabled" {
+                    p2p.status = "started".into();
+                }
+            }
+            Err(e) => {
+                p2p.status = format!("unknown: {e}");
+            }
+        }
+    }
+    P2pStatus {
+        enabled: p2p.enabled,
+        status: p2p.status.clone(),
+        active,
+        pid,
+    }
+}
+
+fn safety_status() -> SafetyStatus {
+    SafetyStatus {
+        moves_funds: false,
+        signs_bitcoin_transactions: false,
+        broadcasts_transactions: false,
+        stores_wallet_seeds_or_spending_keys: false,
+        manages_signed_profiles: true,
+    }
 }
 
 fn resolver_chain(home: &Path) -> ChainResolver {
@@ -631,6 +1001,123 @@ fn json_result<T: Serialize>(
     }
 }
 
+// ─── Receive wallet UI ─────────────────────────────────────────────────────────
+
+const INDEX_HTML: &str = include_str!("index.html");
+
+#[derive(Debug, Serialize)]
+struct ReceiveView {
+    /// Masked alias, e.g. `r***@gmail.com` — the raw identifier is never exposed.
+    alias: String,
+    rail: String,
+    payload: String,
+    qr_svg: String,
+}
+
+/// Compute the wallet owner's preferred receive QR, entirely locally. Prefers
+/// Lightning → on-chain → Ark. Returns a reusable (amount-less) receive pointer.
+fn receive_view(state: &AppState) -> Result<ReceiveView> {
+    let wallet = load_wallet(&state.home)?;
+    let alias = wallet
+        .alias
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("no profile yet — set one via POST /v1/profile"))?;
+    let methods = build_methods(&wallet, &state.network);
+    let method = methods
+        .iter()
+        .find(|m| matches!(m, PaymentMethod::Lightning { .. }))
+        .or_else(|| {
+            methods
+                .iter()
+                .find(|m| matches!(m, PaymentMethod::Onchain { .. }))
+        })
+        .or_else(|| {
+            methods
+                .iter()
+                .find(|m| matches!(m, PaymentMethod::Ark { .. }))
+        })
+        .ok_or_else(|| {
+            anyhow::anyhow!("no receive methods — add one via POST /v1/profile/methods")
+        })?;
+    let payload = receive_payload_for(method)?;
+    Ok(ReceiveView {
+        alias: mask_identifier(&alias),
+        rail: method.method_name().to_string(),
+        qr_svg: qr_svg(&payload)?,
+        payload,
+    })
+}
+
+/// A public, amount-less receive pointer for a method.
+fn receive_payload_for(method: &PaymentMethod) -> Result<String> {
+    let payload = match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(addr),
+            ..
+        } => addr.clone(),
+        PaymentMethod::Lightning {
+            lnurl: Some(url), ..
+        } => url.clone(),
+        PaymentMethod::Onchain { address, .. } => format!("bitcoin:{address}"),
+        PaymentMethod::Ark { server, pubkey, .. } => {
+            format!("satspath:ark?server={server}&pubkey={pubkey}")
+        }
+        _ => anyhow::bail!("selected method has no receive pointer"),
+    };
+    assert_no_private_material(&payload)?;
+    Ok(payload)
+}
+
+/// Render a payload as a self-contained black-and-white SVG QR.
+fn qr_svg(data: &str) -> Result<String> {
+    let code = QrCode::new(data.as_bytes()).map_err(|e| anyhow::anyhow!("QR encode: {e}"))?;
+    let width = code.width();
+    let colors = code.to_colors();
+    let quiet = 4usize;
+    let size = width + quiet * 2;
+    let mut rects = String::new();
+    for y in 0..width {
+        for x in 0..width {
+            if colors[y * width + x] == Color::Dark {
+                rects.push_str(&format!(
+                    "<rect x='{}' y='{}' width='1' height='1'/>",
+                    x + quiet,
+                    y + quiet
+                ));
+            }
+        }
+    }
+    Ok(format!(
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {size} {size}' \
+         shape-rendering='crispEdges'><rect width='100%' height='100%' fill='#fff'/>\
+         <g fill='#000'>{rects}</g></svg>"
+    ))
+}
+
+fn html_response(body: &str) -> Response<std::io::Cursor<Vec<u8>>> {
+    let header = Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
+        .expect("static header");
+    Response::from_data(body.as_bytes().to_vec())
+        .with_status_code(StatusCode(200))
+        .with_header(header)
+        .with_header(cors_origin_header())
+}
+
+/// Best-effort open of the default browser. Never fails the daemon.
+fn open_browser(url: &str) {
+    #[cfg(target_os = "macos")]
+    let (cmd, args): (&str, Vec<&str>) = ("open", vec![url]);
+    #[cfg(target_os = "linux")]
+    let (cmd, args): (&str, Vec<&str>) = ("xdg-open", vec![url]);
+    #[cfg(target_os = "windows")]
+    let (cmd, args): (&str, Vec<&str>) = ("cmd", vec!["/C", "start", "", url]);
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    let (cmd, args): (&str, Vec<&str>) = ("", vec![]);
+    if !cmd.is_empty() {
+        let _ = Command::new(cmd).args(args).spawn();
+    }
+}
+
 fn json_response<T: Serialize>(
     status: StatusCode,
     value: &T,
@@ -640,6 +1127,17 @@ fn json_response<T: Serialize>(
     Response::from_data(body)
         .with_status_code(status)
         .with_header(json_header())
+        .with_header(cors_origin_header())
+        .with_header(cors_methods_header())
+        .with_header(cors_headers_header())
+}
+
+fn empty_response(status: StatusCode) -> Response<std::io::Cursor<Vec<u8>>> {
+    Response::from_data(Vec::new())
+        .with_status_code(status)
+        .with_header(cors_origin_header())
+        .with_header(cors_methods_header())
+        .with_header(cors_headers_header())
 }
 
 fn json_error(status: StatusCode, error: anyhow::Error) -> Response<std::io::Cursor<Vec<u8>>> {
@@ -653,6 +1151,23 @@ fn json_error(status: StatusCode, error: anyhow::Error) -> Response<std::io::Cur
 
 fn json_header() -> Header {
     Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).expect("valid static header")
+}
+
+fn cors_origin_header() -> Header {
+    Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).expect("valid static header")
+}
+
+fn cors_methods_header() -> Header {
+    Header::from_bytes(
+        &b"Access-Control-Allow-Methods"[..],
+        &b"GET, POST, PUT, OPTIONS"[..],
+    )
+    .expect("valid static header")
+}
+
+fn cors_headers_header() -> Header {
+    Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..])
+        .expect("valid static header")
 }
 
 fn safety_warnings() -> Vec<&'static str> {
@@ -669,10 +1184,17 @@ fn wallet_path(home: &Path) -> PathBuf {
 }
 
 fn default_home() -> PathBuf {
+    // Prefer a `.satspath/` in the current directory (e.g. a wallet created with
+    // `satspath wallet ...`) so the daemon serves the same profile seamlessly;
+    // otherwise fall back to the per-user `~/.satspath`.
+    let local = PathBuf::from(".satspath");
+    if local.is_dir() {
+        return local;
+    }
     if let Some(home) = std::env::var_os("HOME") {
         PathBuf::from(home).join(".satspath")
     } else {
-        PathBuf::from(".satspath")
+        local
     }
 }
 

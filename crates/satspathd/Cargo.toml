@@ -13,6 +13,7 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 hex = { workspace = true }
+qrcode = { version = "0.14", default-features = false }
 satspath-core = { path = "../satspath-core" }
 satspath-router = { path = "../satspath-router" }
 secp256k1 = { workspace = true }
