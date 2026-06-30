@@ -13,8 +13,8 @@ const TOPIC_PREFIX = "satspath:p2p:v1:";
 /**
  * The 32-byte Hyperswarm/HyperDHT topic for a SatsPath alias.
  * @param {string} alias e.g. "rodrigo@satspath.dev"
- * @returns {Uint8Array} 32 bytes
+ * @returns {Buffer} 32 bytes
  */
 export function topicForAlias(alias) {
-  return sha256(new TextEncoder().encode(TOPIC_PREFIX + canonicalAlias(alias)));
+  return Buffer.from(sha256(new TextEncoder().encode(TOPIC_PREFIX + canonicalAlias(alias))));
 }

@@ -9,15 +9,18 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use clap::Parser;
 use qrcode::{Color, QrCode};
 use satspath_core::ark::validate_ark_server_url;
 use satspath_core::bip321::{parse_bip321, ParsedBip321Uri};
 use satspath_core::bip353::{resolve_bip353_with, Bip353Resolution, DnssecPolicy, DohTxtResolver};
 use satspath_core::crypto::{
-    fingerprint_pubkey, generate_identity_keypair, sign_profile, verify_signed_profile,
+    check_profile_expiry, fingerprint_pubkey, generate_identity_keypair, sign_profile,
+    verify_signed_profile,
 };
 use satspath_core::peer_registry::{LocalPeerRegistry, PeerRecord, PeerRegistryBackend};
 use satspath_core::privacy::mask_identifier;
@@ -29,15 +32,20 @@ use satspath_core::validation::{
     assert_no_private_material, validate_amount_sats, validate_bitcoin_address,
     validate_compressed_pubkey, validate_lightning_address,
 };
-use satspath_core::{BitcoinNetwork, PaymentMethod, PaymentProfile, SignedPaymentProfile};
+use satspath_core::{
+    BitcoinNetwork, PaymentMethod, PaymentProfile, SatsPathError, SignedPaymentProfile,
+};
 use satspath_router::fees::fetch_fee_estimate;
 use satspath_router::select_priority_route;
 use satspath_router::QuoteResponse;
 use serde::{Deserialize, Serialize};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
+use tokio::process::Command as TokioCommand;
+use tokio::time::timeout;
 
 const DEFAULT_BIND: &str = "127.0.0.1:9737";
 const DEFAULT_NETWORK: &str = "devnet";
+const P2P_RESOLVE_TIMEOUT: Duration = Duration::from_secs(10);
 const WALLET_FILE: &str = "wallet.json";
 const IDENTITY_SUBDIR: &str = "identity";
 
@@ -826,6 +834,86 @@ fn resolver_chain(home: &Path) -> ChainResolver {
         .push(Bip353Resolver::new())
         .push(HttpResolver::new())
         .push(NostrResolver::new())
+        .push(P2pSdkResolver::new(home.to_path_buf()))
+}
+
+struct P2pSdkResolver {
+    home: PathBuf,
+    sdk_dir: PathBuf,
+}
+
+impl P2pSdkResolver {
+    fn new(home: PathBuf) -> Self {
+        let sdk_dir = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join("sdk")
+            .join("satspath-p2p");
+        Self { home, sdk_dir }
+    }
+
+    fn script(&self) -> PathBuf {
+        self.sdk_dir.join("examples").join("resolve.mjs")
+    }
+}
+
+#[async_trait]
+impl satspath_core::resolver::ProfileResolver for P2pSdkResolver {
+    async fn resolve_alias(&self, alias: &str) -> satspath_core::Result<SignedPaymentProfile> {
+        let script = self.script();
+        if !script.exists() {
+            return Err(SatsPathError::AliasNotFound(format!(
+                "P2P resolver unavailable: {}",
+                script.display()
+            )));
+        }
+
+        let output = timeout(
+            P2P_RESOLVE_TIMEOUT,
+            TokioCommand::new("node")
+                .arg("examples/resolve.mjs")
+                .arg(alias)
+                .arg("--json")
+                .arg("--timeout-ms")
+                .arg("8000")
+                .current_dir(&self.sdk_dir)
+                .output(),
+        )
+        .await
+        .map_err(|_| SatsPathError::NetworkError("P2P resolve timed out".into()))?
+        .map_err(|e| SatsPathError::NetworkError(format!("starting P2P resolver: {e}")))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(SatsPathError::AliasNotFound(if stderr.is_empty() {
+                alias.to_string()
+            } else {
+                format!("P2P not found: {stderr}")
+            }));
+        }
+
+        let signed: SignedPaymentProfile = serde_json::from_slice(&output.stdout)
+            .map_err(|e| SatsPathError::SerializationError(format!("P2P profile JSON: {e}")))?;
+        if signed.profile.alias.trim().eq_ignore_ascii_case(alias)
+            && verify_signed_profile(&signed)?
+        {
+            check_profile_expiry(&signed.profile)?;
+            cache_p2p_profile(&self.home, alias, &signed)?;
+            Ok(signed)
+        } else {
+            Err(SatsPathError::InvalidSignature)
+        }
+    }
+}
+
+fn cache_p2p_profile(
+    home: &Path,
+    alias: &str,
+    signed: &SignedPaymentProfile,
+) -> satspath_core::Result<()> {
+    Registry::open(home)?.update_profile(signed.clone())?;
+    let record = PeerRecord::from_signed_profile(alias, signed);
+    LocalPeerRegistry::open(home)?.put(alias, record)?;
+    Ok(())
 }
 
 fn build_methods(wallet: &WalletState, network: &str) -> Vec<PaymentMethod> {
@@ -1454,6 +1542,10 @@ fn broadcast(state: &AppState) -> Result<serde_json::Value> {
         anyhow::bail!("set your profile first (alias + methods) before broadcasting");
     }
     let mut bridge = state.p2p.lock().unwrap();
+    if let Some(mut child) = bridge.child.take() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
     match start_p2p_bridge(&state.home, &wallet) {
         Ok((status, child)) => {
             bridge.enabled = true;
