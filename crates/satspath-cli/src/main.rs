@@ -170,8 +170,62 @@ enum Command {
         command: DnsCommand,
     },
 
+    /// Safe receiver-profile wallet: manage public receive methods, sign a
+    /// profile, preview. Never moves funds or stores spending keys.
+    Wallet {
+        #[command(subcommand)]
+        command: WalletCommand,
+    },
+
     /// Run the full SatsPath demo flow
     Demo,
+}
+
+#[derive(Subcommand)]
+enum WalletCommand {
+    /// Create or load the SatsPath identity key
+    Init,
+    /// Set the alias + public receive methods, then sign and save the profile
+    AddMethods(WalletAddMethodsArgs),
+    /// Add/replace the Lightning Address (re-signs the profile)
+    AddLightning { lightning_address: String },
+    /// Add/replace the on-chain receive address (re-signs the profile)
+    AddOnchain { bitcoin_address: String },
+    /// Add/replace the Ark receive pointer (re-signs the profile)
+    AddArk {
+        #[arg(long)]
+        server: String,
+        #[arg(long)]
+        pubkey: String,
+    },
+    /// Show the wallet's identity, public receive methods, and signature status
+    Show {
+        /// Print full (unmasked) values
+        #[arg(long)]
+        debug: bool,
+    },
+    /// Export the signed profile for peer-to-peer publishing
+    Publish { alias: Option<String> },
+    /// Preview a receive for an amount (no funds moved)
+    Receive {
+        alias: String,
+        amount_sats: u64,
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Args)]
+struct WalletAddMethodsArgs {
+    alias: String,
+    #[arg(long)]
+    lightning_address: Option<String>,
+    #[arg(long)]
+    onchain_address: Option<String>,
+    #[arg(long)]
+    ark_server: Option<String>,
+    #[arg(long)]
+    ark_pubkey: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -381,6 +435,32 @@ async fn main() -> Result<()> {
                 commands::cmd_dns_resolve(&args.name, args.json, args.allow_insecure_dns_for_dev)
                     .await?
             }
+        },
+        Command::Wallet { command } => match command {
+            WalletCommand::Init => commands::cmd_wallet_init()?,
+            WalletCommand::AddMethods(args) => commands::cmd_wallet_add_methods(
+                &args.alias,
+                args.lightning_address.as_deref(),
+                args.onchain_address.as_deref(),
+                args.ark_server.as_deref(),
+                args.ark_pubkey.as_deref(),
+            )?,
+            WalletCommand::AddLightning { lightning_address } => {
+                commands::cmd_wallet_add_lightning(&lightning_address)?
+            }
+            WalletCommand::AddOnchain { bitcoin_address } => {
+                commands::cmd_wallet_add_onchain(&bitcoin_address)?
+            }
+            WalletCommand::AddArk { server, pubkey } => {
+                commands::cmd_wallet_add_ark(&server, &pubkey)?
+            }
+            WalletCommand::Show { debug } => commands::cmd_wallet_show(debug)?,
+            WalletCommand::Publish { alias } => commands::cmd_wallet_publish(alias.as_deref())?,
+            WalletCommand::Receive {
+                alias,
+                amount_sats,
+                json,
+            } => commands::cmd_wallet_receive(&alias, amount_sats, json).await?,
         },
         Command::Demo => commands::cmd_demo().await?,
     }
