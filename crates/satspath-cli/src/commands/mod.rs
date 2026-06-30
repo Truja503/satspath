@@ -68,7 +68,7 @@ pub(crate) fn get_resolver() -> Result<ChainResolver> {
 
     // Add public HTTP resolver fallback
     chain = chain.push(HttpResolver::new());
-    chain = chain.push(NostrResolver);
+    chain = chain.push(NostrResolver::new());
 
     Ok(chain)
 }

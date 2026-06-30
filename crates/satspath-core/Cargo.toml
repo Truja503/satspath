@@ -20,6 +20,9 @@ rand = { workspace = true }
 reqwest = { workspace = true }
 async-trait = "0.1"
 url = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"

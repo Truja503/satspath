@@ -4,6 +4,7 @@ pub mod bip353_preview;
 pub mod fees;
 pub mod lightning;
 pub mod onchain;
+pub mod priority;
 pub mod quote_response;
 pub mod router;
 pub mod scoring;
@@ -14,6 +15,7 @@ pub use lightning::{
     fetch_invoice, fetch_lnurl_metadata, validate_bolt11_invoice, LnurlPayMetadata,
     ValidatedInvoice,
 };
+pub use priority::{select_priority_route, PriorityDecision};
 pub use quote_response::{
     build_qr_payload, quote, quote_with_resolver, QuoteRecipient, QuoteResponse,
 };

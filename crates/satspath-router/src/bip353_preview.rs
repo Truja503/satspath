@@ -1,9 +1,10 @@
 //! Map a resolved BIP-353 record into a Mainnet-Preview [`QuoteResponse`].
 //!
 //! BIP-353 resolution yields a public `bitcoin:` URI (and a DNSSEC verdict) but
-//! no signed SatsPath profile, so the resulting recipient has `fingerprint: None`
-//! and `verified` reflects DNSSEC validation. This is **preview only** — the `qr`
-//! field is the authoritative payable URI; nothing is paid, signed, or broadcast.
+//! no signed SatsPath profile, so the resulting recipient has `fingerprint: None`.
+//! `identifier_verified` reflects DNSSEC validation. This is **preview only** —
+//! the `qr` field is the authoritative payable URI; nothing is paid, signed, or
+//! broadcast.
 
 use satspath_core::{
     bip321::{parse_bip321, Bip321Instruction},
@@ -32,8 +33,17 @@ pub fn quote_from_bip353_resolution(
 
     let recipient = QuoteRecipient {
         alias: resolution.name.display.clone(),
-        // For BIP-353, "verified" means the DNS record was DNSSEC validated.
+        // Backward compatibility: for direct BIP-353 previews, `verified`
+        // historically meant DNSSEC validation rather than profile signature.
         verified: resolution.dnssec_validated,
+        profile_signature_verified: false,
+        identifier_verified: resolution.dnssec_validated,
+        identifier_verification: if resolution.dnssec_validated {
+            "dnssec-bip353"
+        } else {
+            "dnssec-not-validated"
+        }
+        .into(),
         fingerprint: None,
     };
 

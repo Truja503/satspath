@@ -34,7 +34,16 @@ use crate::router::{select_route, select_route_with_fees, RouteRequest};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct QuoteRecipient {
     pub alias: String,
+    /// Backward-compatible verification flag.
+    ///
+    /// New clients should prefer `profile_signature_verified` and
+    /// `identifier_verified`. For signed-profile quotes this mirrors profile
+    /// signature verification. For direct BIP-353 previews, legacy behavior may
+    /// mirror DNSSEC identifier verification instead.
     pub verified: bool,
+    pub profile_signature_verified: bool,
+    pub identifier_verified: bool,
+    pub identifier_verification: String,
     pub fingerprint: Option<String>,
 }
 
@@ -266,6 +275,10 @@ fn recipient_of(profile: &PaymentProfile, verified: bool) -> QuoteRecipient {
     QuoteRecipient {
         alias: profile.alias.clone(),
         verified,
+        profile_signature_verified: verified,
+        identifier_verified: false,
+        identifier_verification:
+            "identifier-only; no inbox/domain ownership proof in this response".into(),
         fingerprint: fingerprint_pubkey(&profile.identity_pubkey).ok(),
     }
 }
@@ -285,7 +298,7 @@ fn default_resolver() -> ChainResolver {
     }
     chain = chain.push(Bip353Resolver::new());
     chain = chain.push(HttpResolver::new());
-    chain.push(NostrResolver)
+    chain.push(NostrResolver::new())
 }
 
 #[cfg(test)]
@@ -413,6 +426,11 @@ mod tests {
                 // (2) alias, (3) verified true, (4) fingerprint
                 assert_eq!(recipient.alias, "rodrigo@satspath.dev");
                 assert!(recipient.verified);
+                assert!(recipient.profile_signature_verified);
+                assert!(!recipient.identifier_verified);
+                assert!(recipient
+                    .identifier_verification
+                    .contains("identifier-only"));
                 assert!(recipient.fingerprint.is_some());
                 assert_eq!(recipient.fingerprint.as_ref().unwrap().len(), 8);
                 // (5) PaymentMethod embedded unchanged
@@ -505,6 +523,8 @@ mod tests {
         match resp {
             QuoteResponse::InvalidSignature { recipient } => {
                 assert!(!recipient.verified);
+                assert!(!recipient.profile_signature_verified);
+                assert!(!recipient.identifier_verified);
                 assert!(recipient.fingerprint.is_some());
             }
             other => panic!("expected InvalidSignature, got {}", other.status()),
@@ -614,5 +634,7 @@ mod tests {
             "rodrigo@getalby.com"
         );
         assert_eq!(v["recipient"]["verified"], true);
+        assert_eq!(v["recipient"]["profile_signature_verified"], true);
+        assert_eq!(v["recipient"]["identifier_verified"], false);
     }
 }
