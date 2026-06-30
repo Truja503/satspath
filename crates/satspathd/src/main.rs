@@ -825,7 +825,7 @@ fn resolver_chain(home: &Path) -> ChainResolver {
     chain
         .push(Bip353Resolver::new())
         .push(HttpResolver::new())
-        .push(NostrResolver)
+        .push(NostrResolver::new())
 }
 
 fn build_methods(wallet: &WalletState, network: &str) -> Vec<PaymentMethod> {
@@ -1293,6 +1293,9 @@ enum SendResponse {
         rail: String,
         reason: String,
         recipient: String,
+        profile_signature_verified: bool,
+        identifier_verified: bool,
+        identifier_verification: &'static str,
         amount_sats: u64,
         payload: String,
         qr_svg: String,
@@ -1366,6 +1369,10 @@ async fn send_response(state: &AppState, body: SendRequest) -> SendResponse {
                         rail: decision.rail.to_string(),
                         reason: decision.reason,
                         recipient: mask_identifier(&body.recipient),
+                        profile_signature_verified: true,
+                        identifier_verified: false,
+                        identifier_verification:
+                            "identifier-only; no inbox/domain ownership proof in this response",
                         amount_sats: body.amount_sats,
                         payload,
                         qr_svg: qr,
@@ -1394,16 +1401,16 @@ async fn send_response(state: &AppState, body: SendRequest) -> SendResponse {
 }
 
 fn build_email_invite(recipient: &str, amount_sats: u64, claim_url: &str) -> EmailInvite {
-    let subject = "Te enviaron Bitcoin con SatsPath".to_string();
+    let subject = "You were sent Bitcoin with SatsPath".to_string();
     let body = format!(
-        r"Alguien quiere enviarte {amount_sats} sats con SatsPath.
+        r"Someone wants to send you {amount_sats} sats with SatsPath.
 
-Presiona el boton para descargar la wallet de SatsPath y recibir tus fondos
-localmente (tu mismo generas tus claves; nadie las custodia):
+Press the button to download the SatsPath wallet and receive your funds
+locally. You generate your own keys; nobody custodies them:
 
 {claim_url}
 
-[EXPERIMENTAL] SatsPath no mueve fondos ni firma transacciones por ti."
+[EXPERIMENTAL] SatsPath does not move funds or sign transactions for you."
     );
     let mailto = format!(
         "mailto:{}?subject={}&body={}",

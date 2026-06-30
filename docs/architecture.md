@@ -16,7 +16,7 @@ Human-readable identifier
   ┌───────────────────┐
   │  Resolver /       │
   │  Registry         │  <── local .satspath/registry.json (prototype)
-  │                   │  <── BIP-353 / Nostr / DNS (future)
+  │                   │  <── BIP-353 / HTTPS / Nostr / optional P2P
   └────────┬──────────┘
            |
            v

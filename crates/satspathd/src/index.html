@@ -66,62 +66,62 @@
 <main>
   <div class="brand">SatsPath</div>
   <nav>
-    <button data-tab="send" class="active">Enviar</button>
-    <button data-tab="receive">Recibir</button>
-    <button data-tab="profile">Mi perfil</button>
+    <button data-tab="send" class="active">Send</button>
+    <button data-tab="receive">Receive</button>
+    <button data-tab="profile">My profile</button>
   </nav>
 
-  <!-- ENVIAR -->
+  <!-- SEND -->
   <section id="tab-send">
-    <h2>Enviar</h2>
-    <p class="tagline">El protocolo elige la mejor ruta por ti.</p>
-    <label>Correo / dirección registrada</label>
-    <input id="s-recipient" type="text" placeholder="alguien@dominio.com" autocomplete="off" />
-    <label>Monto (sats)</label>
+    <h2>Send</h2>
+    <p class="tagline">The protocol chooses the best route for you.</p>
+    <label>Email / registered address</label>
+    <input id="s-recipient" type="text" placeholder="someone@example.com" autocomplete="off" />
+    <label>Amount (sats)</label>
     <input id="s-amount" type="number" min="1" placeholder="100000" />
-    <button class="action" id="s-go">Enviar</button>
+    <button class="action" id="s-go">Send</button>
     <div class="card hidden" id="s-card"></div>
     <div class="err hidden" id="s-err"></div>
   </section>
 
-  <!-- RECIBIR -->
+  <!-- RECEIVE -->
   <section id="tab-receive" class="hidden">
-    <h2>Recibir</h2>
-    <p class="tagline">Tu puntero de cobro, privado y local.</p>
-    <button class="action" id="r-go">Mostrar mi QR</button>
+    <h2>Receive</h2>
+    <p class="tagline">Your receive pointer, private and local.</p>
+    <button class="action" id="r-go">Show my QR</button>
     <div class="card hidden" id="r-card">
       <div class="qr" id="r-qr"></div>
       <div class="rail" id="r-rail"></div>
       <div class="who" id="r-alias"></div>
       <p class="payload" id="r-payload"></p>
-      <button class="copy" id="r-copy">Copiar</button>
+      <button class="copy" id="r-copy">Copy</button>
     </div>
     <div class="err hidden" id="r-err"></div>
   </section>
 
-  <!-- MI PERFIL -->
+  <!-- MY PROFILE -->
   <section id="tab-profile" class="hidden">
-    <h2>Mi perfil</h2>
-    <p class="tagline">Agrega tus métodos y transmítelo a la red.</p>
-    <label>Alias (correo)</label>
-    <input id="p-alias" type="text" placeholder="tu@correo.com" autocomplete="off" />
+    <h2>My profile</h2>
+    <p class="tagline">Add your methods and publish the profile to a transport.</p>
+    <label>Alias (email)</label>
+    <input id="p-alias" type="text" placeholder="you@example.com" autocomplete="off" />
     <label>Lightning Address</label>
-    <input id="p-ln" type="text" placeholder="tu@correo.com" autocomplete="off" />
-    <label>Dirección on-chain</label>
+    <input id="p-ln" type="text" placeholder="you@example.com" autocomplete="off" />
+    <label>On-chain address</label>
     <input id="p-onchain" type="text" placeholder="bc1q..." autocomplete="off" />
-    <label>Ark — servidor</label>
+    <label>Ark server</label>
     <input id="p-ark-server" type="text" placeholder="https://ark.satspath.dev" autocomplete="off" />
-    <label>Ark — pubkey</label>
+    <label>Ark pubkey</label>
     <input id="p-ark-pubkey" type="text" placeholder="02..." autocomplete="off" />
-    <label>Liquid <span class="exp">experimental · aún no se enruta</span></label>
+    <label>Liquid <span class="exp">experimental · not routed yet</span></label>
     <input id="p-liquid" type="text" placeholder="lq1... (preview)" disabled />
-    <button class="action" id="p-save">Guardar perfil</button>
-    <button class="action ghost" id="p-broadcast">Transmitir (P2P)</button>
+    <button class="action" id="p-save">Save profile</button>
+    <button class="action ghost" id="p-broadcast">Publish (P2P)</button>
     <div class="note hidden" id="p-msg"></div>
     <div class="err hidden" id="p-err"></div>
   </section>
 
-  <footer>No mueve fondos · No firma · No transmite · 127.0.0.1</footer>
+  <footer>No funds moved · No signing · No broadcast · 127.0.0.1</footer>
 </main>
 
 <script>
@@ -136,14 +136,14 @@
     ["send","receive","profile"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
   }));
 
-  // ENVIAR
+  // SEND
   $("s-go").addEventListener("click", async () => {
     const btn = $("s-go"), card = $("s-card"), err = $("s-err");
     hide(card); hide(err); btn.disabled = true;
     try {
       const recipient = $("s-recipient").value.trim();
       const amount_sats = parseInt($("s-amount").value, 10);
-      if (!recipient || !amount_sats) throw new Error("Pon un correo y un monto.");
+      if (!recipient || !amount_sats) throw new Error("Enter a recipient and an amount.");
       const r = await fetch("/v1/send", {
         method: "POST", headers: {"content-type": "application/json"},
         body: JSON.stringify({recipient, amount_sats})
@@ -153,48 +153,49 @@
       if (d.status === "ok") {
         card.innerHTML =
           '<div class="qr">' + d.qr_svg + '</div>' +
-          '<div class="rail">Ruta: ' + esc(d.rail) + '</div>' +
+          '<div class="rail">Route: ' + esc(d.rail) + '</div>' +
           '<div class="who">→ ' + esc(d.recipient) + '</div>' +
+          '<p class="note">Signed profile verified · Identifier proof: ' + (d.identifier_verified ? 'verified' : 'not verified') + '</p>' +
           '<p class="reason">' + esc(d.reason) + '</p>' +
           '<p class="payload">' + esc(d.payload) + '</p>';
       } else if (d.status === "invite") {
         card.innerHTML =
-          '<div class="rail">No registrado · invitación</div>' +
+          '<div class="rail">Not registered · invite</div>' +
           '<div class="who">' + esc(d.recipient_hint) + '</div>' +
-          '<p class="reason">No tiene perfil aún. Invítalo por correo: descarga la wallet y recibe local.</p>' +
+          '<p class="reason">No signed profile exists yet. Invite the receiver by email so they can download the wallet and receive locally.</p>' +
           '<div class="emailbody">' + esc(d.email.subject) + '\n\n' + esc(d.email.body) + '</div>' +
-          '<a href="' + esc(d.email.mailto) + '"><button class="action">Abrir correo</button></a>' +
-          '<p class="note">Experimental · SatsPath no envía el correo por ti ni mueve fondos.</p>';
+          '<a href="' + esc(d.email.mailto) + '"><button class="action">Open email</button></a>' +
+          '<p class="note">Experimental · SatsPath does not send the email or move funds for you.</p>';
       } else if (d.status === "invalid_signature") {
-        throw new Error("La firma del perfil no es válida.");
+        throw new Error("The profile signature is invalid.");
       } else {
-        throw new Error(d.reason || "Sin ruta disponible.");
+        throw new Error(d.reason || "No route available.");
       }
       show(card);
     } catch (e) { err.textContent = e.message; show(err); }
     finally { btn.disabled = false; }
   });
 
-  // RECIBIR
+  // RECEIVE
   $("r-go").addEventListener("click", async () => {
     const btn = $("r-go"), card = $("r-card"), err = $("r-err");
     hide(card); hide(err); btn.disabled = true;
     try {
       const r = await fetch("/v1/receive");
       const d = await r.json();
-      if (!r.ok || d.error) throw new Error(d.error || "fallo al calcular la ruta");
+      if (!r.ok || d.error) throw new Error(d.error || "failed to calculate route");
       $("r-qr").innerHTML = d.qr_svg; $("r-rail").textContent = d.rail;
       $("r-alias").textContent = d.alias; $("r-payload").textContent = d.payload;
       show(card);
       $("r-copy").onclick = async () => {
         await navigator.clipboard.writeText(d.payload);
-        $("r-copy").textContent = "Copiado"; setTimeout(() => ($("r-copy").textContent = "Copiar"), 1400);
+        $("r-copy").textContent = "Copied"; setTimeout(() => ($("r-copy").textContent = "Copy"), 1400);
       };
     } catch (e) { err.textContent = e.message; show(err); }
     finally { btn.disabled = false; }
   });
 
-  // MI PERFIL
+  // MY PROFILE
   $("p-save").addEventListener("click", async () => {
     const btn = $("p-save"), msg = $("p-msg"), err = $("p-err");
     hide(msg); hide(err); btn.disabled = true;
@@ -211,7 +212,7 @@
       });
       const d = await r.json();
       if (d.error) throw new Error(d.error);
-      msg.textContent = "Perfil firmado y guardado" + (d.signature_valid ? " · firma válida ✓" : "");
+      msg.textContent = "Profile signed and saved" + (d.signature_valid ? " · valid signature ✓" : "") + " · email is used as an identifier until verified by DNS, Nostr/NIP-05, or a platform resolver";
       show(msg);
     } catch (e) { err.textContent = e.message; show(err); }
     finally { btn.disabled = false; }
@@ -225,8 +226,8 @@
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       msg.textContent = d.broadcasting
-        ? "Transmitiendo perfil por P2P · " + esc(d.status)
-        : "P2P no disponible · " + esc(d.status);
+        ? "Publishing profile over P2P · " + esc(d.status)
+        : "P2P unavailable · " + esc(d.status);
       show(msg);
     } catch (e) { err.textContent = e.message; show(err); }
     finally { btn.disabled = false; }
