@@ -13,6 +13,8 @@ mod qr;
 mod quote;
 mod register;
 mod show;
+mod wallet;
+mod web;
 
 pub use ark::{cmd_ark_receive, cmd_ark_send, cmd_ark_swap, ArkSwapSide};
 pub use demo::cmd_demo;
@@ -27,6 +29,11 @@ pub use proofs::{cmd_attach_proof, cmd_prove};
 pub use quote::{cmd_quote, cmd_quote_json};
 pub use register::cmd_register;
 pub use show::cmd_show;
+pub use wallet::{
+    cmd_wallet_add_ark, cmd_wallet_add_lightning, cmd_wallet_add_methods, cmd_wallet_add_onchain,
+    cmd_wallet_init, cmd_wallet_publish, cmd_wallet_receive, cmd_wallet_show,
+};
+pub use web::cmd_web;
 
 use anyhow::Result;
 use satspath_core::registry::Registry;

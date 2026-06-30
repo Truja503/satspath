@@ -207,6 +207,10 @@ impl LocalPeerRegistry {
         std::fs::write(&self.path, json)?;
         Ok(())
     }
+
+    pub fn get_hash(&self, identifier_hash: &str) -> Option<PeerRecord> {
+        self.data.records.get(identifier_hash).cloned()
+    }
 }
 
 impl PeerRegistryBackend for LocalPeerRegistry {
