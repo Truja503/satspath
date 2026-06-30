@@ -61,7 +61,20 @@ impl Registry {
     /// Update (overwrite) an existing profile entry.
     pub fn update_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
         let alias = canonical_identifier(&signed.profile.alias);
-        self.data.profiles.insert(identifier_hash(&alias), signed);
+        let key = identifier_hash(&alias);
+        
+        // SEC-03: Downgrade Attack Mitigation
+        // Ensure we do not overwrite a newer profile with an older one.
+        if let Some(existing) = self.data.profiles.get(&key).or_else(|| self.data.profiles.get(&alias)) {
+            if signed.profile.updated_at < existing.profile.updated_at {
+                return Err(SatsPathError::RegistryError(format!(
+                    "Update rejected: incoming profile is older (updated_at: {}) than existing profile (updated_at: {})",
+                    signed.profile.updated_at, existing.profile.updated_at
+                )));
+            }
+        }
+        
+        self.data.profiles.insert(key, signed);
         self.save()
     }
 

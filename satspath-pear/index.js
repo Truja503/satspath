@@ -58,7 +58,16 @@ async function main() {
       if (resolved) return;
       
       let dataChunks = [];
+      let totalBytes = 0;
+      const MAX_BYTES = 1024 * 1024; // 1MB limit for DoS mitigation
+      
       conn.on('data', (data) => {
+        totalBytes += data.length;
+        if (totalBytes > MAX_BYTES) {
+          console.error("Connection exceeded maximum payload size, terminating");
+          conn.destroy();
+          return;
+        }
         dataChunks.push(data);
       });
 
