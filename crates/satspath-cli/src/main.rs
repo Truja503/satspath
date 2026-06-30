@@ -95,7 +95,34 @@ enum Command {
     Decode { uri: String },
 
     /// Show routing decision with live mempool fees + scannable QR
-    Quote { alias: String, amount_sats: u64 },
+    Quote {
+        alias: String,
+        amount_sats: u64,
+        /// Emit the machine-readable QuoteResponse as JSON (and nothing else)
+        #[arg(long)]
+        json: bool,
+        /// Use mainnet public-data preview rules. No execution.
+        #[arg(long)]
+        mainnet_preview: bool,
+        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
+        #[arg(long)]
+        fetch_lnurl_invoice: bool,
+    },
+
+    /// Build a mainnet-compatible public payment preview. No funds move.
+    Preview {
+        recipient: String,
+        amount_sats: u64,
+        /// Use real mainnet public data, never execution.
+        #[arg(long)]
+        mainnet: bool,
+        /// Print only valid JSON.
+        #[arg(long)]
+        json: bool,
+        /// Fetch a real LNURL BOLT11 invoice. Requires explicit opt-in.
+        #[arg(long)]
+        fetch_lnurl_invoice: bool,
+    },
 
     /// Resolve, route, and build a public QR preview. No funds move by default.
     Pay {
@@ -119,14 +146,50 @@ enum Command {
     /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
     Invite { alias: String, amount_sats: u64 },
 
+    /// Export a peer's signed profile as JSON (for sharing with another machine)
+    Export { alias: String },
+
+    /// Import a signed profile (verifying it) from a file, stdin, or an HTTPS URL
+    Import {
+        /// Path to a JSON file (omit to read from stdin)
+        file: Option<String>,
+        /// Fetch from an HTTPS URL instead of a file
+        #[arg(long)]
+        url: Option<String>,
+    },
+
     /// Ark direct receive/send and swap intents. Testnet-gated; mainnet execution disabled.
     Ark {
         #[command(subcommand)]
         command: ArkCommand,
     },
 
+    /// BIP-353 DNS payment-instruction resolution (mainnet preview only).
+    Dns {
+        #[command(subcommand)]
+        command: DnsCommand,
+    },
+
     /// Run the full SatsPath demo flow
     Demo,
+}
+
+#[derive(Subcommand)]
+enum DnsCommand {
+    /// Resolve ₿user@domain (or user@domain) via DNSSEC-backed BIP-353.
+    Resolve(DnsResolveArgs),
+}
+
+#[derive(Args)]
+struct DnsResolveArgs {
+    /// The name to resolve, e.g. ₿rodrigo@satspath.dev or rodrigo@satspath.dev
+    name: String,
+    /// Emit the machine-readable resolution as JSON (and nothing else)
+    #[arg(long)]
+    json: bool,
+    /// DEV ONLY: skip DNSSEC validation (never use on mainnet)
+    #[arg(long)]
+    allow_insecure_dns_for_dev: bool,
 }
 
 #[derive(Subcommand)]
@@ -236,7 +299,31 @@ async fn main() -> Result<()> {
             memo,
         } => commands::cmd_encode(&alias, amount_sats, memo.as_deref())?,
         Command::Decode { uri } => commands::cmd_decode(&uri)?,
-        Command::Quote { alias, amount_sats } => commands::cmd_quote(&alias, amount_sats).await?,
+        Command::Quote {
+            alias,
+            amount_sats,
+            json,
+            mainnet_preview,
+            fetch_lnurl_invoice,
+        } => {
+            if mainnet_preview {
+                commands::cmd_preview(&alias, amount_sats, true, json, fetch_lnurl_invoice).await?
+            } else if json {
+                commands::cmd_quote_json(&alias, amount_sats).await?
+            } else {
+                commands::cmd_quote(&alias, amount_sats).await?
+            }
+        }
+        Command::Preview {
+            recipient,
+            amount_sats,
+            mainnet,
+            json,
+            fetch_lnurl_invoice,
+        } => {
+            commands::cmd_preview(&recipient, amount_sats, mainnet, json, fetch_lnurl_invoice)
+                .await?
+        }
         Command::Pay {
             alias,
             amount_sats,
@@ -258,6 +345,10 @@ async fn main() -> Result<()> {
             .await?
         }
         Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
+        Command::Export { alias } => commands::cmd_export(&alias)?,
+        Command::Import { file, url } => {
+            commands::cmd_import(file.as_deref(), url.as_deref()).await?
+        }
         Command::Ark { command } => match command {
             ArkCommand::Receive(args) => {
                 commands::cmd_ark_receive(&args.alias, args.testnet, args.execute_testnet).await?
@@ -283,6 +374,12 @@ async fn main() -> Result<()> {
                     args.confirm.as_deref(),
                 )
                 .await?
+            }
+        },
+        Command::Dns { command } => match command {
+            DnsCommand::Resolve(args) => {
+                commands::cmd_dns_resolve(&args.name, args.json, args.allow_insecure_dns_for_dev)
+                    .await?
             }
         },
         Command::Demo => commands::cmd_demo().await?,

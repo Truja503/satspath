@@ -1,10 +1,13 @@
 mod ark;
 mod demo;
+mod dns;
 mod encode;
 mod init;
 mod invite;
 mod keystore;
 mod pay;
+mod peer;
+mod preview;
 mod proofs;
 mod qr;
 mod quote;
@@ -13,12 +16,15 @@ mod show;
 
 pub use ark::{cmd_ark_receive, cmd_ark_send, cmd_ark_swap, ArkSwapSide};
 pub use demo::cmd_demo;
+pub use dns::cmd_dns_resolve;
 pub use encode::{cmd_decode, cmd_encode};
 pub use init::cmd_init;
 pub use invite::cmd_invite;
 pub use pay::cmd_pay;
+pub use peer::{cmd_export, cmd_import};
+pub use preview::cmd_preview;
 pub use proofs::{cmd_attach_proof, cmd_prove};
-pub use quote::cmd_quote;
+pub use quote::{cmd_quote, cmd_quote_json};
 pub use register::cmd_register;
 pub use show::cmd_show;
 

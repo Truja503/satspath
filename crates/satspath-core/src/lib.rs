@@ -1,7 +1,11 @@
 pub mod ark;
+pub mod bip321;
+pub mod bip353;
+pub mod bip353_publish;
 pub mod codec;
 pub mod crypto;
 pub mod errors;
+pub mod execution;
 pub mod ownership;
 pub mod peer_registry;
 pub mod platform;
@@ -18,7 +22,19 @@ pub use ark::{
     verify_ark_ownership_proof, ArkIntentStatus, ArkOwnershipProof, ArkPaymentIntent,
     ArkReceivePointer, ArkRouteKind, ClientValidationReport,
 };
+pub use bip321::{parse_bip321, Bip321Instruction, ParsedBip321Uri};
+pub use bip353::{
+    parse_bip353_name, resolve_bip353, resolve_bip353_with, verify_bip353_ownership, Bip353Name,
+    Bip353Resolution, DnsTxtRecord, DnsTxtResolver, DnssecPolicy, DohTxtResolver,
+    MockDnsTxtResolver,
+};
+pub use bip353_publish::{
+    assert_public_payment_instruction, authorize_dns_update, chunk_txt, dns_update_challenge,
+    plan_cname_delegation, plan_direct_txt, DnsPublisher, DnsUpdateAudit, DnsUpdateAuth,
+    MockDnsPublisher, PublishingPlan,
+};
 pub use errors::{Result, SatsPathError};
+pub use execution::ExecutionMode;
 pub use ownership::{
     attach_signature_proof, attach_well_known_proof, build_manual_attestation,
     build_signature_attestation, evaluate_method_trust, evaluate_method_trust_for_profile,
