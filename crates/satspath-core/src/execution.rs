@@ -9,4 +9,6 @@ pub enum ExecutionMode {
     MainnetPreview,
     /// Testnet-only experimental swap/Ark intent gates.
     TestnetExperimental,
+    /// Manual execution by the user via a third-party wallet.
+    ManualWallet,
 }

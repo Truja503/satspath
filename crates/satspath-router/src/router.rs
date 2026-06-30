@@ -32,6 +32,8 @@ pub enum SwapDirective {
     ChainSwap { target_address: String },
     /// Direct Ark VTXO transfer (same Ark server).
     ArkTransfer { server: String, pubkey: String },
+    /// Manual Arkade execution.
+    ArkadeManual,
 }
 
 /// Snapshot of live mempool fee rates used in the routing decision.
@@ -53,6 +55,8 @@ pub struct RouteQuote {
     pub fee_snapshot: Option<FeeRateSnapshot>,
     /// Execution directive for the experimental swap engine.
     pub swap_directive: SwapDirective,
+    pub execution: Option<satspath_core::ExecutionMode>,
+    pub wallet_hint: Option<String>,
 }
 
 /// Select the best available payment rail.
@@ -89,6 +93,8 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
                 swap_directive: SwapDirective::LightningPayment {
                     target_ln_address: ln_address,
                 },
+                execution: None,
+                wallet_hint: None,
             });
         }
     }
@@ -119,14 +125,15 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
             estimated_confirmation: Some("~10 minutes (next block)".into()),
             fee_snapshot: Some(snapshot),
             swap_directive: SwapDirective::ChainSwap { target_address },
+            execution: None,
+            wallet_hint: None,
         });
     }
 
-    // 3. Ark fallback.
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
-        let (server, pubkey) = match &method {
-            PaymentMethod::Ark { server, pubkey, .. } => (server.clone(), pubkey.clone()),
+        let (server, pubkey, opaque_uri) = match &method {
+            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
             _ => unreachable!(),
         };
         let reason = if is_onchain_available(methods) {
@@ -137,13 +144,22 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         } else {
             "No Lightning (amount above threshold) or on-chain method. Using Ark.".into()
         };
+
+        let (swap_directive, execution, wallet_hint) = if opaque_uri.is_some() {
+            (SwapDirective::ArkadeManual, Some(satspath_core::ExecutionMode::ManualWallet), Some("arkade".into()))
+        } else {
+            (SwapDirective::ArkTransfer { server, pubkey }, None, None)
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason,
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ArkTransfer { server, pubkey },
+            swap_directive,
+            execution,
+            wallet_hint,
         });
     }
 
@@ -185,6 +201,8 @@ pub fn select_route_with_fees(
                 swap_directive: SwapDirective::LightningPayment {
                     target_ln_address: ln_address,
                 },
+                execution: None,
+                wallet_hint: None,
             });
         }
     }
@@ -212,15 +230,24 @@ pub fn select_route_with_fees(
             estimated_confirmation: Some("~10 minutes (next block)".into()),
             fee_snapshot: Some(snapshot),
             swap_directive: SwapDirective::ChainSwap { target_address },
+            execution: None,
+            wallet_hint: None,
         });
     }
 
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
-        let (server, pubkey) = match &method {
-            PaymentMethod::Ark { server, pubkey, .. } => (server.clone(), pubkey.clone()),
+        let (server, pubkey, opaque_uri) = match &method {
+            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
             _ => unreachable!(),
         };
+
+        let (swap_directive, execution, wallet_hint) = if opaque_uri.is_some() {
+            (SwapDirective::ArkadeManual, Some(satspath_core::ExecutionMode::ManualWallet), Some("arkade".into()))
+        } else {
+            (SwapDirective::ArkTransfer { server, pubkey }, None, None)
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
@@ -230,7 +257,9 @@ pub fn select_route_with_fees(
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ArkTransfer { server, pubkey },
+            swap_directive,
+            execution,
+            wallet_hint,
         });
     }
 

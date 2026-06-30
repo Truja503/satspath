@@ -59,6 +59,10 @@ pub enum QuoteResponse {
         eta: Option<String>,
         reason: String,
         qr: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        execution: Option<satspath_core::ExecutionMode>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wallet_hint: Option<String>,
     },
     NotRegistered {
         invite: Invite,
@@ -259,6 +263,8 @@ where
         eta: route.estimated_confirmation,
         reason: route.reason,
         qr,
+        execution: route.execution,
+        wallet_hint: route.wallet_hint,
     }
 }
 
@@ -409,6 +415,8 @@ mod tests {
                 eta,
                 reason,
                 qr,
+                execution,
+                wallet_hint,
             } => {
                 // (2) alias, (3) verified true, (4) fingerprint
                 assert_eq!(recipient.alias, "rodrigo@satspath.dev");
