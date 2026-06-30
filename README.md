@@ -40,6 +40,7 @@ Resolvers can use local files, HTTPS well-known endpoints, BIP-353 DNS, Nostr/NI
 - Encode/decode universal payment URIs (`satspath:v1:<base64url_json>`).
 - Sign profiles with secp256k1 identity keys.
 - Verify profile signatures before routing.
+- Resolve LNURL-pay endpoints and fetch BOLT11 invoices securely.
 - Select the best payment rail (Lightning → On-chain → Ark preview/intents).
 - Return a stable `QuoteResponse` with `ok`, `not_registered`, `no_route`, or `invalid_signature`.
 - Produce a public payment payload / QR via CLI preview or `satspathd` wallet handoff.
@@ -183,24 +184,26 @@ signed profile through a supported transport.
 - Support Silent Payments or Split Payments.
 - Provide a production wallet UI.
 
-## Mainnet Preview vs Mainnet Execution
+## Safe Path (Mainnet Preview) vs Experimental Execution
 
-Mainnet Preview is allowed:
+The **Safe Path** (Mainnet Preview) is active by default and allowed:
 
-- public data only,
-- profile signature and expiry checks,
-- public ownership proof checks where available,
-- Lightning Address / LNURL / BOLT11-as-data,
-- BIP21 on-chain URI generation,
-- Ark public pointer / intent URI generation,
-- QR/payment pointer display.
+- Resolving public data only.
+- Fetching and resolving LNURL-pay metadata.
+- Requesting BOLT11 invoices from LNURL callbacks securely.
+- Presenting the invoice as a QR code or payment pointer for the user to pay with their own wallet.
+- Profile signature and expiry checks.
+- Public ownership proof checks where available.
+- BIP21 on-chain URI generation.
+- Ark public pointer / intent URI generation.
 
-Mainnet Execution is not implemented:
+The **Experimental Path** (Automatic Execution via Swaps/Ark) is isolated and restricted:
 
-- no `--execute-mainnet` flag exists,
-- no automatic payment execution exists,
-- no transaction signing or broadcasting path is exposed,
-- no seed phrases, xprv/tprv, macaroons, certs, API secrets, claim keys, or
+- Requires explicit `--experimental-swaps` and `--testnet` flags.
+- Mainnet execution is strictly disabled (no `--execute-mainnet` flag exists).
+- No automatic payment execution exists on mainnet.
+- No transaction signing or broadcasting path is exposed.
+- No seed phrases, xprv/tprv, macaroons, certs, API secrets, claim keys, or
   refund keys are accepted into mainnet preview output.
 
 ---

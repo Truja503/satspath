@@ -951,7 +951,7 @@ pub fn evaluate_method_trust_for_profile(
             },
             expires_at: *expires_at,
         };
-        return match crate::ark::verify_ark_ownership_proof(&profile.alias, &pointer, now) {
+        return match crate::ark::verify_ark_ownership_proof(&profile.alias, &profile.identity_pubkey, &pointer, now) {
             Ok(true) => MethodTrust::Verified(TrustTier::Cryptographic),
             Ok(false) => MethodTrust::Unverified,
             Err(SatsPathError::InvalidPaymentPointer(m)) if m.contains("expired") => {
@@ -1015,6 +1015,7 @@ mod tests {
             label: "Ark".into(),
             server: "https://ark.example.com".into(),
             pubkey: pubkey_hex.into(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,
@@ -1854,6 +1855,7 @@ mod tests {
             methods: vec![method],
             updated_at: NOW,
             expires_at: None,
+            sequence: None,
             method_verifications: vec![verification],
         };
         let mut signed = sign_profile(profile, &identity.secret).unwrap();
@@ -1895,8 +1897,10 @@ mod tests {
 
     fn ark_method_with_inline_proof(expires_at: Option<i64>, tamper: bool) -> PaymentMethod {
         let k = key();
+        let identity_pubkey = key().pubkey_hex;
+        let method_descriptor = format!("ark:{}", k.pubkey_hex);
         let message =
-            crate::ark::ark_ownership_challenge(ARK_ALIAS, ARK_SERVER, &k.pubkey_hex, "n1");
+            crate::ark::ark_ownership_challenge(ARK_ALIAS, &identity_pubkey, ARK_SERVER, &k.pubkey_hex, &method_descriptor);
         let signature = sign_message(&message, &k.secret);
         let proof = crate::ark::ArkOwnershipProof {
             message,
@@ -1912,6 +1916,7 @@ mod tests {
             label: "Ark".into(),
             server: ARK_SERVER.into(),
             pubkey: k.pubkey_hex,
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: Some(proof),
             expires_at,
@@ -1925,6 +1930,7 @@ mod tests {
             methods,
             updated_at: NOW,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         }
     }
@@ -1963,6 +1969,7 @@ mod tests {
             label: "Ark".into(),
             server: ARK_SERVER.into(),
             pubkey: ark_key.pubkey_hex.clone(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,

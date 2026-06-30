@@ -115,7 +115,9 @@ pub async fn build_mainnet_preview_response(
     let signed = match resolver.resolve_alias(recipient).await {
         Ok(signed) => signed,
         Err(SatsPathError::AliasNotFound(_)) => {
-            let invite = create_invite(recipient, amount_sats);
+            // No sender key in preview mode; invite is unsigned (no sender identity binding)
+            // TTL: 24 hours
+            let invite = create_invite(recipient, amount_sats, None, 24 * 3600);
             return Ok(QuoteResponse {
                 status: "not_registered".into(),
                 mode: ExecutionMode::MainnetPreview,
@@ -454,6 +456,8 @@ mod tests {
             swap_directive: SwapDirective::LightningPayment {
                 target_ln_address: None,
             },
+            execution: None,
+            wallet_hint: None,
         }
     }
 
@@ -511,6 +515,7 @@ mod tests {
             label: "Ark".into(),
             server: "https://ark.example.com".into(),
             pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,

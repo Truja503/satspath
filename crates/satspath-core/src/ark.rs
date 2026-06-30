@@ -6,6 +6,130 @@ use url::Url;
 use crate::errors::{Result, SatsPathError};
 use crate::validation::{assert_no_private_material, validate_compressed_pubkey};
 
+// ─── Arkade / Ark public pointer classification ────────────────────────────
+
+/// Classifies how a public Arkade/Ark receive pointer is represented.
+///
+/// This is a **display and routing type only** — it is never stored in the
+/// profile directly and never contains private material.
+///
+/// Preference order (most descriptive → most opaque):
+///   1. `ServerPubkey`  — preferred; full Ark server URL + compressed pubkey.
+///   2. `VtxoPointer`   — allowed when Arkade exposes a VTXO pointer string.
+///   3. `OpaqueUri`     — allowed when Arkade only exposes an `ark1q…` address
+///                        or an `ark:` URI; always `execution: manual_wallet`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "variant")]
+pub enum ArkadePointer {
+    /// Full Ark server URL + compressed secp256k1 receiver pubkey.
+    ServerPubkey { server: String, pubkey: String },
+    /// Opaque VTXO pointer string from Arkade (server known, vtxo pointer given).
+    VtxoPointer { server: String, vtxo_pointer: String },
+    /// Opaque `ark1q…` address or `ark:` URI from Arkade when only a receive
+    /// string / QR is available. Always `PreviewOnly` / `manual_wallet`.
+    OpaqueUri { uri: String },
+}
+
+/// Derive the routing-layer [`ArkadePointer`] variant from a `PaymentMethod::Ark`.
+///
+/// Returns `None` when the method is not an Ark method.
+pub fn classify_ark_method(
+    method: &crate::profile::PaymentMethod,
+) -> Option<ArkadePointer> {
+    match method {
+        crate::profile::PaymentMethod::Ark {
+            server,
+            pubkey,
+            vtxo_pointer,
+            opaque_uri,
+            ..
+        } => {
+            // Opaque URI takes priority when present — it means the user only
+            // provided an ark1q address / ark: URI from Arkade.
+            if let Some(uri) = opaque_uri {
+                return Some(ArkadePointer::OpaqueUri { uri: uri.clone() });
+            }
+            // VTXO pointer available alongside server URL.
+            if !server.is_empty() {
+                if let Some(vtxo) = vtxo_pointer {
+                    return Some(ArkadePointer::VtxoPointer {
+                        server: server.clone(),
+                        vtxo_pointer: vtxo.clone(),
+                    });
+                }
+                // Full server + pubkey.
+                if !pubkey.is_empty() {
+                    return Some(ArkadePointer::ServerPubkey {
+                        server: server.clone(),
+                        pubkey: pubkey.clone(),
+                    });
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// Validate a public Arkade opaque URI (`ark1q…` address or `ark:` URI).
+///
+/// Rules:
+/// - Must start with `ark1` (bech32 Arkade address) or `ark:` (URI scheme).
+/// - Must not contain private material.
+/// - Must not be empty.
+pub fn validate_arkade_opaque_uri(uri: &str) -> Result<()> {
+    let trimmed = uri.trim();
+    if trimmed.is_empty() {
+        return Err(SatsPathError::InvalidPaymentPointer(
+            "Arkade URI must not be empty".into(),
+        ));
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("ark1") && !lower.starts_with("ark:") {
+        return Err(SatsPathError::InvalidPaymentPointer(
+            "Arkade URI must start with 'ark1' (bech32 address) or 'ark:' (URI scheme)".into(),
+        ));
+    }
+    assert_no_private_material(trimmed)?;
+    Ok(())
+}
+
+/// Build a QR/URI payload for an [`ArkadePointer`].
+///
+/// - `ServerPubkey`  → `ark:<pubkey>?server=…&amount=…`
+/// - `VtxoPointer`   → `ark:<vtxo>?server=…&amount=…`
+/// - `OpaqueUri`     → the URI itself (prefixed with `ark:` if not already)
+///
+/// The resulting payload is always checked for private material.
+pub fn build_arkade_qr(pointer: &ArkadePointer, amount_sats: u64) -> Result<String> {
+    use url::form_urlencoded;
+    let payload = match pointer {
+        ArkadePointer::ServerPubkey { server, pubkey } => {
+            let mut enc = form_urlencoded::Serializer::new(String::new());
+            enc.append_pair("server", server);
+            enc.append_pair("amount", &amount_sats.to_string());
+            format!("ark:{}?{}", pubkey, enc.finish())
+        }
+        ArkadePointer::VtxoPointer { server, vtxo_pointer } => {
+            let mut enc = form_urlencoded::Serializer::new(String::new());
+            enc.append_pair("server", server);
+            enc.append_pair("amount", &amount_sats.to_string());
+            format!("ark:{}?{}", vtxo_pointer, enc.finish())
+        }
+        ArkadePointer::OpaqueUri { uri } => {
+            // Preserve the uri as-is if it already carries an ark: scheme;
+            // otherwise emit it directly (ark1q... addresses are self-contained).
+            if uri.starts_with("ark:") {
+                uri.clone()
+            } else {
+                format!("ark:{uri}")
+            }
+        }
+    };
+    assert_no_private_material(&payload)?;
+    Ok(payload)
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ArkRouteKind {
     ArkToArk,
@@ -65,11 +189,14 @@ pub struct ClientValidationReport {
 
 pub fn ark_ownership_challenge(
     alias: &str,
+    identity_pubkey: &str,
     ark_server: &str,
     receiver_pubkey: &str,
     nonce: &str,
 ) -> String {
-    format!("satspath-proof:{alias}:ark:{ark_server}:{receiver_pubkey}:{nonce}")
+    format!(
+        "SatsPath Ownership Proof v1\nidentity={identity_pubkey}\nmethod=ark:{ark_server}:{receiver_pubkey}\nissued_at={nonce}"
+    )
 }
 
 pub fn validate_ark_server_url(server: &str) -> Result<()> {
@@ -107,6 +234,7 @@ pub fn validate_ark_receive_pointer(pointer: &ArkReceivePointer, now: i64) -> Re
 
 pub fn verify_ark_ownership_proof(
     alias: &str,
+    identity_pubkey: &str,
     pointer: &ArkReceivePointer,
     now: i64,
 ) -> Result<bool> {
@@ -126,9 +254,18 @@ pub fn verify_ark_ownership_proof(
         }
     }
 
-    let expected_prefix =
-        ark_ownership_challenge(alias, &pointer.server, &pointer.receiver_pubkey, "");
-    if !proof.message.starts_with(&expected_prefix) || proof.message == expected_prefix {
+    // Use the method descriptor for binding, consistent with ownership.rs
+    let method_descriptor = format!("ark:{}", pointer.receiver_pubkey);
+    let expected_message = ark_ownership_challenge(
+        alias,
+        identity_pubkey,
+        &pointer.server,
+        &pointer.receiver_pubkey,
+        &method_descriptor, // nonce field repurposed as method descriptor for exact match
+    );
+
+    // Require exact message match (no prefix-based replay)
+    if proof.message != expected_message {
         return Err(SatsPathError::InvalidSignature);
     }
 
@@ -154,6 +291,7 @@ mod tests {
 
     fn signed_pointer(
         alias: &str,
+        identity_pubkey: &str,
         server: &str,
         nonce: &str,
         expires_at: Option<i64>,
@@ -162,7 +300,9 @@ mod tests {
         let secret = SecretKey::from_slice(&[1u8; 32]).unwrap();
         let pubkey = secret.public_key(&secp);
         let pubkey_hex = hex::encode(pubkey.serialize());
-        let message = ark_ownership_challenge(alias, server, &pubkey_hex, nonce);
+        // Use method descriptor as "nonce" for exact message matching
+        let method_descriptor = format!("ark:{}", pubkey_hex);
+        let message = ark_ownership_challenge(alias, identity_pubkey, server, &pubkey_hex, &method_descriptor);
         let digest = Sha256::digest(message.as_bytes());
         let sig = secp.sign_ecdsa(&Message::from_digest(digest.into()), &secret);
         ArkReceivePointer {
@@ -180,71 +320,195 @@ mod tests {
 
     #[test]
     fn valid_proof_accepted() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).unwrap());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).unwrap());
     }
 
     #[test]
     fn pubkey_incorrect_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let mut pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
         pointer.receiver_pubkey =
-            "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+            "0279be667ef9dcbbac55a0a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into();
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn server_incorrect_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let mut pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
         pointer.server = "https://evil.example.com".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn alias_incorrect_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
-        assert!(verify_ark_ownership_proof("bob@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("bob@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn malformed_signature_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let mut pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
         pointer.proof.as_mut().unwrap().signature = "not-hex".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn proof_expired_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(999),
         );
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
+    }
+
+    // ─── ArkadePointer / opaque URI tests ────────────────────────────────────
+
+    #[test]
+    fn arkade_opaque_uri_ark1q_accepted() {
+        assert!(
+            validate_arkade_opaque_uri(
+                "ark1qexampleaddress0000000000000000000000000000000000000000000000"
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn arkade_opaque_uri_ark_scheme_accepted() {
+        assert!(validate_arkade_opaque_uri("ark:ark1qexampleaddress").is_ok());
+    }
+
+    #[test]
+    fn arkade_opaque_uri_private_material_rejected() {
+        assert!(validate_arkade_opaque_uri("ark1qcontains_xprv_private").is_err());
+    }
+
+    #[test]
+    fn arkade_opaque_uri_wrong_prefix_rejected() {
+        assert!(validate_arkade_opaque_uri("bitcoin:bc1qexample").is_err());
+    }
+
+    #[test]
+    fn arkade_opaque_uri_empty_rejected() {
+        assert!(validate_arkade_opaque_uri("").is_err());
+    }
+
+    #[test]
+    fn build_arkade_qr_opaque_prefixes_ark_scheme() {
+        let pointer = ArkadePointer::OpaqueUri {
+            uri: "ark1qexampleaddress".into(),
+        };
+        let qr = build_arkade_qr(&pointer, 21_000).unwrap();
+        assert_eq!(qr, "ark:ark1qexampleaddress");
+    }
+
+    #[test]
+    fn build_arkade_qr_opaque_preserves_existing_ark_scheme() {
+        let pointer = ArkadePointer::OpaqueUri {
+            uri: "ark:ark1qexampleaddress".into(),
+        };
+        let qr = build_arkade_qr(&pointer, 21_000).unwrap();
+        assert_eq!(qr, "ark:ark1qexampleaddress");
+    }
+
+    #[test]
+    fn build_arkade_qr_server_pubkey_returns_ark_uri() {
+        let pointer = ArkadePointer::ServerPubkey {
+            server: "https://ark.example.com".into(),
+            pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                .into(),
+        };
+        let qr = build_arkade_qr(&pointer, 42).unwrap();
+        assert!(qr.starts_with("ark:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798?"));
+        assert!(qr.contains("server="));
+        assert!(qr.contains("amount=42"));
+    }
+
+    #[test]
+    fn build_arkade_qr_vtxo_pointer_returns_ark_uri() {
+        let pointer = ArkadePointer::VtxoPointer {
+            server: "https://ark.example.com".into(),
+            vtxo_pointer: "vtxo:abc123".into(),
+        };
+        let qr = build_arkade_qr(&pointer, 1_000).unwrap();
+        assert!(qr.starts_with("ark:vtxo:abc123?"));
+        assert!(qr.contains("server="));
+        assert!(qr.contains("amount=1000"));
+    }
+
+    #[test]
+    fn classify_ark_method_opaque_uri_wins() {
+        use crate::profile::PaymentMethod;
+        let method = PaymentMethod::Ark {
+            label: "Arkade".into(),
+            server: "".into(),
+            pubkey: "".into(),
+            vtxo_pointer: None,
+            proof: None,
+            expires_at: None,
+            opaque_uri: Some("ark1qexample".into()),
+        };
+        assert!(matches!(
+            classify_ark_method(&method),
+            Some(ArkadePointer::OpaqueUri { .. })
+        ));
+    }
+
+    #[test]
+    fn classify_ark_method_server_pubkey_path() {
+        use crate::profile::PaymentMethod;
+        let method = PaymentMethod::Ark {
+            label: "Ark".into(),
+            server: "https://ark.example.com".into(),
+            pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                .into(),
+            vtxo_pointer: None,
+            proof: None,
+            expires_at: None,
+            opaque_uri: None,
+        };
+        assert!(matches!(
+            classify_ark_method(&method),
+            Some(ArkadePointer::ServerPubkey { .. })
+        ));
     }
 }

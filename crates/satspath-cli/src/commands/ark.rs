@@ -184,7 +184,7 @@ fn build_validation_report(
         Err(e) => report.errors.push(e.to_string()),
     }
 
-    match verify_ark_ownership_proof(alias, pointer, now) {
+    match verify_ark_ownership_proof(alias, &signed.profile.identity_pubkey, pointer, now) {
         Ok(true) => report.ark_ownership_verified = true,
         Ok(false) => report
             .warnings

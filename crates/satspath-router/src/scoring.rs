@@ -280,6 +280,7 @@ mod tests {
             methods,
             updated_at: 1,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()
@@ -347,6 +348,7 @@ mod tests {
             label: "Ark".into(),
             server: "https://ark.example.com".into(),
             pubkey: valid_pubkey.into(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,

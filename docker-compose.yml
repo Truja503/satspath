@@ -1,0 +1,101 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SatsPath — Docker Compose
+#
+# Services
+#   satspath-cli   — The Rust CLI (runs commands, exits; use `docker compose
+#                    run satspath-cli <args>`)
+#   ark-bridge     — TypeScript JSON-RPC bridge for ARK client-side validation
+#
+# Profiles
+#   default        — satspath-cli only
+#   bridge         — includes ark-bridge (needed for Ark swap validation)
+#
+# Usage examples
+#   docker compose build
+#   docker compose run --rm satspath-cli --help
+#   docker compose run --rm satspath-cli init
+#   docker compose run --rm satspath-cli register user@example.com \
+#       --arkade-uri "ark:ark1q..."
+#   docker compose --profile bridge up ark-bridge
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── SatsPath CLI ────────────────────────────────────────────────────────────
+  satspath-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: satspath-cli:latest
+    # CLI is ephemeral; restart never makes sense.
+    restart: "no"
+    # .satspath/ registry state is persisted in a named volume so that
+    # `satspath init` data survives container re-creation.
+    volumes:
+      - satspath-data:/data
+    environment:
+      SATSPATH_DATA_DIR: /data
+      # Set RUST_LOG for verbose tracing during development.
+      # RUST_LOG: "satspath=debug"
+    # Security: read-only root filesystem; only /data is writable via tmpfs.
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Security: drop all capabilities, add back none.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # ── ARK Bridge (opt-in via --profile bridge) ────────────────────────────────
+  ark-bridge:
+    build:
+      context: .
+      dockerfile: ark-bridge/Dockerfile
+      target: runtime
+    image: satspath-ark-bridge:latest
+    profiles:
+      - bridge
+    restart: unless-stopped
+    # Only reachable from within the Compose network (not published externally).
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      ARK_BRIDGE_PORT: "3000"
+    # Resource limits — the bridge is a lightweight RPC helper, not a server.
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.50"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  satspath-data:
+    driver: local
+    labels:
+      com.satspath.description: "SatsPath CLI registry and key state"
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  default:
+    driver: bridge
+    # Internal network: no external routing needed.
+    internal: false
+    labels:
+      com.satspath.description: "SatsPath internal service mesh"

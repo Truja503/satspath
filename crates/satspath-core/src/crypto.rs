@@ -21,13 +21,13 @@ pub fn generate_identity_keypair() -> IdentityKeypair {
 }
 
 /// Produce a deterministic canonical JSON serialization of a PaymentProfile.
-/// Fields are serialized in a fixed key order so signatures are reproducible.
+/// Uses canonical_json crate which sorts object keys for deterministic output.
 pub fn canonical_profile_bytes(profile: &PaymentProfile) -> Result<Vec<u8>> {
-    // serde_json preserves insertion order for structs (via derived Serialize),
-    // which is deterministic across runs on the same binary version.
-    let json = serde_json::to_string(profile)
+    let value = serde_json::to_value(profile)
         .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
-    Ok(json.into_bytes())
+    let canonical = canonical_json::to_string(&value)
+        .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
+    Ok(canonical.into_bytes())
 }
 
 /// Sign a PaymentProfile with the given secret key and return a SignedPaymentProfile.
@@ -154,6 +154,7 @@ mod tests {
             }],
             updated_at: 1_700_000_000,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         }
     }

@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.local — offline-first build
+#
+# Uses only locally available images (no Docker Hub pull required).
+# The Rust binary is built natively by the host toolchain and then packaged
+# into this container — identical security posture as the multi-stage build.
+#
+# Usage:
+#   cargo build --release --bin satspath          # build the binary first
+#   docker build -f Dockerfile.local -t satspath-cli:latest .
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Use kali-rolling as runtime base (already available locally; Debian-compatible,
+# has glibc + OpenSSL + CA certs). Replace with debian:bookworm-slim when online.
+FROM docker.io/kalilinux/kali-rolling AS runtime
+
+# OCI image labels
+LABEL org.opencontainers.image.title="satspath-cli" \
+      org.opencontainers.image.description="SatsPath — universal Bitcoin payment resolver and router" \
+      org.opencontainers.image.vendor="SatsPath" \
+      org.opencontainers.image.licenses="MIT"
+
+# Security: install only CA certificates (kali-rolling already has glibc/openssl).
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Security: dedicated non-root user.
+# Note: kali-rolling sets SYS_UID_MAX=999; use addgroup/adduser for portability.
+RUN groupadd --gid 10001 satspath \
+    && useradd --uid 10001 --gid satspath \
+               --no-create-home --shell /sbin/nologin satspath
+
+# Copy the pre-compiled release binary from the staging directory.
+# Build it first with:  cargo build --release --bin satspath
+# Then stage it with:   cp target/release/satspath bin/satspath
+COPY bin/satspath /usr/local/bin/satspath
+RUN chmod 755 /usr/local/bin/satspath
+
+# Persistent data directory for .satspath/ state.
+RUN mkdir -p /data && chown satspath:satspath /data
+
+USER satspath
+WORKDIR /data
+
+ENV SATSPATH_DATA_DIR=/data
+
+ENTRYPOINT ["/usr/local/bin/satspath"]
+CMD ["--help"]

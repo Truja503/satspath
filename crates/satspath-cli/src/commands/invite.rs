@@ -15,7 +15,7 @@ pub fn cmd_invite(alias: &str, amount_sats: u64) -> Result<()> {
         return Ok(());
     }
 
-    let invite = create_invite(alias, amount_sats);
+    let invite = create_invite(alias, amount_sats, None, 24 * 3600);
 
     println!(
         "'{}' is not registered on SatsPath.",

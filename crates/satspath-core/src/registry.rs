@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::{Result, SatsPathError};
-use crate::privacy::{canonical_identifier, identifier_hash};
+use crate::privacy::{canonical_identifier, identifier_hash, validate_ascii_identifier};
 use crate::profile::SignedPaymentProfile;
 
 const REGISTRY_FILE: &str = "registry.json";
@@ -49,6 +49,7 @@ impl Registry {
 
     /// Register a signed profile. Fails if the alias is already taken.
     pub fn register_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
+        validate_ascii_identifier(&signed.profile.alias)?;
         let alias = canonical_identifier(&signed.profile.alias);
         let key = identifier_hash(&alias);
         if self.data.profiles.contains_key(&key) || self.data.profiles.contains_key(&alias) {
@@ -60,8 +61,57 @@ impl Registry {
 
     /// Update (overwrite) an existing profile entry.
     pub fn update_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
+        validate_ascii_identifier(&signed.profile.alias)?;
         let alias = canonical_identifier(&signed.profile.alias);
-        self.data.profiles.insert(identifier_hash(&alias), signed);
+        let key = identifier_hash(&alias);
+        
+        // SEC-03: Downgrade Attack Mitigation
+        // Ensure we do not overwrite a newer profile with an older one.
+        if let Some(existing) = self.data.profiles.get(&key).or_else(|| self.data.profiles.get(&alias)) {
+            if signed.profile.updated_at < existing.profile.updated_at {
+                return Err(SatsPathError::RegistryError(format!(
+                    "Update rejected: incoming profile is older (updated_at: {}) than existing profile (updated_at: {})",
+                    signed.profile.updated_at, existing.profile.updated_at
+                )));
+            }
+            
+            // SEC-03b: Method Superset Check
+            // Prevent stripping payment methods (e.g., removing Lightning to force on-chain)
+            let existing_methods: std::collections::HashSet<_> = existing.profile.methods
+                .iter()
+                .map(|m| m.method_name())
+                .collect();
+            let new_methods: std::collections::HashSet<_> = signed.profile.methods
+                .iter()
+                .map(|m| m.method_name())
+                .collect();
+            
+            if !existing_methods.is_subset(&new_methods) {
+                return Err(SatsPathError::RegistryError(
+                    "Update rejected: new profile must include all previously registered payment methods".into()
+                ));
+            }
+            
+            // SEC-03c: Sequence Number Check (Replay Protection)
+            // Each update must have a strictly higher sequence number
+            if let (Some(new_seq), Some(existing_seq)) = (signed.profile.sequence, existing.profile.sequence) {
+                if new_seq <= existing_seq {
+                    return Err(SatsPathError::RegistryError(format!(
+                        "Update rejected: sequence number {} not greater than existing {}",
+                        new_seq, existing_seq
+                    )));
+                }
+            } else if signed.profile.sequence.is_some() && existing.profile.sequence.is_none() {
+                // Allow adding sequence to an old profile without sequence
+            } else if signed.profile.sequence.is_none() && existing.profile.sequence.is_some() {
+                // Reject removing sequence once it's been added
+                return Err(SatsPathError::RegistryError(
+                    "Update rejected: cannot remove sequence number once added".into()
+                ));
+            }
+        }
+        
+        self.data.profiles.insert(key, signed);
         self.save()
     }
 
@@ -126,6 +176,7 @@ mod tests {
             }],
             updated_at: 1_700_000_000,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()

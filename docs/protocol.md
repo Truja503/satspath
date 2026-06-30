@@ -216,6 +216,13 @@ Resolver behavior is specified in [resolvers.md](./resolvers.md).
 
 ## Quote Response Contract
 
+SatsPath Mainnet Preview is a public-data-only protocol mode that operates strictly in the first three phases of a payment lifecycle:
+
+1. **Resolve**: Fetch the signed profile for the identifier.
+2. **Route**: Check signatures, expiry, ownership, and select the best rail.
+3. **Invoice Presentation**: Fetch LNURL/BOLT11 data, format BIP-21 or Ark URIs, and display the payment pointer or QR.
+4. **Execution**: **(Out of scope for Mainnet Preview)** The user scans the QR and pays using their own wallet.
+
 The protocol quote response is serialized as a JSON object tagged by `status`.
 
 ### `ok`
@@ -242,6 +249,47 @@ Returned when a profile is found, verified, not expired, and at least one route 
   "eta": "instant",
   "reason": "Amount is below Lightning threshold and Lightning is available.",
   "qr": "alice@example.com"
+}
+```
+
+The payload preview formats are:
+
+- `lightning:<address>` for Lightning Address preview,
+- `lnurl:<url>` for LNURL preview,
+- a BOLT11 invoice string only when explicitly fetched by the caller,
+- `bitcoin:<address>?amount=<btc>` for on-chain mainnet preview,
+- `satspath:ark?...&network=mainnet` for Ark public pointer preview.
+
+It must not:
+
+- sign transactions,
+- broadcast transactions,
+- execute Lightning payments,
+- execute Ark transfers,
+- execute swaps,
+- handle seeds, xprv/tprv, macaroons, certs, API secrets, claim keys, refund
+  keys, or wallet private keys.
+
+Mainnet execution (Phase 4 automation) is not part of v1 prototype behavior and no execution flag exists for mainnet.
+
+## Experimental Swap Engine (Execution Phase)
+
+Execution automation (such as submarine swaps, reverse swaps, or Ark VTXO transfers) is built into an experimental engine that is **strictly testnet-only**. This engine handles Phase 4, but is disabled by default and sandboxed away from mainnet to prevent any risk to real funds.
+
+## Invite Flow
+
+When the resolver cannot find a registered alias, the sender creates an invite
+instead of failing silently:
+
+```json
+{
+  "invite": {
+    "alias_hash": "a1b2c3d4...",
+    "amount_sats": 1000,
+    "created_at": 1782810000,
+    "claim_url": "https://satspath.local/claim?alias_hash=...&amount=...",
+    "warning": "Receiver must generate their own keys locally."
+  }
 }
 ```
 

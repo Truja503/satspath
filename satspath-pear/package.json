@@ -1,0 +1,16 @@
+{
+  "name": "satspath-pear",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hypercore": "^11.33.5",
+    "hyperswarm": "^4.17.0"
+  }
+}

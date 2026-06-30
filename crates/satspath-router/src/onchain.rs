@@ -21,13 +21,12 @@ pub fn first_onchain_method(methods: &[PaymentMethod]) -> Option<&PaymentMethod>
         .find(|m| matches!(m, PaymentMethod::Onchain { .. }))
 }
 
-/// On-chain is viable only if the next-block fee (fastestFee) is cheap.
+/// On-chain is viable only if the hour fee is cheap (<= 10 sat/vB).
 ///
-/// We use `fastestFee` — not hourFee — because we only route on-chain
-/// when confirmation can happen in <10 minutes (next block).
-/// If even the next-block rate is expensive, we fall back to Ark.
+/// We use `hourFee` to match the protocol specification: on-chain is
+/// selected when the 1-hour confirmation fee is <= 10 sat/vB.
 ///
-/// Threshold: 20 sat/vB — reasonable for "cheap next-block" on mainnet.
+/// Threshold: 10 sat/vB — matches protocol spec for "cheap" on-chain.
 pub fn is_onchain_fee_acceptable(estimate: &FeeEstimate) -> bool {
-    estimate.fastest_fee <= 20
+    estimate.hour_fee <= 10
 }

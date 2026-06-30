@@ -2,7 +2,7 @@ use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile};
 
 use crate::ark::{first_ark_method, is_ark_available};
 use crate::fees::{fetch_fee_estimate, FeeEstimate};
-use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available};
+use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available, is_lightning_available_for_amount_sync};
 use crate::onchain::{
     estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
     is_onchain_fee_acceptable,
@@ -32,6 +32,8 @@ pub enum SwapDirective {
     ChainSwap { target_address: String },
     /// Direct Ark VTXO transfer (same Ark server).
     ArkTransfer { server: String, pubkey: String },
+    /// Manual Arkade execution.
+    ArkadeManual,
 }
 
 /// Snapshot of live mempool fee rates used in the routing decision.
@@ -53,6 +55,8 @@ pub struct RouteQuote {
     pub fee_snapshot: Option<FeeRateSnapshot>,
     /// Execution directive for the experimental swap engine.
     pub swap_directive: SwapDirective,
+    pub execution: Option<satspath_core::ExecutionMode>,
+    pub wallet_hint: Option<String>,
 }
 
 /// Select the best available payment rail.
@@ -69,7 +73,11 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
 
     // 1. Lightning — evaluated first, independent of fee environment.
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
-        if let Some(ln) = methods.iter().find(|m| is_lightning_available(m)) {
+        for ln in methods.iter().filter(|m| is_lightning_available(m)) {
+            // Check Lightning dust threshold (min_sendable from LNURL)
+            if !is_lightning_available_for_amount_sync(ln, req.amount_sats) {
+                continue; // Try next Lightning method
+            }
             let ln_address = match ln {
                 PaymentMethod::Lightning {
                     lightning_address, ..
@@ -89,22 +97,24 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
                 swap_directive: SwapDirective::LightningPayment {
                     target_ln_address: ln_address,
                 },
+                execution: None,
+                wallet_hint: None,
             });
         }
     }
 
     // Fetch live fees only when we need to evaluate on-chain or Ark.
-    let fee_est = fetch_fee_estimate().await;
+    let fee_est = fetch_fee_estimate().await?;
     let snapshot = FeeRateSnapshot {
         fastest_sat_vb: fee_est.fastest_fee,
         half_hour_sat_vb: fee_est.half_hour_fee,
         hour_sat_vb: fee_est.hour_fee,
     };
 
-    // 2. On-chain — next-block fee must be ≤ 20 sat/vB (cheap AND fast, <10 min).
+    // 2. On-chain — hour fee must be ≤ 10 sat/vB (cheap, ~1 hour confirmation).
     if is_onchain_available(methods) && is_onchain_fee_acceptable(&fee_est) {
         let method = first_onchain_method(methods).unwrap().clone();
-        let fee = estimate_onchain_fee_sats(fee_est.fastest_fee);
+        let fee = estimate_onchain_fee_sats(fee_est.hour_fee);
         let target_address = match &method {
             PaymentMethod::Onchain { address, .. } => address.clone(),
             _ => unreachable!(),
@@ -112,47 +122,57 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
-                "Next-block fee ({} sat/vB) is cheap. Confirmation expected in <10 min.",
-                fee_est.fastest_fee
+                "Hour fee ({} sat/vB) is cheap. Confirmation expected in ~1 hour.",
+                fee_est.hour_fee
             ),
             estimated_fee_sats: Some(fee),
-            estimated_confirmation: Some("~10 minutes (next block)".into()),
+            estimated_confirmation: Some("~1 hour".into()),
             fee_snapshot: Some(snapshot),
             swap_directive: SwapDirective::ChainSwap { target_address },
+            execution: None,
+            wallet_hint: None,
         });
     }
 
-    // 3. Ark fallback.
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
-        let (server, pubkey) = match &method {
-            PaymentMethod::Ark { server, pubkey, .. } => (server.clone(), pubkey.clone()),
+        let (server, pubkey, opaque_uri) = match &method {
+            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
             _ => unreachable!(),
         };
         let reason = if is_onchain_available(methods) {
             format!(
-                "On-chain next-block fee ({} sat/vB) exceeds 20 sat/vB. Falling back to Ark.",
-                fee_est.fastest_fee
+                "On-chain hour fee ({} sat/vB) exceeds 10 sat/vB. Falling back to Ark.",
+                fee_est.hour_fee
             )
         } else {
             "No Lightning (amount above threshold) or on-chain method. Using Ark.".into()
         };
+
+        let (swap_directive, execution, wallet_hint) = if opaque_uri.is_some() {
+            (SwapDirective::ArkadeManual, Some(satspath_core::ExecutionMode::ManualWallet), Some("arkade".into()))
+        } else {
+            (SwapDirective::ArkTransfer { server, pubkey }, None, None)
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason,
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ArkTransfer { server, pubkey },
+            swap_directive,
+            execution,
+            wallet_hint,
         });
     }
 
     Err(SatsPathError::NoRouteFound(format!(
         "No usable rail for {} sats to {}. \
          Lightning: {} sats threshold not met or no LN method. \
-         On-chain: next-block fee {} sat/vB > 20 sat/vB. \
+         On-chain: hour fee {} sat/vB > 10 sat/vB. \
          Ark: no method configured.",
-        req.amount_sats, req.alias, LIGHTNING_THRESHOLD_SATS, fee_est.fastest_fee,
+        req.amount_sats, req.alias, LIGHTNING_THRESHOLD_SATS, fee_est.hour_fee,
     )))
 }
 
@@ -163,9 +183,9 @@ pub fn select_route_with_fees(
 ) -> satspath_core::Result<RouteQuote> {
     let methods = &req.signed_profile.profile.methods;
 
-    // Lightning first — no fee check, no dust threshold.
+    // Lightning first — no fee check, but enforce dust threshold.
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
-        if let Some(ln) = methods.iter().find(|m| is_lightning_available(m)) {
+        if let Some(ln) = methods.iter().find(|m| is_lightning_available_for_amount_sync(m, req.amount_sats)) {
             let ln_address = match ln {
                 PaymentMethod::Lightning {
                     lightning_address, ..
@@ -185,6 +205,8 @@ pub fn select_route_with_fees(
                 swap_directive: SwapDirective::LightningPayment {
                     target_ln_address: ln_address,
                 },
+                execution: None,
+                wallet_hint: None,
             });
         }
     }
@@ -197,7 +219,7 @@ pub fn select_route_with_fees(
 
     if is_onchain_available(methods) && is_onchain_fee_acceptable(fee_est) {
         let method = first_onchain_method(methods).unwrap().clone();
-        let fee = estimate_onchain_fee_sats(fee_est.fastest_fee);
+        let fee = estimate_onchain_fee_sats(fee_est.hour_fee);
         let target_address = match &method {
             PaymentMethod::Onchain { address, .. } => address.clone(),
             _ => unreachable!(),
@@ -205,32 +227,43 @@ pub fn select_route_with_fees(
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
-                "Next-block fee ({} sat/vB) is cheap. Confirmation expected in <10 min.",
-                fee_est.fastest_fee
+                "Hour fee ({} sat/vB) is cheap. Confirmation expected in ~1 hour.",
+                fee_est.hour_fee
             ),
             estimated_fee_sats: Some(fee),
-            estimated_confirmation: Some("~10 minutes (next block)".into()),
+            estimated_confirmation: Some("~1 hour".into()),
             fee_snapshot: Some(snapshot),
             swap_directive: SwapDirective::ChainSwap { target_address },
+            execution: None,
+            wallet_hint: None,
         });
     }
 
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
-        let (server, pubkey) = match &method {
-            PaymentMethod::Ark { server, pubkey, .. } => (server.clone(), pubkey.clone()),
+        let (server, pubkey, opaque_uri) = match &method {
+            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
             _ => unreachable!(),
         };
+
+        let (swap_directive, execution, wallet_hint) = if opaque_uri.is_some() {
+            (SwapDirective::ArkadeManual, Some(satspath_core::ExecutionMode::ManualWallet), Some("arkade".into()))
+        } else {
+            (SwapDirective::ArkTransfer { server, pubkey }, None, None)
+        };
+
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
-                "On-chain next-block fee ({} sat/vB) exceeds 20 sat/vB. Falling back to Ark.",
-                fee_est.fastest_fee
+                "On-chain hour fee ({} sat/vB) exceeds 10 sat/vB. Falling back to Ark.",
+                fee_est.hour_fee
             ),
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ArkTransfer { server, pubkey },
+            swap_directive,
+            execution,
+            wallet_hint,
         });
     }
 
@@ -277,6 +310,7 @@ mod tests {
             methods,
             updated_at: 1_700_000_000,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()
@@ -342,7 +376,7 @@ mod tests {
         };
         let q = select_route_with_fees(&req, &low_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
-        assert!(q.reason.contains("5 sat/vB"));
+        assert!(q.reason.contains("3 sat/vB"));
     }
 
     #[test]
@@ -359,6 +393,7 @@ mod tests {
                 label: "Ark".into(),
                 server: "https://ark.example.com".into(),
                 pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into(),
+                opaque_uri: None,
                 vtxo_pointer: None,
                 proof: None,
                 expires_at: None,
@@ -371,7 +406,7 @@ mod tests {
         };
         let q = select_route_with_fees(&req, &high_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Ark { .. }));
-        assert!(q.reason.contains("50 sat/vB"));
+        assert!(q.reason.contains("20 sat/vB"));
     }
 
     #[test]
@@ -389,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn onchain_boundary_at_20_sat_vb() {
+    fn onchain_boundary_at_10_sat_vb_hour_fee() {
         let signed = make_profile(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
             network: BitcoinNetwork::Mainnet,
@@ -404,8 +439,8 @@ mod tests {
         };
 
         let at = FeeEstimate {
-            fastest_fee: 20,
-            half_hour_fee: 15,
+            fastest_fee: 15,
+            half_hour_fee: 12,
             hour_fee: 10,
             economy_fee: 5,
             minimum_fee: 1,
@@ -416,8 +451,8 @@ mod tests {
         ));
 
         let above = FeeEstimate {
-            fastest_fee: 21,
-            half_hour_fee: 16,
+            fastest_fee: 20,
+            half_hour_fee: 15,
             hour_fee: 11,
             economy_fee: 6,
             minimum_fee: 2,

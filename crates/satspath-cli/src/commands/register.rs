@@ -66,6 +66,7 @@ pub fn cmd_register(
                 vtxo_pointer: None,
                 proof: None,
                 expires_at: None,
+                opaque_uri: None,
             });
         }
         (None, None) => {}
@@ -78,6 +79,7 @@ pub fn cmd_register(
         methods: methods.clone(),
         updated_at: chrono::Utc::now().timestamp(),
         expires_at: None,
+        sequence: Some(1),
         method_verifications: Vec::new(),
     };
 

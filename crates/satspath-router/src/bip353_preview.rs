@@ -111,6 +111,8 @@ pub fn quote_from_bip353_resolution(
         ),
         // The authoritative payable is the BIP-353 bitcoin: URI itself.
         qr: resolution.bitcoin_uri.clone(),
+        execution: None,
+        wallet_hint: None,
     }
 }
 
