@@ -62,6 +62,32 @@ pub fn validate_lightning_address(address: &str) -> Result<()> {
     }
 }
 
+/// Validate a BOLT12 offer string.
+/// BOLT12 offers are bech32 encoded with prefix "lno" (mainnet) or "lnot" (testnet).
+/// They contain an amount, node_id, paths, and other metadata.
+pub fn validate_bolt12_offer(offer: &str) -> Result<()> {
+    let trimmed = offer.trim();
+    if trimmed.is_empty() {
+        return Err(SatsPathError::InvalidPaymentPointer(
+            "BOLT12 offer cannot be empty".into(),
+        ));
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    // BOLT12 offers use bech32 with prefixes lno (mainnet) or lnot (testnet)
+    if !lower.starts_with("lno") && !lower.starts_with("lnot") {
+        return Err(SatsPathError::InvalidPaymentPointer(
+            "BOLT12 offer must start with 'lno' (mainnet) or 'lnot' (testnet)".into(),
+        ));
+    }
+    // Basic bech32 validation - try to decode
+    let _ = bech32::decode(&lower).map_err(|e| {
+        SatsPathError::InvalidPaymentPointer(format!("BOLT12 offer bech32 decode failed: {e}"))
+    })?;
+    // Ensure no private material
+    assert_no_private_material(trimmed)?;
+    Ok(())
+}
+
 pub fn validate_bitcoin_address(address: &str, network: BitcoinNetwork) -> Result<()> {
     let parsed = Address::from_str(address.trim())
         .map_err(|e| SatsPathError::InvalidPaymentPointer(e.to_string()))?;
@@ -227,7 +253,7 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
                     }
                 }
                 if let Some(invoice) = bolt12 {
-                    assert_no_private_material(invoice)?;
+                    validate_bolt12_offer(invoice)?;
                 }
                 if let Some(pubkey) = receiver_pubkey {
                     validate_compressed_pubkey(pubkey)?;
