@@ -47,6 +47,7 @@ pub use peer_registry::{
     canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,
     PeerPointers, PeerRecord, PeerRegistryBackend,
 };
+pub use privacy::{canonical_identifier, identifier_hash, validate_ascii_identifier};
 pub use platform::{
     EmailChallenge, EmailVerifier, ProfilePublisher, PublishReceipt, VerifiedIdentifier,
 };
@@ -63,8 +64,14 @@ pub fn is_valid_lightning_address(s: &str) -> bool {
     validation::validate_lightning_address(s).is_ok()
 }
 
-/// Create an invite for an unregistered alias.
-pub fn create_invite(alias: &str, amount_sats: u64) -> Invite {
+/// Create an invite for an unregistered alias, signed by the sender.
+pub fn create_invite(
+    alias: &str,
+    amount_sats: u64,
+    sender_secret_key: Option<&secp256k1::SecretKey>,
+    ttl_seconds: i64,
+) -> Invite {
+    let now = chrono::Utc::now().timestamp();
     let digest = Sha256::digest(privacy::canonical_identifier(alias).as_bytes());
     let alias_hash = hex::encode(digest);
     let claim_url = format!(
@@ -72,15 +79,60 @@ pub fn create_invite(alias: &str, amount_sats: u64) -> Invite {
         &alias_hash[..16],
         amount_sats
     );
+    
+    // Build the message to sign: includes all critical invite fields
+    let message = format!(
+        "SatsPath Invite v1\nalias_hash={alias_hash}\namount_sats={amount_sats}\ncreated_at={now}\nexpires_at={}",
+        now + ttl_seconds
+    );
+    
+    let (sender_signature, sender_pubkey) = if let Some(sk) = sender_secret_key {
+        let secp = secp256k1::Secp256k1::new();
+        let pubkey = secp256k1::PublicKey::from_secret_key(&secp, sk);
+        let sig = crate::crypto::sign_message(&message, sk);
+        (Some(sig), Some(hex::encode(pubkey.serialize())))
+    } else {
+        (None, None)
+    };
+    
     Invite {
         alias_hash,
         amount_sats,
-        created_at: chrono::Utc::now().timestamp(),
+        created_at: now,
+        expires_at: now + ttl_seconds,
         claim_url,
         warning: "The receiver must claim this payment by generating their own keys locally. \
                   SatsPath never holds or generates keys on behalf of users."
             .into(),
+        sender_signature,
+        sender_pubkey,
     }
+}
+
+/// Verify an invite's signature and expiry.
+pub fn verify_invite(invite: &Invite) -> Result<bool> {
+    let now = chrono::Utc::now().timestamp();
+    
+    // Check expiry
+    if now >= invite.expires_at {
+        return Err(SatsPathError::RegistryError("invite expired".into()));
+    }
+    
+    // If no signature, can't verify sender identity
+    let Some(signature) = &invite.sender_signature else {
+        return Ok(false);
+    };
+    let Some(pubkey) = &invite.sender_pubkey else {
+        return Ok(false);
+    };
+    
+    // Reconstruct the signed message
+    let message = format!(
+        "SatsPath Invite v1\nalias_hash={}\namount_sats={}\ncreated_at={}\nexpires_at={}",
+        invite.alias_hash, invite.amount_sats, invite.created_at, invite.expires_at
+    );
+    
+    crate::crypto::verify_message_signature(&message, signature, pubkey)
 }
 
 pub fn create_invite_record(

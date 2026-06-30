@@ -129,6 +129,10 @@ pub struct PaymentProfile {
     /// `None` means the profile does not expire (non-expiring).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<i64>,
+    /// Monotonically increasing sequence number for replay protection.
+    /// Each profile update must have a strictly higher sequence than the previous.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sequence: Option<u64>,
     /// Ownership-proof attestations, one per (proven) method, bound to the
     /// method's [`PaymentMethod::ownership_descriptor`].
     ///
@@ -165,8 +169,17 @@ pub struct Invite {
     pub alias_hash: String,
     pub amount_sats: u64,
     pub created_at: i64,
+    /// Unix timestamp after which this invite expires.
+    pub expires_at: i64,
     pub claim_url: String,
     pub warning: String,
+    /// Hex-encoded DER ECDSA signature by the sender's identity key.
+    /// Binds the invite to the sender's identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender_signature: Option<String>,
+    /// Sender's identity pubkey (hex) for verification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender_pubkey: Option<String>,
 }
 
 /// Non-custodial invite state for an identifier with no published profile yet.

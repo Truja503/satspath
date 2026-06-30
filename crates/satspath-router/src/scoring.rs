@@ -280,6 +280,7 @@ mod tests {
             methods,
             updated_at: 1,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()

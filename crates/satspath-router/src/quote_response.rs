@@ -192,7 +192,9 @@ where
         Ok(signed) => signed,
         Err(_) => {
             return QuoteResponse::NotRegistered {
-                invite: create_invite(recipient, amount_sats),
+                // No sender key in preview mode; invite is unsigned (no sender identity binding)
+                // TTL: 24 hours
+                invite: create_invite(recipient, amount_sats, None, 24 * 3600),
             }
         }
     };
@@ -351,6 +353,7 @@ mod tests {
             methods,
             updated_at: 1_700_000_000,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         };
         (profile, kp.secret_key)

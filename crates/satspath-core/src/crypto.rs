@@ -154,6 +154,7 @@ mod tests {
             }],
             updated_at: 1_700_000_000,
             expires_at: None,
+            sequence: None,
             method_verifications: Vec::new(),
         }
     }

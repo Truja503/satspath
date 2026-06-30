@@ -16,12 +16,66 @@ pub fn is_lightning_available(method: &PaymentMethod) -> bool {
     }
 }
 
+/// Check if Lightning is available for a specific amount by checking LNURL min_sendable.
+/// Returns true if the amount is >= min_sendable (or if no LNURL to check).
+pub async fn is_lightning_available_for_amount(
+    method: &PaymentMethod,
+    amount_sats: u64,
+) -> bool {
+    match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(addr),
+            lnurl: None,
+            bolt12: None,
+            ..
+        } => {
+            // Try to fetch LNURL metadata to check min_sendable
+            match fetch_lnurl_metadata(addr).await {
+                Ok(meta) => amount_sats * 1_000 >= meta.min_sendable,
+                Err(_) => true, // If we can't fetch, assume it's available (fail-open for UX)
+            }
+        }
+        PaymentMethod::Lightning {
+            lnurl: Some(_), lightning_address: None, bolt12: None, ..
+        } => {
+            // LNURL present but no lightning_address - we'd need to fetch the LNURL
+            // For now, assume available (could fetch in future)
+            true
+        }
+        PaymentMethod::Lightning { bolt12: Some(_), .. } => {
+            // BOLT12 offers don't have a min_sendable until invoice is generated
+            // Assume available for now
+            true
+        }
+        _ => false,
+    }
+}
+
 pub fn lightning_address(method: &PaymentMethod) -> Option<&str> {
     match method {
         PaymentMethod::Lightning {
             lightning_address, ..
         } => lightning_address.as_deref(),
         _ => None,
+    }
+}
+
+/// Check if Lightning is available for a specific amount (synchronous version).
+/// Uses a default minimum of 1000 sats (1,000,000 msats) if LNURL metadata unavailable.
+pub fn is_lightning_available_for_amount_sync(method: &PaymentMethod, amount_sats: u64) -> bool {
+    const DEFAULT_MIN_SENDABLE_MSATS: u64 = 1_000_000; // 1000 sats
+    match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(_),
+            lnurl: None,
+            bolt12: None,
+            ..
+        } => amount_sats * 1_000 >= DEFAULT_MIN_SENDABLE_MSATS,
+        PaymentMethod::Lightning {
+            lnurl: Some(_), lightning_address: None, bolt12: None, ..
+        } => true, // Can't check without fetching
+        PaymentMethod::Lightning { bolt12: Some(_), .. } => true, // BOLT12: no min until invoice
+        _ => false,
     }
 }
 

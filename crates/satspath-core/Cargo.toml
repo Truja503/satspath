@@ -20,6 +20,7 @@ rand = { workspace = true }
 reqwest = { workspace = true }
 async-trait = "0.1"
 url = { workspace = true }
+hmac = "0.12"
 
 [dev-dependencies]
 tempfile = "3"

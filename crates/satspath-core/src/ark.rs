@@ -189,11 +189,14 @@ pub struct ClientValidationReport {
 
 pub fn ark_ownership_challenge(
     alias: &str,
+    identity_pubkey: &str,
     ark_server: &str,
     receiver_pubkey: &str,
     nonce: &str,
 ) -> String {
-    format!("satspath-proof:{alias}:ark:{ark_server}:{receiver_pubkey}:{nonce}")
+    format!(
+        "SatsPath Ownership Proof v1\nidentity={identity_pubkey}\nmethod=ark:{ark_server}:{receiver_pubkey}\nissued_at={nonce}"
+    )
 }
 
 pub fn validate_ark_server_url(server: &str) -> Result<()> {
@@ -231,6 +234,7 @@ pub fn validate_ark_receive_pointer(pointer: &ArkReceivePointer, now: i64) -> Re
 
 pub fn verify_ark_ownership_proof(
     alias: &str,
+    identity_pubkey: &str,
     pointer: &ArkReceivePointer,
     now: i64,
 ) -> Result<bool> {
@@ -250,9 +254,18 @@ pub fn verify_ark_ownership_proof(
         }
     }
 
-    let expected_prefix =
-        ark_ownership_challenge(alias, &pointer.server, &pointer.receiver_pubkey, "");
-    if !proof.message.starts_with(&expected_prefix) || proof.message == expected_prefix {
+    // Use the method descriptor for binding, consistent with ownership.rs
+    let method_descriptor = format!("ark:{}", pointer.receiver_pubkey);
+    let expected_message = ark_ownership_challenge(
+        alias,
+        identity_pubkey,
+        &pointer.server,
+        &pointer.receiver_pubkey,
+        &method_descriptor, // nonce field repurposed as method descriptor for exact match
+    );
+
+    // Require exact message match (no prefix-based replay)
+    if proof.message != expected_message {
         return Err(SatsPathError::InvalidSignature);
     }
 
@@ -278,6 +291,7 @@ mod tests {
 
     fn signed_pointer(
         alias: &str,
+        identity_pubkey: &str,
         server: &str,
         nonce: &str,
         expires_at: Option<i64>,
@@ -286,7 +300,9 @@ mod tests {
         let secret = SecretKey::from_slice(&[1u8; 32]).unwrap();
         let pubkey = secret.public_key(&secp);
         let pubkey_hex = hex::encode(pubkey.serialize());
-        let message = ark_ownership_challenge(alias, server, &pubkey_hex, nonce);
+        // Use method descriptor as "nonce" for exact message matching
+        let method_descriptor = format!("ark:{}", pubkey_hex);
+        let message = ark_ownership_challenge(alias, identity_pubkey, server, &pubkey_hex, &method_descriptor);
         let digest = Sha256::digest(message.as_bytes());
         let sig = secp.sign_ecdsa(&Message::from_digest(digest.into()), &secret);
         ArkReceivePointer {
@@ -304,72 +320,84 @@ mod tests {
 
     #[test]
     fn valid_proof_accepted() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).unwrap());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).unwrap());
     }
 
     #[test]
     fn pubkey_incorrect_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let mut pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
         pointer.receiver_pubkey =
-            "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+            "0279be667ef9dcbbac55a0a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into();
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn server_incorrect_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let mut pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
         pointer.server = "https://evil.example.com".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn alias_incorrect_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
-        assert!(verify_ark_ownership_proof("bob@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("bob@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn malformed_signature_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let mut pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(2_000),
         );
         pointer.proof.as_mut().unwrap().signature = "not-hex".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     #[test]
     fn proof_expired_rejected() {
+        let identity_pubkey = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
         let pointer = signed_pointer(
             "alice@example.com",
+            identity_pubkey,
             "https://ark.example.com",
             "n1",
             Some(999),
         );
-        assert!(verify_ark_ownership_proof("alice@example.com", &pointer, 1_000).is_err());
+        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
     }
 
     // ─── ArkadePointer / opaque URI tests ────────────────────────────────────

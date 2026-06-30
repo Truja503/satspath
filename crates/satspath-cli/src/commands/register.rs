@@ -79,6 +79,7 @@ pub fn cmd_register(
         methods: methods.clone(),
         updated_at: chrono::Utc::now().timestamp(),
         expires_at: None,
+        sequence: Some(1),
         method_verifications: Vec::new(),
     };
 

@@ -115,7 +115,9 @@ pub async fn build_mainnet_preview_response(
     let signed = match resolver.resolve_alias(recipient).await {
         Ok(signed) => signed,
         Err(SatsPathError::AliasNotFound(_)) => {
-            let invite = create_invite(recipient, amount_sats);
+            // No sender key in preview mode; invite is unsigned (no sender identity binding)
+            // TTL: 24 hours
+            let invite = create_invite(recipient, amount_sats, None, 24 * 3600);
             return Ok(QuoteResponse {
                 status: "not_registered".into(),
                 mode: ExecutionMode::MainnetPreview,

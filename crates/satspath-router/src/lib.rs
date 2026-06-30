@@ -11,7 +11,7 @@ pub mod scoring;
 pub use ark_routes::{plan_ark_route, ArkRoutePlan, SenderCapabilities};
 pub use bip353_preview::quote_from_bip353_resolution;
 pub use lightning::{
-    fetch_invoice, fetch_lnurl_metadata, validate_bolt11_invoice, LnurlPayMetadata,
+    fetch_invoice, fetch_lnurl_metadata, is_lightning_available_for_amount_sync, validate_bolt11_invoice, LnurlPayMetadata,
     ValidatedInvoice,
 };
 pub use quote_response::{
@@ -20,6 +20,7 @@ pub use quote_response::{
 pub use router::{
     select_route, select_route_with_fees, FeeRateSnapshot, RouteQuote, RouteRequest, SwapDirective,
 };
+pub use fees::FeeEstimate;
 pub use scoring::{
     score_routes, FeeSnapshot, PaymentRail, RouteCandidate, RouteDecision, RoutePreferences,
 };
