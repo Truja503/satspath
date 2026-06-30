@@ -1099,6 +1099,7 @@ fn start_p2p_bridge(home: &Path, wallet: &WalletState) -> Result<(String, Child)
     }
     let out_path = home.join(format!("{}-profile.json", sanitize(alias)));
     fs::write(&out_path, serde_json::to_string_pretty(&signed)?)?;
+    let out_path = std::fs::canonicalize(&out_path)?;
 
     let repo_root = std::env::current_dir()?;
     let sdk_dir = repo_root.join("sdk").join("satspath-p2p");
@@ -1608,10 +1609,11 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
 /// Publish the local signed profile over the Holepunch P2P bridge so peers can
 /// resolve it. Returns the bridge status. (Best-effort; needs the JS SDK.)
 fn broadcast(state: &AppState) -> Result<serde_json::Value> {
-    let wallet = load_wallet(&state.home)?;
+    let mut wallet = load_wallet(&state.home)?;
     if wallet.alias.is_none() {
         anyhow::bail!("set your profile first (alias + methods) before broadcasting");
     }
+    ensure_signed_profile(&state.home, &mut wallet, &state.network)?;
     let mut bridge = state.p2p.lock().unwrap();
     if let Some(mut child) = bridge.child.take() {
         let _ = child.kill();
@@ -1629,6 +1631,19 @@ fn broadcast(state: &AppState) -> Result<serde_json::Value> {
             Ok(serde_json::json!({ "broadcasting": false, "status": bridge.status }))
         }
     }
+}
+
+fn ensure_signed_profile(home: &Path, wallet: &mut WalletState, network: &str) -> Result<()> {
+    if let Some(alias) = wallet.alias.as_deref() {
+        if let Ok(signed) = Registry::open(home)?.resolve_alias(alias) {
+            if verify_signed_profile(signed)? {
+                return Ok(());
+            }
+        }
+    }
+    sign_and_store(home, wallet, network)?;
+    save_wallet(home, wallet)?;
+    Ok(())
 }
 
 fn fmt_btc(sats: u64) -> String {
