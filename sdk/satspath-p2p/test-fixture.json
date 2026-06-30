@@ -1,0 +1,18 @@
+{
+  "profile": {
+    "alias": "rodrigo@satspath.dev",
+    "identity_pubkey": "0229a82f4045b4acf4e8cf5290124ba7ed9fe05299d90918d4d51228fd5ac7f097",
+    "methods": [
+      {
+        "type": "Lightning",
+        "label": "Lightning Address",
+        "lightning_address": "trujasx@blink.sv",
+        "lnurl": null,
+        "bolt12": null,
+        "receiver_pubkey": null
+      }
+    ],
+    "updated_at": 1782775961
+  },
+  "signature": "304402201427dfbe2954cee6c04a86ed52d68fc27673152532e5cd5fdf384aebe91515e002205e1a00371652b4a68db91d62e1d81d34413261ffd15b90b82c4e71ba86840e67"
+}
