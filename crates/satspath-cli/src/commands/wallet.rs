@@ -124,6 +124,7 @@ fn build_methods(state: &WalletState) -> Vec<PaymentMethod> {
             server: server.clone(),
             pubkey: pubkey.clone(),
             vtxo_pointer: None,
+            opaque_uri: None,
             proof: None,
             expires_at: None,
         });
@@ -229,6 +230,7 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
 
     let secret = keystore::load_identity_key(&satspath_dir(), pubkey)?;
     let profile = PaymentProfile {
+        sequence: Some(1),
         alias: alias.clone(),
         identity_pubkey: pubkey.clone(),
         methods,

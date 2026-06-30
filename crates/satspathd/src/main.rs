@@ -507,6 +507,7 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
 
     let secret = load_identity_key(home, &identity_pubkey)?;
     let profile = PaymentProfile {
+        sequence: Some(1),
         alias,
         identity_pubkey,
         methods,
@@ -854,6 +855,7 @@ fn build_methods(wallet: &WalletState, network: &str) -> Vec<PaymentMethod> {
             server: server.clone(),
             pubkey: pubkey.clone(),
             vtxo_pointer: None,
+            opaque_uri: None,
             proof: None,
             expires_at: None,
         });
@@ -1345,7 +1347,7 @@ async fn send_response(state: &AppState, body: SendRequest) -> SendResponse {
             }
             let fee = fetch_fee_estimate().await;
             let routing_ok = body.routing_ok.unwrap_or(true);
-            match select_priority_route(body.amount_sats, &fee, &signed.profile.methods, routing_ok)
+            match select_priority_route(body.amount_sats, &fee.unwrap_or_default(), &signed.profile.methods, routing_ok)
             {
                 Some(decision) => {
                     let payload = match send_payload_for(&decision.method, body.amount_sats) {
@@ -1385,7 +1387,7 @@ async fn send_response(state: &AppState, body: SendRequest) -> SendResponse {
             }
         }
         Err(_) => {
-            let invite = satspath_core::create_invite(&body.recipient, body.amount_sats);
+            let invite = satspath_core::create_invite(&body.recipient, body.amount_sats, None, 86400);
             let email = build_email_invite(&body.recipient, body.amount_sats, &invite.claim_url);
             SendResponse::Invite {
                 mode: "preview_only",
