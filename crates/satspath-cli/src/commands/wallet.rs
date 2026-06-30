@@ -131,6 +131,88 @@ fn build_methods(state: &WalletState) -> Vec<PaymentMethod> {
     methods
 }
 
+/// A privacy-preserving receive descriptor for the local UI: a **masked** alias,
+/// the chosen rail, and a public receive payload. No raw identifier or identity
+/// pubkey is exposed; nothing is fetched from the network.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReceiveQr {
+    /// Masked alias, e.g. `r***@gmail.com`.
+    pub alias: String,
+    /// The selected rail name (Lightning / Onchain / Ark).
+    pub rail: String,
+    /// The public receive payload to encode in the QR.
+    pub payload: String,
+}
+
+/// Compute the wallet owner's preferred receive payload, entirely locally.
+///
+/// Route selection prefers Lightning (instant) → on-chain → Ark. With no amount
+/// it returns a reusable receive pointer. No mempool/LNURL/DNS calls are made, so
+/// the operation stays fully private.
+pub fn local_receive_qr(amount_sats: Option<u64>) -> Result<ReceiveQr> {
+    let state = load_wallet()?;
+    let alias = state.alias.clone().ok_or_else(|| {
+        anyhow::anyhow!("no wallet profile yet — run `satspath wallet add-methods`")
+    })?;
+    let methods = build_methods(&state);
+    let method = methods
+        .iter()
+        .find(|m| matches!(m, PaymentMethod::Lightning { .. }))
+        .or_else(|| {
+            methods
+                .iter()
+                .find(|m| matches!(m, PaymentMethod::Onchain { .. }))
+        })
+        .or_else(|| {
+            methods
+                .iter()
+                .find(|m| matches!(m, PaymentMethod::Ark { .. }))
+        })
+        .ok_or_else(|| anyhow::anyhow!("no receive methods — run `satspath wallet add-methods`"))?;
+
+    Ok(ReceiveQr {
+        alias: mask_identifier(&alias),
+        rail: method.method_name().to_string(),
+        payload: receive_payload_for(method, amount_sats)?,
+    })
+}
+
+fn receive_payload_for(method: &PaymentMethod, amount_sats: Option<u64>) -> Result<String> {
+    let payload = match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(addr),
+            ..
+        } => addr.clone(),
+        PaymentMethod::Lightning {
+            lnurl: Some(url), ..
+        } => url.clone(),
+        PaymentMethod::Onchain { address, .. } => match amount_sats {
+            Some(sats) => format!("bitcoin:{address}?amount={}", sats_to_btc(sats)),
+            None => format!("bitcoin:{address}"),
+        },
+        PaymentMethod::Ark { server, pubkey, .. } => match amount_sats {
+            Some(sats) => format!(
+                "satspath:ark?server={}&pubkey={}&amount={}",
+                urlencoding::encode(server),
+                urlencoding::encode(pubkey),
+                sats
+            ),
+            None => format!(
+                "satspath:ark?server={}&pubkey={}",
+                urlencoding::encode(server),
+                urlencoding::encode(pubkey)
+            ),
+        },
+        _ => anyhow::bail!("selected method has no receive pointer"),
+    };
+    assert_no_private_material(&payload).map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(payload)
+}
+
+fn sats_to_btc(sats: u64) -> String {
+    format!("{}.{:08}", sats / 100_000_000, sats % 100_000_000)
+}
+
 /// Build, sign, and persist the wallet's payment profile to the local registry.
 fn sign_and_store(state: &WalletState) -> Result<String> {
     let alias = state.alias.as_ref().ok_or_else(|| {

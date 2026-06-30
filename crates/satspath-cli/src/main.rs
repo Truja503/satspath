@@ -177,6 +177,13 @@ enum Command {
         command: WalletCommand,
     },
 
+    /// Launch the minimal, private "Receive" web UI on localhost
+    Web {
+        /// Port to serve on (127.0.0.1 only)
+        #[arg(long, default_value_t = 4848)]
+        port: u16,
+    },
+
     /// Run the full SatsPath demo flow
     Demo,
 }
@@ -462,6 +469,7 @@ async fn main() -> Result<()> {
                 json,
             } => commands::cmd_wallet_receive(&alias, amount_sats, json).await?,
         },
+        Command::Web { port } => commands::cmd_web(port)?,
         Command::Demo => commands::cmd_demo().await?,
     }
 

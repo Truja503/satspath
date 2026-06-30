@@ -4,6 +4,7 @@ members = [
     "crates/satspath-router",
     "crates/satspath-cli",
     "crates/satspath-swaps",
+    "crates/satspathd",
 ]
 resolver = "2"
 
