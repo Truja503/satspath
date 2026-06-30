@@ -330,7 +330,14 @@ async fn main() -> Result<()> {
 }
 
 async fn serve(state: AppState) -> Result<()> {
-    let server = Server::http(state.bind).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let server = Server::http(state.bind).map_err(|e| {
+        anyhow::anyhow!(
+            "could not bind {}: {e}\n\nThe address may already be in use by another \
+             satspathd instance. Stop it, or choose another port with \
+             `--bind 127.0.0.1:<port>`.",
+            state.bind
+        )
+    })?;
     let url = format!("http://{}/", state.bind);
     println!("Wallet UI → {url}");
     if state.open_ui {
