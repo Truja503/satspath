@@ -84,6 +84,8 @@ struct WalletState {
     #[serde(skip_serializing_if = "Option::is_none")]
     onchain_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    onchain_pubkey: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     ark_server: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ark_pubkey: Option<String>,
@@ -185,6 +187,7 @@ struct ProfileUpdateRequest {
     alias: Option<String>,
     lightning_address: Option<String>,
     onchain_address: Option<String>,
+    onchain_pubkey: Option<String>,
     ark_server: Option<String>,
     ark_pubkey: Option<String>,
 }
@@ -535,6 +538,7 @@ fn apply_method_updates(
 ) -> Result<()> {
     let has_method = body.lightning_address.is_some()
         || body.onchain_address.is_some()
+        || body.onchain_pubkey.is_some()
         || body.ark_server.is_some()
         || body.ark_pubkey.is_some();
     if !allow_empty && !has_method {
@@ -548,6 +552,13 @@ fn apply_method_updates(
     if let Some(addr) = body.onchain_address {
         validate_bitcoin_address(&addr, bitcoin_network(network))?;
         wallet.onchain_address = Some(addr);
+    }
+    if let Some(pubkey) = body.onchain_pubkey {
+        validate_compressed_pubkey(&pubkey)?;
+        wallet.onchain_pubkey = Some(pubkey);
+    }
+    if wallet.onchain_pubkey.is_some() && wallet.onchain_address.is_none() {
+        anyhow::bail!("onchain_pubkey is a hint; provide onchain_address too");
     }
     match (body.ark_server, body.ark_pubkey) {
         (Some(server), Some(pubkey)) => {
@@ -997,7 +1008,7 @@ fn build_methods(wallet: &WalletState, network: &str) -> Vec<PaymentMethod> {
             label: format!("Bitcoin ({})", network),
             network: bitcoin_network(network),
             address: addr.clone(),
-            pubkey_hint: None,
+            pubkey_hint: wallet.onchain_pubkey.clone(),
             descriptor_hint: None,
         });
     }
@@ -1099,6 +1110,7 @@ fn start_p2p_bridge(home: &Path, wallet: &WalletState) -> Result<(String, Child)
     }
     let out_path = home.join(format!("{}-profile.json", sanitize(alias)));
     fs::write(&out_path, serde_json::to_string_pretty(&signed)?)?;
+    let out_path = std::fs::canonicalize(&out_path)?;
 
     let repo_root = std::env::current_dir()?;
     let sdk_dir = repo_root.join("sdk").join("satspath-p2p");
@@ -1425,6 +1437,29 @@ mod tests {
         assert!(verify_signed_profile(&signed).unwrap());
         assert_eq!(signed.profile.methods.len(), 1);
     }
+
+    #[test]
+    fn onchain_pubkey_is_saved_as_pubkey_hint() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut wallet = load_or_create_identity(dir.path()).unwrap();
+        wallet.alias = Some("alice@example.com".into());
+        wallet.onchain_address = Some("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn".into());
+        wallet.onchain_pubkey =
+            Some("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into());
+        sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
+
+        let signed = Registry::open(dir.path())
+            .unwrap()
+            .resolve_alias("alice@example.com")
+            .unwrap()
+            .clone();
+        match &signed.profile.methods[0] {
+            PaymentMethod::Onchain { pubkey_hint, .. } => {
+                assert_eq!(pubkey_hint.as_deref(), wallet.onchain_pubkey.as_deref());
+            }
+            other => panic!("expected on-chain method, got {other:?}"),
+        }
+    }
 }
 
 // ─── Send flow (priority routing + experimental email invite) ──────────────────
@@ -1608,10 +1643,11 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
 /// Publish the local signed profile over the Holepunch P2P bridge so peers can
 /// resolve it. Returns the bridge status. (Best-effort; needs the JS SDK.)
 fn broadcast(state: &AppState) -> Result<serde_json::Value> {
-    let wallet = load_wallet(&state.home)?;
+    let mut wallet = load_wallet(&state.home)?;
     if wallet.alias.is_none() {
         anyhow::bail!("set your profile first (alias + methods) before broadcasting");
     }
+    ensure_signed_profile(&state.home, &mut wallet, &state.network)?;
     let mut bridge = state.p2p.lock().unwrap();
     if let Some(mut child) = bridge.child.take() {
         let _ = child.kill();
@@ -1629,6 +1665,19 @@ fn broadcast(state: &AppState) -> Result<serde_json::Value> {
             Ok(serde_json::json!({ "broadcasting": false, "status": bridge.status }))
         }
     }
+}
+
+fn ensure_signed_profile(home: &Path, wallet: &mut WalletState, network: &str) -> Result<()> {
+    if let Some(alias) = wallet.alias.as_deref() {
+        if let Ok(signed) = Registry::open(home)?.resolve_alias(alias) {
+            if verify_signed_profile(signed)? {
+                return Ok(());
+            }
+        }
+    }
+    sign_and_store(home, wallet, network)?;
+    save_wallet(home, wallet)?;
+    Ok(())
 }
 
 fn fmt_btc(sats: u64) -> String {

@@ -1,10 +1,9 @@
 // SatsPath signed-profile verification, native in JS.
 //
-// SatsPath signs `SHA-256(serde_json::to_string(profile))` with secp256k1 ECDSA
-// (DER signature, compressed pubkey). JavaScript preserves object key insertion
-// order, so `JSON.stringify(profile)` of a profile parsed from `satspath export`
-// reproduces Rust's exact canonical bytes — verified against a real Rust
-// signature in the test suite. No re-implementation of serde is required.
+// Current Rust signs `SHA-256(canonical_json(profile))` with secp256k1 ECDSA
+// (DER signature, compressed pubkey), where canonical JSON sorts object keys.
+// Older fixtures used Rust's serde insertion order, so verification accepts both
+// current canonical JSON and the legacy compact JSON encoding.
 
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha256";
@@ -14,9 +13,9 @@ export function canonicalAlias(alias) {
   return String(alias).trim().toLowerCase();
 }
 
-/** The exact bytes SatsPath signed: UTF-8 of compact JSON, in field order. */
+/** Current canonical JSON bytes: UTF-8 of JSON with object keys sorted. */
 export function canonicalProfileBytes(profile) {
-  return new TextEncoder().encode(JSON.stringify(profile));
+  return new TextEncoder().encode(canonicalJson(profile));
 }
 
 /**
@@ -29,10 +28,23 @@ export function verifySignedProfile(signed) {
     const pubkey = signed?.profile?.identity_pubkey;
     const signature = signed?.signature;
     if (typeof pubkey !== "string" || typeof signature !== "string") return false;
-    const msgHash = sha256(canonicalProfileBytes(signed.profile));
     const sig = secp256k1.Signature.fromDER(signature);
-    return secp256k1.verify(sig, msgHash, pubkey);
+    const currentHash = sha256(canonicalProfileBytes(signed.profile));
+    if (secp256k1.verify(sig, currentHash, pubkey)) return true;
+
+    const legacyHash = sha256(new TextEncoder().encode(JSON.stringify(signed.profile)));
+    return secp256k1.verify(sig, legacyHash, pubkey);
   } catch {
     return false;
   }
+}
+
+function canonicalJson(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+    .join(",")}}`;
 }
