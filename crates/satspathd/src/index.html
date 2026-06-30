@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="referrer" content="no-referrer" />
-<title>SatsPath · Recibir</title>
+<title>SatsPath</title>
 <style>
   :root {
     --ink: #0a0a0a; --paper: #fff; --hair: #e6e6e6; --muted: #8a8a8a;
@@ -15,71 +15,221 @@
   html, body { height: 100%; }
   body {
     margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif);
-    -webkit-font-smoothing: antialiased; display: grid; place-items: center; min-height: 100vh;
+    -webkit-font-smoothing: antialiased; display: grid; place-items: start center; min-height: 100vh;
   }
-  main { width: 100%; max-width: 420px; padding: 48px 28px; text-align: center; }
-  .brand { font-size: 13px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
-  h1 { font-weight: 500; font-size: 44px; margin: 0 0 6px; }
-  .tagline { font-style: italic; color: var(--muted); font-size: 16px; margin: 0 0 44px; }
-  button#receive {
-    appearance: none; cursor: pointer; font-family: var(--serif); font-size: 17px;
-    letter-spacing: 0.16em; text-transform: uppercase; color: var(--paper); background: var(--ink);
-    border: 1px solid var(--ink); padding: 18px 46px; transition: background .18s, color .18s, transform .05s;
+  main { width: 100%; max-width: 460px; padding: 44px 28px 64px; text-align: center; }
+  .brand { font-size: 13px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--muted); margin-bottom: 26px; }
+  nav { display: flex; justify-content: center; gap: 4px; border: 1px solid var(--ink); margin-bottom: 38px; }
+  nav button {
+    flex: 1; appearance: none; cursor: pointer; background: none; border: 0; color: var(--muted);
+    font-family: var(--serif); font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 13px 6px; transition: background .15s, color .15s;
   }
-  button#receive:hover { background: var(--paper); color: var(--ink); }
-  button#receive:active { transform: translateY(1px); }
-  button#receive:disabled { opacity: .4; cursor: progress; }
-  .card { margin-top: 40px; border: 1px solid var(--ink); padding: 26px 24px 22px; opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .3s; }
+  nav button.active { background: var(--ink); color: var(--paper); }
+  h2 { font-weight: 500; font-size: 34px; margin: 0 0 4px; }
+  .tagline { font-style: italic; color: var(--muted); font-size: 15px; margin: 0 0 30px; }
+  label { display: block; text-align: left; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 14px 2px 5px; }
+  input {
+    width: 100%; font-family: var(--mono); font-size: 13px; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--hair); padding: 12px 13px; outline: none;
+  }
+  input:focus { border-color: var(--ink); }
+  input:disabled { color: var(--muted); background: #fafafa; }
+  .exp { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--hair); padding: 1px 6px; margin-left: 6px; }
+  button.action {
+    appearance: none; cursor: pointer; font-family: var(--serif); font-size: 16px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--paper); background: var(--ink); border: 1px solid var(--ink);
+    padding: 16px 40px; margin-top: 26px; width: 100%; transition: background .18s, color .18s, transform .05s;
+  }
+  button.action:hover { background: var(--paper); color: var(--ink); }
+  button.action:active { transform: translateY(1px); }
+  button.action:disabled { opacity: .4; cursor: progress; }
+  button.ghost { color: var(--ink); background: var(--paper); }
+  .card { border: 1px solid var(--ink); padding: 24px 22px 20px; margin-top: 30px; opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .3s; }
   .card.show { opacity: 1; transform: none; }
-  .qr { width: 232px; height: 232px; margin: 0 auto 18px; }
+  .qr { width: 224px; height: 224px; margin: 0 auto 16px; }
   .qr svg { width: 100%; height: 100%; display: block; }
   .rail { font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); }
-  .alias { font-size: 18px; margin: 6px 0 16px; }
-  .payload { font-family: var(--mono); font-size: 11px; line-height: 1.6; color: #333; word-break: break-all; border-top: 1px solid var(--hair); padding-top: 14px; margin: 0 0 10px; }
+  .who { font-size: 17px; margin: 6px 0 8px; }
+  .reason { font-style: italic; color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .payload { font-family: var(--mono); font-size: 11px; line-height: 1.6; color: #333; word-break: break-all; border-top: 1px solid var(--hair); padding-top: 13px; margin: 0 0 10px; }
   .copy { appearance: none; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; background: none; border: 1px solid var(--hair); color: var(--muted); padding: 7px 14px; }
   .copy:hover { border-color: var(--ink); color: var(--ink); }
-  .err { color: var(--ink); font-style: italic; margin-top: 28px; }
-  footer { margin-top: 40px; font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+  .emailbody { white-space: pre-wrap; text-align: left; font-family: var(--mono); font-size: 11px; line-height: 1.55; color: #333; border-top: 1px solid var(--hair); padding-top: 12px; margin: 12px 0; }
+  .note { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 8px; }
+  .err { color: var(--ink); font-style: italic; margin-top: 22px; }
+  .hidden { display: none; }
+  footer { margin-top: 36px; font-size: 11px; letter-spacing: 0.05em; color: var(--muted); }
 </style>
 </head>
 <body>
 <main>
   <div class="brand">SatsPath</div>
-  <h1>Recibir</h1>
-  <p class="tagline">Tu ruta, tu QR. Privado y local.</p>
-  <button id="receive">Recibir</button>
-  <div class="card" id="card" hidden>
-    <div class="qr" id="qr"></div>
-    <div class="rail" id="rail"></div>
-    <div class="alias" id="alias"></div>
-    <p class="payload" id="payload"></p>
-    <button class="copy" id="copy">Copiar</button>
-  </div>
-  <div class="err" id="err" hidden></div>
+  <nav>
+    <button data-tab="send" class="active">Enviar</button>
+    <button data-tab="receive">Recibir</button>
+    <button data-tab="profile">Mi perfil</button>
+  </nav>
+
+  <!-- ENVIAR -->
+  <section id="tab-send">
+    <h2>Enviar</h2>
+    <p class="tagline">El protocolo elige la mejor ruta por ti.</p>
+    <label>Correo / dirección registrada</label>
+    <input id="s-recipient" type="text" placeholder="alguien@dominio.com" autocomplete="off" />
+    <label>Monto (sats)</label>
+    <input id="s-amount" type="number" min="1" placeholder="100000" />
+    <button class="action" id="s-go">Enviar</button>
+    <div class="card hidden" id="s-card"></div>
+    <div class="err hidden" id="s-err"></div>
+  </section>
+
+  <!-- RECIBIR -->
+  <section id="tab-receive" class="hidden">
+    <h2>Recibir</h2>
+    <p class="tagline">Tu puntero de cobro, privado y local.</p>
+    <button class="action" id="r-go">Mostrar mi QR</button>
+    <div class="card hidden" id="r-card">
+      <div class="qr" id="r-qr"></div>
+      <div class="rail" id="r-rail"></div>
+      <div class="who" id="r-alias"></div>
+      <p class="payload" id="r-payload"></p>
+      <button class="copy" id="r-copy">Copiar</button>
+    </div>
+    <div class="err hidden" id="r-err"></div>
+  </section>
+
+  <!-- MI PERFIL -->
+  <section id="tab-profile" class="hidden">
+    <h2>Mi perfil</h2>
+    <p class="tagline">Agrega tus métodos y transmítelo a la red.</p>
+    <label>Alias (correo)</label>
+    <input id="p-alias" type="text" placeholder="tu@correo.com" autocomplete="off" />
+    <label>Lightning Address</label>
+    <input id="p-ln" type="text" placeholder="tu@correo.com" autocomplete="off" />
+    <label>Dirección on-chain</label>
+    <input id="p-onchain" type="text" placeholder="bc1q..." autocomplete="off" />
+    <label>Ark — servidor</label>
+    <input id="p-ark-server" type="text" placeholder="https://ark.satspath.dev" autocomplete="off" />
+    <label>Ark — pubkey</label>
+    <input id="p-ark-pubkey" type="text" placeholder="02..." autocomplete="off" />
+    <label>Liquid <span class="exp">experimental · aún no se enruta</span></label>
+    <input id="p-liquid" type="text" placeholder="lq1... (preview)" disabled />
+    <button class="action" id="p-save">Guardar perfil</button>
+    <button class="action ghost" id="p-broadcast">Transmitir (P2P)</button>
+    <div class="note hidden" id="p-msg"></div>
+    <div class="err hidden" id="p-err"></div>
+  </section>
+
   <footer>No mueve fondos · No firma · No transmite · 127.0.0.1</footer>
 </main>
+
 <script>
   const $ = (id) => document.getElementById(id);
-  $("receive").addEventListener("click", async () => {
-    const btn = $("receive");
-    btn.disabled = true; $("err").hidden = true;
+  const show = (el) => { el.classList.remove("hidden"); requestAnimationFrame(() => el.classList.add("show")); };
+  const hide = (el) => { el.classList.add("hidden"); el.classList.remove("show"); };
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+  // Tabs
+  document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+    ["send","receive","profile"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  }));
+
+  // ENVIAR
+  $("s-go").addEventListener("click", async () => {
+    const btn = $("s-go"), card = $("s-card"), err = $("s-err");
+    hide(card); hide(err); btn.disabled = true;
+    try {
+      const recipient = $("s-recipient").value.trim();
+      const amount_sats = parseInt($("s-amount").value, 10);
+      if (!recipient || !amount_sats) throw new Error("Pon un correo y un monto.");
+      const r = await fetch("/v1/send", {
+        method: "POST", headers: {"content-type": "application/json"},
+        body: JSON.stringify({recipient, amount_sats})
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      if (d.status === "ok") {
+        card.innerHTML =
+          '<div class="qr">' + d.qr_svg + '</div>' +
+          '<div class="rail">Ruta: ' + esc(d.rail) + '</div>' +
+          '<div class="who">→ ' + esc(d.recipient) + '</div>' +
+          '<p class="reason">' + esc(d.reason) + '</p>' +
+          '<p class="payload">' + esc(d.payload) + '</p>';
+      } else if (d.status === "invite") {
+        card.innerHTML =
+          '<div class="rail">No registrado · invitación</div>' +
+          '<div class="who">' + esc(d.recipient_hint) + '</div>' +
+          '<p class="reason">No tiene perfil aún. Invítalo por correo: descarga la wallet y recibe local.</p>' +
+          '<div class="emailbody">' + esc(d.email.subject) + '\n\n' + esc(d.email.body) + '</div>' +
+          '<a href="' + esc(d.email.mailto) + '"><button class="action">Abrir correo</button></a>' +
+          '<p class="note">Experimental · SatsPath no envía el correo por ti ni mueve fondos.</p>';
+      } else if (d.status === "invalid_signature") {
+        throw new Error("La firma del perfil no es válida.");
+      } else {
+        throw new Error(d.reason || "Sin ruta disponible.");
+      }
+      show(card);
+    } catch (e) { err.textContent = e.message; show(err); }
+    finally { btn.disabled = false; }
+  });
+
+  // RECIBIR
+  $("r-go").addEventListener("click", async () => {
+    const btn = $("r-go"), card = $("r-card"), err = $("r-err");
+    hide(card); hide(err); btn.disabled = true;
     try {
       const r = await fetch("/v1/receive");
-      const data = await r.json();
-      if (!r.ok || data.error) throw new Error(data.error || "fallo al calcular la ruta");
-      $("qr").innerHTML = data.qr_svg;
-      $("rail").textContent = data.rail;
-      $("alias").textContent = data.alias;
-      $("payload").textContent = data.payload;
-      const card = $("card"); card.hidden = false;
-      requestAnimationFrame(() => card.classList.add("show"));
-      $("copy").onclick = async () => {
-        await navigator.clipboard.writeText(data.payload);
-        $("copy").textContent = "Copiado"; setTimeout(() => ($("copy").textContent = "Copiar"), 1400);
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.error || "fallo al calcular la ruta");
+      $("r-qr").innerHTML = d.qr_svg; $("r-rail").textContent = d.rail;
+      $("r-alias").textContent = d.alias; $("r-payload").textContent = d.payload;
+      show(card);
+      $("r-copy").onclick = async () => {
+        await navigator.clipboard.writeText(d.payload);
+        $("r-copy").textContent = "Copiado"; setTimeout(() => ($("r-copy").textContent = "Copiar"), 1400);
       };
-    } catch (e) {
-      const err = $("err"); err.textContent = e.message; err.hidden = false;
-    } finally { btn.disabled = false; }
+    } catch (e) { err.textContent = e.message; show(err); }
+    finally { btn.disabled = false; }
+  });
+
+  // MI PERFIL
+  $("p-save").addEventListener("click", async () => {
+    const btn = $("p-save"), msg = $("p-msg"), err = $("p-err");
+    hide(msg); hide(err); btn.disabled = true;
+    try {
+      const payload = {
+        alias: $("p-alias").value.trim() || undefined,
+        lightning_address: $("p-ln").value.trim() || undefined,
+        onchain_address: $("p-onchain").value.trim() || undefined,
+        ark_server: $("p-ark-server").value.trim() || undefined,
+        ark_pubkey: $("p-ark-pubkey").value.trim() || undefined,
+      };
+      const r = await fetch("/v1/profile", {
+        method: "PUT", headers: {"content-type": "application/json"}, body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      msg.textContent = "Perfil firmado y guardado" + (d.signature_valid ? " · firma válida ✓" : "");
+      show(msg);
+    } catch (e) { err.textContent = e.message; show(err); }
+    finally { btn.disabled = false; }
+  });
+
+  $("p-broadcast").addEventListener("click", async () => {
+    const btn = $("p-broadcast"), msg = $("p-msg"), err = $("p-err");
+    hide(msg); hide(err); btn.disabled = true;
+    try {
+      const r = await fetch("/v1/broadcast", {method: "POST"});
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      msg.textContent = d.broadcasting
+        ? "Transmitiendo perfil por P2P · " + esc(d.status)
+        : "P2P no disponible · " + esc(d.status);
+      show(msg);
+    } catch (e) { err.textContent = e.message; show(err); }
+    finally { btn.disabled = false; }
   });
 </script>
 </body>

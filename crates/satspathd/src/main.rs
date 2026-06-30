@@ -23,12 +23,15 @@ use satspath_core::peer_registry::{LocalPeerRegistry, PeerRecord, PeerRegistryBa
 use satspath_core::privacy::mask_identifier;
 use satspath_core::registry::Registry;
 use satspath_core::resolver::ChainResolver;
+use satspath_core::resolver::ProfileResolver as _;
 use satspath_core::resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
 use satspath_core::validation::{
     assert_no_private_material, validate_amount_sats, validate_bitcoin_address,
     validate_compressed_pubkey, validate_lightning_address,
 };
 use satspath_core::{BitcoinNetwork, PaymentMethod, PaymentProfile, SignedPaymentProfile};
+use satspath_router::fees::fetch_fee_estimate;
+use satspath_router::select_priority_route;
 use satspath_router::QuoteResponse;
 use serde::{Deserialize, Serialize};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
@@ -360,6 +363,11 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         (Method::Options, _) => empty_response(StatusCode(204)),
         (Method::Get, "/") => html_response(INDEX_HTML),
         (Method::Get, "/v1/receive") => json_result(StatusCode(200), receive_view(state)),
+        (Method::Post, "/v1/send") => match read_json::<SendRequest>(&mut request) {
+            Ok(body) => json_response(StatusCode(200), &send_response(state, body).await),
+            Err(e) => json_error(StatusCode(400), e),
+        },
+        (Method::Post, "/v1/broadcast") => json_result(StatusCode(200), broadcast(state)),
         (Method::Get, "/health") => {
             json_response(StatusCode(200), &serde_json::json!({"ok": true}))
         }
@@ -1263,4 +1271,210 @@ mod tests {
         assert!(verify_signed_profile(&signed).unwrap());
         assert_eq!(signed.profile.methods.len(), 1);
     }
+}
+
+// ─── Send flow (priority routing + experimental email invite) ──────────────────
+
+#[derive(Debug, Deserialize)]
+struct SendRequest {
+    recipient: String,
+    amount_sats: u64,
+    /// Model Lightning routing health (defaults to healthy).
+    #[serde(default)]
+    routing_ok: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
+enum SendResponse {
+    Ok {
+        mode: &'static str,
+        rail: String,
+        reason: String,
+        recipient: String,
+        amount_sats: u64,
+        payload: String,
+        qr_svg: String,
+        safety: SafetyStatus,
+    },
+    Invite {
+        mode: &'static str,
+        experimental: bool,
+        recipient_hint: String,
+        amount_sats: u64,
+        claim_url: String,
+        email: EmailInvite,
+        safety: SafetyStatus,
+    },
+    InvalidSignature {
+        recipient: String,
+    },
+    NoRoute {
+        reason: String,
+    },
+}
+
+#[derive(Debug, Serialize)]
+struct EmailInvite {
+    to: String,
+    subject: String,
+    body: String,
+    mailto: String,
+}
+
+/// Resolve the recipient, pick a rail by the on-chain -> Lightning -> Ark
+/// priority, and return the best QR. If the recipient is not registered, return
+/// an EXPERIMENTAL email invite (no funds move; the recipient claims locally).
+async fn send_response(state: &AppState, body: SendRequest) -> SendResponse {
+    if let Err(e) = validate_amount_sats(body.amount_sats) {
+        return SendResponse::NoRoute {
+            reason: e.to_string(),
+        };
+    }
+    let resolver = resolver_chain(&state.home);
+    match resolver.resolve_alias(&body.recipient).await {
+        Ok(signed) => {
+            if !matches!(verify_signed_profile(&signed), Ok(true)) {
+                return SendResponse::InvalidSignature {
+                    recipient: mask_identifier(&body.recipient),
+                };
+            }
+            let fee = fetch_fee_estimate().await;
+            let routing_ok = body.routing_ok.unwrap_or(true);
+            match select_priority_route(body.amount_sats, &fee, &signed.profile.methods, routing_ok)
+            {
+                Some(decision) => {
+                    let payload = match send_payload_for(&decision.method, body.amount_sats) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            return SendResponse::NoRoute {
+                                reason: e.to_string(),
+                            }
+                        }
+                    };
+                    let qr = match qr_svg(&payload) {
+                        Ok(q) => q,
+                        Err(e) => {
+                            return SendResponse::NoRoute {
+                                reason: e.to_string(),
+                            }
+                        }
+                    };
+                    SendResponse::Ok {
+                        mode: "preview_only",
+                        rail: decision.rail.to_string(),
+                        reason: decision.reason,
+                        recipient: mask_identifier(&body.recipient),
+                        amount_sats: body.amount_sats,
+                        payload,
+                        qr_svg: qr,
+                        safety: safety_status(),
+                    }
+                }
+                None => SendResponse::NoRoute {
+                    reason: "recipient exposes no usable rail".to_string(),
+                },
+            }
+        }
+        Err(_) => {
+            let invite = satspath_core::create_invite(&body.recipient, body.amount_sats);
+            let email = build_email_invite(&body.recipient, body.amount_sats, &invite.claim_url);
+            SendResponse::Invite {
+                mode: "preview_only",
+                experimental: true,
+                recipient_hint: mask_identifier(&body.recipient),
+                amount_sats: body.amount_sats,
+                claim_url: invite.claim_url,
+                email,
+                safety: safety_status(),
+            }
+        }
+    }
+}
+
+fn build_email_invite(recipient: &str, amount_sats: u64, claim_url: &str) -> EmailInvite {
+    let subject = "Te enviaron Bitcoin con SatsPath".to_string();
+    let body = format!(
+        r"Alguien quiere enviarte {amount_sats} sats con SatsPath.
+
+Presiona el boton para descargar la wallet de SatsPath y recibir tus fondos
+localmente (tu mismo generas tus claves; nadie las custodia):
+
+{claim_url}
+
+[EXPERIMENTAL] SatsPath no mueve fondos ni firma transacciones por ti."
+    );
+    let mailto = format!(
+        "mailto:{}?subject={}&body={}",
+        recipient,
+        pct(&subject),
+        pct(&body)
+    );
+    EmailInvite {
+        to: recipient.to_string(),
+        subject,
+        body,
+        mailto,
+    }
+}
+
+/// A payable pointer for a method, including the amount where the URI supports it.
+fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> {
+    let payload = match method {
+        PaymentMethod::Lightning {
+            lightning_address: Some(a),
+            ..
+        } => a.clone(),
+        PaymentMethod::Lightning { lnurl: Some(u), .. } => u.clone(),
+        PaymentMethod::Onchain { address, .. } => {
+            format!("bitcoin:{address}?amount={}", fmt_btc(amount_sats))
+        }
+        PaymentMethod::Ark { server, pubkey, .. } => {
+            format!("satspath:ark?server={server}&pubkey={pubkey}&amount={amount_sats}")
+        }
+        _ => anyhow::bail!("selected method has no payable pointer"),
+    };
+    assert_no_private_material(&payload)?;
+    Ok(payload)
+}
+
+/// Publish the local signed profile over the Holepunch P2P bridge so peers can
+/// resolve it. Returns the bridge status. (Best-effort; needs the JS SDK.)
+fn broadcast(state: &AppState) -> Result<serde_json::Value> {
+    let wallet = load_wallet(&state.home)?;
+    if wallet.alias.is_none() {
+        anyhow::bail!("set your profile first (alias + methods) before broadcasting");
+    }
+    let mut bridge = state.p2p.lock().unwrap();
+    match start_p2p_bridge(&state.home, &wallet) {
+        Ok((status, child)) => {
+            bridge.enabled = true;
+            bridge.status = status.clone();
+            bridge.child = Some(child);
+            Ok(serde_json::json!({ "broadcasting": true, "status": status }))
+        }
+        Err(e) => {
+            bridge.status = format!("inactive: {e}");
+            Ok(serde_json::json!({ "broadcasting": false, "status": bridge.status }))
+        }
+    }
+}
+
+fn fmt_btc(sats: u64) -> String {
+    format!("{}.{:08}", sats / 100_000_000, sats % 100_000_000)
+}
+
+/// Minimal percent-encoding for mailto: query components.
+fn pct(s: &str) -> String {
+    let mut out = String::new();
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
