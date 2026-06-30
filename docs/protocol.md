@@ -177,11 +177,12 @@ Input: alias, amount_sats, signed_profile
 
 ## Mainnet Preview
 
-SatsPath Mainnet Preview is a public-data-only protocol mode:
+SatsPath Mainnet Preview is a public-data-only protocol mode that operates strictly in the first three phases of a payment lifecycle:
 
-```
-identifier -> signed profile -> signature/expiry/ownership checks -> route decision -> payment pointer / QR
-```
+1. **Resolve**: Fetch the signed profile for the identifier.
+2. **Route**: Check signatures, expiry, ownership, and select the best rail.
+3. **Invoice Presentation**: Fetch LNURL/BOLT11 data, format BIP-21 or Ark URIs, and display the payment pointer or QR.
+4. **Execution**: **(Out of scope for Mainnet Preview)** The user scans the QR and pays using their own wallet.
 
 It may display:
 
@@ -201,8 +202,11 @@ It must not:
 - handle seeds, xprv/tprv, macaroons, certs, API secrets, claim keys, refund
   keys, or wallet private keys.
 
-Mainnet execution is not part of v1 prototype behavior and no execution flag
-exists for mainnet.
+Mainnet execution (Phase 4 automation) is not part of v1 prototype behavior and no execution flag exists for mainnet.
+
+## Experimental Swap Engine (Execution Phase)
+
+Execution automation (such as submarine swaps, reverse swaps, or Ark VTXO transfers) is built into an experimental engine that is **strictly testnet-only**. This engine handles Phase 4, but is disabled by default and sandboxed away from mainnet to prevent any risk to real funds.
 
 ## Invite Flow
 

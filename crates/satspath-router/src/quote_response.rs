@@ -126,7 +126,7 @@ where
 ///   Address, then BOLT12). Fetching a concrete BOLT11 invoice happens in the
 ///   async [`quote`] flow (or the CLI/API layer), not here.
 /// - **On-chain** — a BIP-21 URI: `bitcoin:<address>?amount=<btc>`.
-/// - **Ark** — a SatsPath Ark pointer: `satspath:ark?server=…&pubkey=…&amount=…`
+/// - **Ark** — an Ark pointer: `ark:<pubkey>?server=…&amount=…`
 ///   (preview only; execution is gated elsewhere behind explicit testnet flags).
 pub fn build_qr_payload(method: &PaymentMethod, amount_sats: u64) -> satspath_core::Result<String> {
     let payload = match method {
@@ -148,9 +148,9 @@ pub fn build_qr_payload(method: &PaymentMethod, amount_sats: u64) -> satspath_co
             format!("bitcoin:{}?amount={}", address, sats_to_btc(amount_sats))
         }
         PaymentMethod::Ark { server, pubkey, .. } => format!(
-            "satspath:ark?server={}&pubkey={}&amount={}",
-            urlencoding::encode(server),
+            "ark:{}?server={}&amount={}",
             urlencoding::encode(pubkey),
+            urlencoding::encode(server),
             amount_sats
         ),
     };
@@ -381,6 +381,7 @@ mod tests {
             label: "Ark".into(),
             server: server.into(),
             pubkey: pubkey.into(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,
@@ -415,8 +416,8 @@ mod tests {
                 eta,
                 reason,
                 qr,
-                execution,
-                wallet_hint,
+                execution: _,
+                wallet_hint: _,
             } => {
                 // (2) alias, (3) verified true, (4) fingerprint
                 assert_eq!(recipient.alias, "rodrigo@satspath.dev");
@@ -530,17 +531,16 @@ mod tests {
         );
     }
 
-    // 14: Ark QR is a satspath:ark URI.
+    // 14: Ark QR is an ark: URI.
     #[test]
-    fn qr_payload_ark_is_satspath_uri() {
+    fn qr_payload_ark_is_ark_uri() {
         let method = ark_method(
             "https://ark.example.com",
             "02c0ded4d352532ee6d5d3fb69c7f08988c0a2b9f68a10fa79b2e769c123456789",
         );
         let qr = build_qr_payload(&method, 42).unwrap();
-        assert!(qr.starts_with("satspath:ark?"));
+        assert!(qr.starts_with("ark:02c0ded4"));
         assert!(qr.contains("server=https%3A%2F%2Fark.example.com"));
-        assert!(qr.contains("pubkey=02c0ded4"));
         assert!(qr.contains("amount=42"));
     }
 

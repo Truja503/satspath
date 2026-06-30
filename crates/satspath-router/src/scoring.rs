@@ -347,6 +347,7 @@ mod tests {
             label: "Ark".into(),
             server: "https://ark.example.com".into(),
             pubkey: valid_pubkey.into(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,

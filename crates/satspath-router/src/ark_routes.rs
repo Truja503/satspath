@@ -143,6 +143,7 @@ mod tests {
             label: "Ark".into(),
             server: server.into(),
             pubkey: PUBKEY.into(),
+            opaque_uri: None,
             vtxo_pointer: None,
             proof: None,
             expires_at: None,

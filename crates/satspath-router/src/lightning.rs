@@ -71,13 +71,20 @@ pub struct ValidatedInvoice {
 /// Step 1: resolve a Lightning Address to LNURL-pay metadata.
 /// `user@domain` → GET `https://domain/.well-known/lnurlp/user`
 pub async fn fetch_lnurl_metadata(lightning_address: &str) -> anyhow::Result<LnurlPayMetadata> {
-    let parts: Vec<&str> = lightning_address.splitn(2, '@').collect();
+    let parts: Vec<&str> = lightning_address.split('@').collect();
     if parts.len() != 2 {
         anyhow::bail!("invalid Lightning Address: {}", lightning_address);
     }
+    let domain = parts[1].trim();
+    let scheme = if domain.starts_with("127.0.0.1") || domain.starts_with("localhost") {
+        "http"
+    } else {
+        "https"
+    };
     let url = format!(
-        "https://{}/.well-known/lnurlp/{}",
-        parts[1].trim(),
+        "{}://{}/.well-known/lnurlp/{}",
+        scheme,
+        domain,
         parts[0].trim()
     );
     let client = reqwest::Client::builder()

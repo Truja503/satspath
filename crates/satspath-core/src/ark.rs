@@ -96,8 +96,8 @@ pub fn validate_arkade_opaque_uri(uri: &str) -> Result<()> {
 
 /// Build a QR/URI payload for an [`ArkadePointer`].
 ///
-/// - `ServerPubkey`  → `satspath:ark?server=…&pubkey=…&amount=…`
-/// - `VtxoPointer`   → `satspath:ark?server=…&vtxo=…&amount=…`
+/// - `ServerPubkey`  → `ark:<pubkey>?server=…&amount=…`
+/// - `VtxoPointer`   → `ark:<vtxo>?server=…&amount=…`
 /// - `OpaqueUri`     → the URI itself (prefixed with `ark:` if not already)
 ///
 /// The resulting payload is always checked for private material.
@@ -107,16 +107,14 @@ pub fn build_arkade_qr(pointer: &ArkadePointer, amount_sats: u64) -> Result<Stri
         ArkadePointer::ServerPubkey { server, pubkey } => {
             let mut enc = form_urlencoded::Serializer::new(String::new());
             enc.append_pair("server", server);
-            enc.append_pair("pubkey", pubkey);
             enc.append_pair("amount", &amount_sats.to_string());
-            format!("satspath:ark?{}", enc.finish())
+            format!("ark:{}?{}", pubkey, enc.finish())
         }
         ArkadePointer::VtxoPointer { server, vtxo_pointer } => {
             let mut enc = form_urlencoded::Serializer::new(String::new());
             enc.append_pair("server", server);
-            enc.append_pair("vtxo", vtxo_pointer);
             enc.append_pair("amount", &amount_sats.to_string());
-            format!("satspath:ark?{}", enc.finish())
+            format!("ark:{}?{}", vtxo_pointer, enc.finish())
         }
         ArkadePointer::OpaqueUri { uri } => {
             // Preserve the uri as-is if it already carries an ark: scheme;
@@ -425,28 +423,28 @@ mod tests {
     }
 
     #[test]
-    fn build_arkade_qr_server_pubkey_returns_satspath_uri() {
+    fn build_arkade_qr_server_pubkey_returns_ark_uri() {
         let pointer = ArkadePointer::ServerPubkey {
             server: "https://ark.example.com".into(),
             pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
                 .into(),
         };
         let qr = build_arkade_qr(&pointer, 42).unwrap();
-        assert!(qr.starts_with("satspath:ark?"));
+        assert!(qr.starts_with("ark:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798?"));
         assert!(qr.contains("server="));
-        assert!(qr.contains("pubkey="));
         assert!(qr.contains("amount=42"));
     }
 
     #[test]
-    fn build_arkade_qr_vtxo_pointer_returns_satspath_uri() {
+    fn build_arkade_qr_vtxo_pointer_returns_ark_uri() {
         let pointer = ArkadePointer::VtxoPointer {
             server: "https://ark.example.com".into(),
             vtxo_pointer: "vtxo:abc123".into(),
         };
         let qr = build_arkade_qr(&pointer, 1_000).unwrap();
-        assert!(qr.starts_with("satspath:ark?"));
-        assert!(qr.contains("vtxo="));
+        assert!(qr.starts_with("ark:vtxo:abc123?"));
+        assert!(qr.contains("server="));
+        assert!(qr.contains("amount=1000"));
     }
 
     #[test]

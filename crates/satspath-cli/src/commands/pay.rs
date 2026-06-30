@@ -245,6 +245,9 @@ async fn exec_experimental(
             println!("  Server : {}", display_value(server, mask_address, debug));
             println!("  Pubkey : {}", display_value(pubkey, mask_pubkey, debug));
         }
+        SwapDirective::ArkadeManual => {
+            println!("  [Arkade Manual] External wallet execution");
+        }
     }
 
     println!();
