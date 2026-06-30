@@ -173,6 +173,7 @@ mod tests {
     fn ark() -> PaymentMethod {
         PaymentMethod::Ark {
             label: "ark".into(),
+            opaque_uri: None,
             server: "https://ark.x".into(),
             pubkey: "02ab".into(),
             vtxo_pointer: None,

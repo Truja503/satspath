@@ -291,6 +291,7 @@ mod tests {
     fn signed(alias: &str) -> SignedPaymentProfile {
         let kp = generate_identity_keypair();
         let profile = PaymentProfile {
+            sequence: Some(1),
             alias: alias.to_string(),
             identity_pubkey: hex::encode(kp.public_key.serialize()),
             methods: vec![PaymentMethod::Lightning {
