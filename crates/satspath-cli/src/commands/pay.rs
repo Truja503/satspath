@@ -108,6 +108,9 @@ pub async fn cmd_pay(
         alias: alias.to_string(),
         amount_sats,
         signed_profile: signed.clone(),
+        urgency: satspath_router::urgency::PaymentUrgency::Normal,
+        max_fee_sats: None,
+        max_fee_percent: None,
     };
     let quote = select_route(&req)
         .await
@@ -157,7 +160,8 @@ pub async fn cmd_pay(
     println!();
 
     if experimental_swaps && testnet {
-        exec_experimental(&quote.swap_directive, amount_sats, alias, debug).await?;
+        let executor = SimulatedLightningExecutor;
+        exec_experimental(&quote.swap_directive, amount_sats, alias, debug, &executor).await?;
     }
 
     for line in preview_safety_lines() {
@@ -184,11 +188,27 @@ fn validate_pay_flags(
 
 // ─── Experimental Engine v0 ──────────────────────────────────────────────────
 
+pub trait LightningExecutor {
+    async fn pay_invoice(&self, invoice: &str, amount_sats: u64) -> Result<()>;
+}
+
+pub struct SimulatedLightningExecutor;
+
+impl LightningExecutor for SimulatedLightningExecutor {
+    async fn pay_invoice(&self, invoice: &str, amount_sats: u64) -> Result<()> {
+        println!("  [Simulated Lightning Execution]");
+        println!("  Simulating payment of {} sats to invoice {}", amount_sats, invoice);
+        println!("  Payment successful! (Simulated)");
+        Ok(())
+    }
+}
+
 async fn exec_experimental(
     directive: &SwapDirective,
     amount_sats: u64,
     alias: &str,
     debug: bool,
+    executor: &dyn LightningExecutor,
 ) -> Result<()> {
     println!("══════════════════════════════════════════════════");
     println!("Engine v0 — EXPERIMENTAL TESTNET ONLY");
@@ -206,6 +226,7 @@ async fn exec_experimental(
                 "  [Direct LN] Target: {}",
                 display_value(addr, mask_identifier, debug)
             );
+            // In a real flow, we would fetch the invoice and pay it using the executor.
             println!("  Testnet LN node integration pending.");
             println!("  Run with a real LN node to execute.");
         }

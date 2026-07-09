@@ -177,6 +177,9 @@ mod tests {
             updated_at: 1_700_000_000,
             expires_at: None,
             sequence: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()

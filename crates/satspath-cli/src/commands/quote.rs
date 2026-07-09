@@ -41,11 +41,23 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
     }
     println!("valid.");
 
+    let now = chrono::Utc::now().timestamp();
+    if signed.profile.updated_at > now - 86400 && signed.profile.sequence.unwrap_or(1) == 1 {
+        println!();
+        println!("  ⚠  WARNING: This profile was created very recently (within 24 hours).");
+        println!("     Please verify this is the correct recipient before sending funds.");
+        println!();
+    }
+
+
     print!("Fetching mempool fees + selecting rail... ");
     let req = RouteRequest {
         alias: alias.to_string(),
         amount_sats,
         signed_profile: signed.clone(),
+        urgency: satspath_router::urgency::PaymentUrgency::Normal,
+        max_fee_sats: None,
+        max_fee_percent: None,
     };
     let quote = select_route(&req)
         .await

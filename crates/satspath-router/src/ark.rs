@@ -6,9 +6,21 @@ pub trait ArkClient {
     fn create_payment_intent(&self, amount_sats: u64, pubkey: &str) -> anyhow::Result<String>;
 }
 
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct SimulatedArkIntent {
+    pub intent_id: String,
+    pub pubkey: String,
+    pub amount_sats: u64,
+    pub status: String,
+    pub server_url: String,
+}
+
 /// Mock Ark client used in the prototype.
 pub struct MockArkClient {
     pub available: bool,
+    pub server_url: String,
 }
 
 impl ArkClient for MockArkClient {
@@ -20,11 +32,17 @@ impl ArkClient for MockArkClient {
         if !self.available {
             anyhow::bail!("Ark server unavailable");
         }
-        Ok(format!(
-            "ark:intent:mock:{}:{}",
-            pubkey.chars().take(8).collect::<String>(),
-            amount_sats
-        ))
+        
+        let intent_id = format!("intent_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
+        let intent = SimulatedArkIntent {
+            intent_id,
+            pubkey: pubkey.to_string(),
+            amount_sats,
+            status: "waiting_for_payment".to_string(),
+            server_url: self.server_url.clone(),
+        };
+        
+        Ok(serde_json::to_string(&intent)?)
     }
 }
 

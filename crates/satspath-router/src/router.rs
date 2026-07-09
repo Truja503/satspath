@@ -5,7 +5,6 @@ use crate::fees::{fetch_fee_estimate, FeeEstimate};
 use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available, is_lightning_available_for_amount_sync};
 use crate::onchain::{
     estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
-    is_onchain_fee_acceptable,
 };
 
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
@@ -16,6 +15,9 @@ pub struct RouteRequest {
     pub alias: String,
     pub amount_sats: u64,
     pub signed_profile: SignedPaymentProfile,
+    pub urgency: crate::urgency::PaymentUrgency,
+    pub max_fee_sats: Option<u64>,
+    pub max_fee_percent: Option<f64>,
 }
 
 /// Describes the specific execution path needed for the selected route.
@@ -111,10 +113,14 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         hour_sat_vb: fee_est.hour_fee,
     };
 
-    // 2. On-chain — hour fee must be ≤ 10 sat/vB (cheap, ~1 hour confirmation).
-    if is_onchain_available(methods) && is_onchain_fee_acceptable(&fee_est) {
+    // 2. On-chain — evaluate selected urgency fee rate against threshold (<= 10 sat/vB for acceptable).
+    let selected_fee_rate_raw = req.urgency.select_fee_rate(&fee_est);
+    let selected_fee_rate = (selected_fee_rate_raw as f64 * 1.10).ceil() as u64;
+    let expected_conf = req.urgency.expected_confirmation();
+    
+    if is_onchain_available(methods) && selected_fee_rate <= 10 {
         let method = first_onchain_method(methods).unwrap().clone();
-        let fee = estimate_onchain_fee_sats(fee_est.hour_fee);
+        let fee = estimate_onchain_fee_sats(selected_fee_rate);
         let target_address = match &method {
             PaymentMethod::Onchain { address, .. } => address.clone(),
             _ => unreachable!(),
@@ -122,11 +128,11 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
-                "Hour fee ({} sat/vB) is cheap. Confirmation expected in ~1 hour.",
-                fee_est.hour_fee
+                "Fee ({} sat/vB) is cheap. Confirmation expected in {}.",
+                selected_fee_rate, expected_conf
             ),
             estimated_fee_sats: Some(fee),
-            estimated_confirmation: Some("~1 hour".into()),
+            estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
             swap_directive: SwapDirective::ChainSwap { target_address },
             execution: None,
@@ -142,8 +148,8 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         };
         let reason = if is_onchain_available(methods) {
             format!(
-                "On-chain hour fee ({} sat/vB) exceeds 10 sat/vB. Falling back to Ark.",
-                fee_est.hour_fee
+                "On-chain fee ({} sat/vB) exceeds 10 sat/vB. Falling back to Ark.",
+                selected_fee_rate
             )
         } else {
             "No Lightning (amount above threshold) or on-chain method. Using Ark.".into()
@@ -167,12 +173,36 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         });
     }
 
+    // Last resort: on-chain even with high fees, but warn the user (WS-3)
+    if is_onchain_available(methods) {
+        let method = first_onchain_method(methods).unwrap().clone();
+        let fee = estimate_onchain_fee_sats(selected_fee_rate);
+        let target_address = match &method {
+            PaymentMethod::Onchain { address, .. } => address.clone(),
+            _ => unreachable!(),
+        };
+        return Ok(RouteQuote {
+            selected_method: method,
+            reason: format!(
+                "⚠ On-chain fee rate is high ({} sat/vB) but no alternative rail is available. \
+                 Consider waiting for lower fees.",
+                selected_fee_rate
+            ),
+            estimated_fee_sats: Some(fee),
+            estimated_confirmation: Some(expected_conf.into()),
+            fee_snapshot: Some(snapshot),
+            swap_directive: SwapDirective::ChainSwap { target_address },
+            execution: None,
+            wallet_hint: None,
+        });
+    }
+
     Err(SatsPathError::NoRouteFound(format!(
         "No usable rail for {} sats to {}. \
          Lightning: {} sats threshold not met or no LN method. \
-         On-chain: hour fee {} sat/vB > 10 sat/vB. \
+         On-chain: fee {} sat/vB > 10 sat/vB. \
          Ark: no method configured.",
-        req.amount_sats, req.alias, LIGHTNING_THRESHOLD_SATS, fee_est.hour_fee,
+        req.amount_sats, req.alias, LIGHTNING_THRESHOLD_SATS, selected_fee_rate,
     )))
 }
 
@@ -217,9 +247,13 @@ pub fn select_route_with_fees(
         hour_sat_vb: fee_est.hour_fee,
     };
 
-    if is_onchain_available(methods) && is_onchain_fee_acceptable(fee_est) {
+    let selected_fee_rate_raw = req.urgency.select_fee_rate(fee_est);
+    let selected_fee_rate = (selected_fee_rate_raw as f64 * 1.10).ceil() as u64;
+    let expected_conf = req.urgency.expected_confirmation();
+
+    if is_onchain_available(methods) && selected_fee_rate <= 10 {
         let method = first_onchain_method(methods).unwrap().clone();
-        let fee = estimate_onchain_fee_sats(fee_est.hour_fee);
+        let fee = estimate_onchain_fee_sats(selected_fee_rate);
         let target_address = match &method {
             PaymentMethod::Onchain { address, .. } => address.clone(),
             _ => unreachable!(),
@@ -227,11 +261,11 @@ pub fn select_route_with_fees(
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
-                "Hour fee ({} sat/vB) is cheap. Confirmation expected in ~1 hour.",
-                fee_est.hour_fee
+                "Fee ({} sat/vB) is cheap. Confirmation expected in {}.",
+                selected_fee_rate, expected_conf
             ),
             estimated_fee_sats: Some(fee),
-            estimated_confirmation: Some("~1 hour".into()),
+            estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
             swap_directive: SwapDirective::ChainSwap { target_address },
             execution: None,
@@ -255,8 +289,8 @@ pub fn select_route_with_fees(
         return Ok(RouteQuote {
             selected_method: method,
             reason: format!(
-                "On-chain hour fee ({} sat/vB) exceeds 10 sat/vB. Falling back to Ark.",
-                fee_est.hour_fee
+                "On-chain fee ({} sat/vB) exceeds 10 sat/vB. Falling back to Ark.",
+                selected_fee_rate
             ),
             estimated_fee_sats: Some(1),
             estimated_confirmation: Some("near-instant via Ark round".into()),
@@ -264,6 +298,29 @@ pub fn select_route_with_fees(
             swap_directive,
             execution,
             wallet_hint,
+        });
+    }
+
+    if is_onchain_available(methods) {
+        let method = first_onchain_method(methods).unwrap().clone();
+        let fee = estimate_onchain_fee_sats(selected_fee_rate);
+        let target_address = match &method {
+            PaymentMethod::Onchain { address, .. } => address.clone(),
+            _ => unreachable!(),
+        };
+        return Ok(RouteQuote {
+            selected_method: method,
+            reason: format!(
+                "⚠ On-chain fee rate is high ({} sat/vB) but no alternative rail is available. \
+                 Consider waiting for lower fees.",
+                selected_fee_rate
+            ),
+            estimated_fee_sats: Some(fee),
+            estimated_confirmation: Some(expected_conf.into()),
+            fee_snapshot: Some(snapshot),
+            swap_directive: SwapDirective::ChainSwap { target_address },
+            execution: None,
+            wallet_hint: None,
         });
     }
 
@@ -311,6 +368,9 @@ mod tests {
             updated_at: 1_700_000_000,
             expires_at: None,
             sequence: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()
@@ -329,6 +389,9 @@ mod tests {
             alias: "test@example.com".into(),
             amount_sats: 21_000,
             signed_profile: signed,
+            urgency: crate::urgency::PaymentUrgency::Normal,
+            max_fee_sats: None,
+            max_fee_percent: None,
         };
         let q = select_route_with_fees(&req, &low_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Lightning { .. }));
@@ -355,6 +418,9 @@ mod tests {
             alias: "test@example.com".into(),
             amount_sats: 1_000,
             signed_profile: signed,
+            urgency: crate::urgency::PaymentUrgency::Normal,
+            max_fee_sats: None,
+            max_fee_percent: None,
         };
         let q = select_route_with_fees(&req, &extreme_fees).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Lightning { .. }));
@@ -373,6 +439,9 @@ mod tests {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
             signed_profile: signed,
+            urgency: crate::urgency::PaymentUrgency::Normal,
+            max_fee_sats: None,
+            max_fee_percent: None,
         };
         let q = select_route_with_fees(&req, &low_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
@@ -403,6 +472,9 @@ mod tests {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
             signed_profile: signed,
+            urgency: crate::urgency::PaymentUrgency::Normal,
+            max_fee_sats: None,
+            max_fee_percent: None,
         };
         let q = select_route_with_fees(&req, &high_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Ark { .. }));
@@ -416,6 +488,9 @@ mod tests {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
             signed_profile: signed,
+            urgency: crate::urgency::PaymentUrgency::Normal,
+            max_fee_sats: None,
+            max_fee_percent: None,
         };
         assert!(matches!(
             select_route_with_fees(&req, &high_fees()).unwrap_err(),
@@ -436,12 +511,15 @@ mod tests {
             alias: "test@example.com".into(),
             amount_sats: 500_000,
             signed_profile: signed,
+            urgency: crate::urgency::PaymentUrgency::Normal,
+            max_fee_sats: None,
+            max_fee_percent: None,
         };
 
         let at = FeeEstimate {
             fastest_fee: 15,
             half_hour_fee: 12,
-            hour_fee: 10,
+            hour_fee: 9, // 9 * 1.10 = 9.9 => ceil(9.9) = 10, passes threshold
             economy_fee: 5,
             minimum_fee: 1,
         };
@@ -453,7 +531,7 @@ mod tests {
         let above = FeeEstimate {
             fastest_fee: 20,
             half_hour_fee: 15,
-            hour_fee: 11,
+            hour_fee: 10, // 10 * 1.1 = 11 => fails threshold
             economy_fee: 6,
             minimum_fee: 2,
         };

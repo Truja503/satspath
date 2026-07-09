@@ -2,9 +2,16 @@ use satspath_core::PaymentMethod;
 
 use crate::fees::FeeEstimate;
 
+/// Apply the protocol-specified safety margin to a raw fee rate.
+/// `selected_feerate = max(raw + ceil(raw * 0.10), 1)`
+pub fn apply_fee_safety_margin(raw_sat_vb: u64) -> u64 {
+    let margin = (raw_sat_vb + 9) / 10; // ceil(raw * 0.10)
+    std::cmp::max(raw_sat_vb + margin, 1)
+}
+
 /// Estimate on-chain fee in sats for a standard P2WPKH transaction (~141 vBytes).
 pub fn estimate_onchain_fee_sats(fee_rate_sat_vb: u64) -> u64 {
-    141 * fee_rate_sat_vb
+    141 * apply_fee_safety_margin(fee_rate_sat_vb)
 }
 
 /// Check whether an on-chain address is available in the method list.

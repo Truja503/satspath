@@ -30,6 +30,7 @@ pub async fn cmd_demo() -> Result<()> {
         "rodrigo@satspath.dev",
         Some(21_000),
         Some("coffee"),
+        None,
     )?;
     println!("URI: {}", uri);
     println!();

@@ -13,12 +13,14 @@ pub fn encode_payment_request(
     alias: &str,
     amount_sats: Option<u64>,
     memo: Option<&str>,
+    expires_at: Option<i64>,
 ) -> Result<String> {
     let req = PaymentRequest {
         version: 1,
         alias: alias.to_string(),
         amount_sats,
         memo: memo.map(str::to_string),
+        expires_at,
         profile_hint: None,
     };
     let json = serde_json::to_string(&req)
@@ -49,6 +51,7 @@ pub fn decode_payment_request(uri: &str) -> Result<PaymentRequest> {
             alias: alias.to_string(),
             amount_sats: None,
             memo: None,
+            expires_at: None,
             profile_hint: None,
         })
     } else {
@@ -64,13 +67,22 @@ mod tests {
 
     #[test]
     fn roundtrip_encoded() {
-        let uri = encode_payment_request("alice@example.com", Some(21000), Some("coffee")).unwrap();
+        let uri = encode_payment_request("alice@example.com", Some(21000), Some("coffee"), None).unwrap();
         assert!(uri.starts_with(V1_PREFIX));
         let req = decode_payment_request(&uri).unwrap();
         assert_eq!(req.alias, "alice@example.com");
         assert_eq!(req.amount_sats, Some(21000));
         assert_eq!(req.memo.as_deref(), Some("coffee"));
         assert_eq!(req.version, 1);
+        assert!(req.expires_at.is_none());
+    }
+
+    #[test]
+    fn roundtrip_with_expires_at() {
+        let exp = 1_800_000_000i64;
+        let uri = encode_payment_request("alice@example.com", Some(1000), None, Some(exp)).unwrap();
+        let req = decode_payment_request(&uri).unwrap();
+        assert_eq!(req.expires_at, Some(exp));
     }
 
     #[test]
@@ -78,6 +90,7 @@ mod tests {
         let req = decode_payment_request("satspath:bob@satspath.dev").unwrap();
         assert_eq!(req.alias, "bob@satspath.dev");
         assert_eq!(req.amount_sats, None);
+        assert!(req.expires_at.is_none());
     }
 
     #[test]
@@ -87,10 +100,11 @@ mod tests {
 
     #[test]
     fn roundtrip_no_amount() {
-        let uri = encode_payment_request("carol@example.com", None, None).unwrap();
+        let uri = encode_payment_request("carol@example.com", None, None, None).unwrap();
         let req = decode_payment_request(&uri).unwrap();
         assert_eq!(req.alias, "carol@example.com");
         assert!(req.amount_sats.is_none());
         assert!(req.memo.is_none());
+        assert!(req.expires_at.is_none());
     }
 }

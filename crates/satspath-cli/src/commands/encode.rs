@@ -6,7 +6,7 @@ use satspath_core::{
 };
 
 pub fn cmd_encode(alias: &str, amount_sats: u64, memo: Option<&str>) -> Result<()> {
-    let uri = encode_payment_request(alias, Some(amount_sats), memo)?;
+    let uri = encode_payment_request(alias, Some(amount_sats), memo, None)?;
     println!("Encoded SatsPath URI:");
     println!("{}", uri);
     Ok(())

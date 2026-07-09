@@ -17,7 +17,8 @@ use serde::{Deserialize, Serialize};
 
 use satspath_core::ark::validate_ark_server_url;
 use satspath_core::crypto::{
-    fingerprint_pubkey, generate_identity_keypair, sign_profile, verify_signed_profile,
+    fingerprint_pubkey, generate_identity_keypair, generate_nonce, sign_profile,
+    verify_signed_profile,
 };
 use satspath_core::privacy::{mask_address, mask_identifier, mask_pubkey};
 use satspath_core::registry::Registry;
@@ -235,13 +236,17 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
         .unwrap_or(0);
 
     let secret = keystore::load_identity_key(&satspath_dir(), pubkey)?;
+    let t = now();
     let profile = PaymentProfile {
         sequence: Some(current_sequence + 1),
         alias: alias.clone(),
         identity_pubkey: pubkey.clone(),
         methods,
-        updated_at: now(),
-        expires_at: None,
+        updated_at: t,
+        expires_at: Some(t + 30 * 24 * 3600), // default 30-day expiry per spec §28
+        preferences: vec!["lightning".into(), "ark".into(), "onchain".into()],
+        nonce: Some(generate_nonce()),
+        rotation: None,
         method_verifications: Vec::new(),
     };
     let signed = sign_profile(profile, &secret)?;
@@ -290,6 +295,60 @@ pub fn cmd_wallet_init() -> Result<()> {
 fn print_receiver_warning() {
     println!();
     println!("This is a receiver-profile wallet. It does not control or move funds.");
+}
+
+/// `satspath wallet rotate` — generate a new identity key and attach a KeyRotation proof.
+pub fn cmd_wallet_rotate() -> Result<()> {
+    let mut state = load_wallet()?;
+    let old_pubkey_hex = state.identity_pubkey.clone().ok_or_else(|| {
+        anyhow::anyhow!("wallet not initialized — run `satspath wallet init` first")
+    })?;
+    
+    let old_secret = keystore::load_identity_key(&satspath_dir(), &old_pubkey_hex)?;
+    
+    let new_kp = generate_identity_keypair();
+    let new_pubkey_hex = hex::encode(new_kp.public_key.serialize());
+    keystore::save_identity_key(&satspath_dir(), &new_kp.secret_key)?;
+    
+    state.identity_pubkey = Some(new_pubkey_hex.clone());
+    state.updated_at = Some(now());
+    
+    let alias = state.alias.as_ref().ok_or_else(|| anyhow::anyhow!("no alias"))?;
+    let methods = build_methods(&state);
+    if methods.is_empty() {
+        anyhow::bail!("no receive methods set");
+    }
+    
+    let mut registry = open_registry()?;
+    let current_sequence = registry
+        .resolve_alias(alias)
+        .map(|signed| signed.profile.sequence.unwrap_or(0))
+        .unwrap_or(0);
+        
+    let t = now();
+    let rotation = satspath_core::rotation::KeyRotation::new(&old_secret, &old_pubkey_hex, &new_pubkey_hex, t)?;
+    
+    let profile = PaymentProfile {
+        sequence: Some(current_sequence + 1),
+        alias: alias.clone(),
+        identity_pubkey: new_pubkey_hex.clone(),
+        methods,
+        updated_at: t,
+        expires_at: Some(t + 30 * 24 * 3600),
+        preferences: vec!["lightning".into(), "ark".into(), "onchain".into()],
+        nonce: Some(generate_nonce()),
+        rotation: Some(rotation),
+        method_verifications: Vec::new(),
+    };
+    
+    let signed = sign_profile(profile, &new_kp.secret_key)?;
+    registry.update_profile(signed)?;
+    save_wallet(&state)?;
+    
+    println!("Identity key rotated successfully.");
+    println!("New identity fingerprint: {}", fingerprint_pubkey(&new_pubkey_hex)?);
+    
+    Ok(())
 }
 
 /// `satspath wallet add-methods <alias> [--lightning-address] [--onchain-address] [--ark-server --ark-pubkey]`

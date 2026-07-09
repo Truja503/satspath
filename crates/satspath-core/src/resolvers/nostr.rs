@@ -303,6 +303,9 @@ mod tests {
             }],
             updated_at: 1_782_810_000,
             expires_at: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()

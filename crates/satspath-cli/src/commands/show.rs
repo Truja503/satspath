@@ -48,6 +48,10 @@ pub async fn cmd_show(alias: &str, verify_online: bool) -> Result<()> {
         }
     );
     println!("Updated at:     {}", signed.profile.updated_at);
+    if let Some(rot) = &signed.profile.rotation {
+        println!("⚠ IDENTITY KEY ROTATED at {}", rot.rotated_at);
+        println!("  Previous key: {}", mask_pubkey(&rot.previous_pubkey));
+    }
 
     // Per-method ownership trust, re-verified client-side. Domain-control proofs
     // need their well-known URL fetched to confirm; with --verify-online we fetch

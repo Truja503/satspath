@@ -168,6 +168,9 @@ pub async fn build_mainnet_preview_response(
         alias: recipient.to_string(),
         amount_sats,
         signed_profile: signed.clone(),
+        urgency: satspath_router::urgency::PaymentUrgency::Normal,
+        max_fee_sats: None,
+        max_fee_percent: None,
     };
     let quote = select_route(&req)
         .await

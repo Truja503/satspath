@@ -595,13 +595,17 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         .unwrap_or(0);
 
     let secret = load_identity_key(home, &identity_pubkey)?;
+    let t = now();
     let profile = PaymentProfile {
         sequence: Some(current_sequence + 1),
         alias,
         identity_pubkey,
         methods,
-        updated_at: now(),
-        expires_at: None,
+        updated_at: t,
+        expires_at: Some(t + 30 * 24 * 3600), // default 30-day expiry per spec §28
+        preferences: vec!["lightning".into(), "ark".into(), "onchain".into()],
+        nonce: Some(satspath_core::crypto::generate_nonce()),
+        rotation: None,
         method_verifications: Vec::new(),
     };
     let signed = sign_profile(profile, &secret)?;

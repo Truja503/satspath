@@ -146,6 +146,15 @@ enum Command {
     /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
     Invite { alias: String, amount_sats: u64 },
 
+    /// Claim an invite using a claim URL or an alias (generates local keys)
+    Claim {
+        claim_url_or_alias: String,
+        #[arg(long)]
+        lightning_address: Option<String>,
+        #[arg(long)]
+        onchain_address: Option<String>,
+    },
+
     /// Export a peer's signed profile as JSON (for sharing with another machine)
     Export { alias: String },
 
@@ -192,6 +201,8 @@ enum Command {
 enum WalletCommand {
     /// Create or load the SatsPath identity key
     Init,
+    /// Rotate the identity key and issue a KeyRotation proof
+    Rotate,
     /// Set the alias + public receive methods, then sign and save the profile
     AddMethods(WalletAddMethodsArgs),
     /// Add/replace the Lightning Address (re-signs the profile)
@@ -406,6 +417,11 @@ async fn main() -> Result<()> {
             .await?
         }
         Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
+        Command::Claim {
+            claim_url_or_alias,
+            lightning_address,
+            onchain_address,
+        } => commands::cmd_claim(&claim_url_or_alias, lightning_address.as_deref(), onchain_address.as_deref())?,
         Command::Export { alias } => commands::cmd_export(&alias)?,
         Command::Import { file, url } => {
             commands::cmd_import(file.as_deref(), url.as_deref()).await?
@@ -445,6 +461,7 @@ async fn main() -> Result<()> {
         },
         Command::Wallet { command } => match command {
             WalletCommand::Init => commands::cmd_wallet_init()?,
+            WalletCommand::Rotate => commands::cmd_wallet_rotate()?,
             WalletCommand::AddMethods(args) => commands::cmd_wallet_add_methods(
                 &args.alias,
                 args.lightning_address.as_deref(),

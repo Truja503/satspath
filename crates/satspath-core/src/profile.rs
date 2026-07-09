@@ -133,6 +133,17 @@ pub struct PaymentProfile {
     /// Each profile update must have a strictly higher sequence than the previous.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sequence: Option<u64>,
+    /// Ordered rail preference list, e.g. `["lightning", "ark", "onchain"]`.
+    /// The router uses this to break ties between equally-scored candidates.
+    /// Omitted from the wire when empty (backward-compatible with old profiles).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub preferences: Vec<String>,
+    /// The random nonce for replay protection (v0.1 spec §10).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<String>,
+    /// Optional key rotation object (v0.1 spec §29).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation: Option<crate::rotation::KeyRotation>,
     /// Ownership-proof attestations, one per (proven) method, bound to the
     /// method's [`PaymentMethod::ownership_descriptor`].
     ///
@@ -159,6 +170,10 @@ pub struct PaymentRequest {
     pub alias: String,
     pub amount_sats: Option<u64>,
     pub memo: Option<String>,
+    /// Optional Unix timestamp after which this payment request expires.
+    /// Distinct from the profile's own `expires_at`. Omitted when not set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
     pub profile_hint: Option<String>,
 }
 
@@ -197,7 +212,9 @@ pub struct InviteRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum InviteStatus {
+    #[serde(rename = "waiting_for_claim")]
     Created,
     EmailSent,
     ClaimedWithPublicProfile,

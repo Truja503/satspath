@@ -4,6 +4,11 @@ use sha2::{Digest, Sha256};
 use crate::errors::{Result, SatsPathError};
 use crate::profile::{PaymentProfile, SignedPaymentProfile};
 
+/// Domain separator for profile signing, per Protocol v0.1 §12.
+/// Pre-pended to canonical JSON before hashing to prevent cross-context
+/// signature replay (e.g. a message signature cannot be mistaken for a profile sig).
+const PROFILE_DOMAIN_SEPARATOR: &[u8] = b"SatsPathProfileV1";
+
 /// An identity keypair for a SatsPath user.
 pub struct IdentityKeypair {
     pub secret_key: SecretKey,
@@ -31,13 +36,19 @@ pub fn canonical_profile_bytes(profile: &PaymentProfile) -> Result<Vec<u8>> {
 }
 
 /// Sign a PaymentProfile with the given secret key and return a SignedPaymentProfile.
+///
+/// Uses domain-separated hashing per Protocol v0.1 §12:
+/// `sig = ECDSA(SHA256("SatsPathProfileV1" || canonical_json(profile)))`
 pub fn sign_profile(
     profile: PaymentProfile,
     secret_key: &SecretKey,
 ) -> Result<SignedPaymentProfile> {
     let secp = Secp256k1::new();
     let bytes = canonical_profile_bytes(&profile)?;
-    let digest = Sha256::digest(&bytes);
+    let mut hasher = Sha256::new();
+    hasher.update(PROFILE_DOMAIN_SEPARATOR);
+    hasher.update(&bytes);
+    let digest = hasher.finalize();
     let message = Message::from_digest(digest.into());
     let sig = secp.sign_ecdsa(&message, secret_key);
     Ok(SignedPaymentProfile {
@@ -47,6 +58,8 @@ pub fn sign_profile(
 }
 
 /// Verify that the signature inside a SignedPaymentProfile is valid.
+///
+/// Uses the same domain-separated hashing as `sign_profile`.
 pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
     let secp = Secp256k1::new();
 
@@ -61,7 +74,10 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
         .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
 
     let bytes = canonical_profile_bytes(&signed.profile)?;
-    let digest = Sha256::digest(&bytes);
+    let mut hasher = Sha256::new();
+    hasher.update(PROFILE_DOMAIN_SEPARATOR);
+    hasher.update(&bytes);
+    let digest = hasher.finalize();
     let message = Message::from_digest(digest.into());
 
     Ok(secp.verify_ecdsa(&message, &sig, &public_key).is_ok())
@@ -94,6 +110,18 @@ pub fn fingerprint_pubkey(pubkey_hex: &str) -> Result<String> {
         hex::decode(pubkey_hex).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
     let digest = Sha256::digest(&bytes);
     Ok(hex::encode(&digest[..4]))
+}
+
+/// Generate a random 128-bit nonce encoded as a 32-character hex string.
+///
+/// Used in `PaymentProfile.nonce` to commit the signature to this specific
+/// version of the profile, preventing replay even when all other fields
+/// are identical to a previous version.
+pub fn generate_nonce() -> String {
+    use rand::RngCore;
+    let mut buf = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut buf);
+    hex::encode(buf)
 }
 
 /// Sign an arbitrary UTF-8 message with a secret key, returning a hex DER signature.
@@ -155,6 +183,9 @@ mod tests {
             updated_at: 1_700_000_000,
             expires_at: None,
             sequence: None,
+            preferences: Vec::new(),
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         }
     }

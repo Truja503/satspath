@@ -79,10 +79,17 @@ pub fn validate_bolt12_offer(offer: &str) -> Result<()> {
             "BOLT12 offer must start with 'lno' (mainnet) or 'lnot' (testnet)".into(),
         ));
     }
-    // Basic bech32 validation - try to decode
-    let _ = bech32::decode(&lower).map_err(|e| {
+    // Decode and validate the bech32 payload
+    let (_, data, _) = bech32::decode(&lower).map_err(|e| {
         SatsPathError::InvalidPaymentPointer(format!("BOLT12 offer bech32 decode failed: {e}"))
     })?;
+    // A real BOLT12 offer always has substantial TLV data — reject suspiciously
+    // short payloads that are likely truncated, synthetic, or just a prefix.
+    if data.len() < 40 {
+        return Err(SatsPathError::InvalidPaymentPointer(
+            "BOLT12 offer data too short — likely truncated or invalid".into(),
+        ));
+    }
     // Ensure no private material
     assert_no_private_material(trimmed)?;
     Ok(())
@@ -372,6 +379,9 @@ mod tests {
             updated_at: 1,
             expires_at: Some(2),
             sequence: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         };
         assert!(validate_public_profile(&profile).is_err());

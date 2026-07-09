@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use satspath_core::{
-    crypto::{fingerprint_pubkey, generate_identity_keypair, sign_profile},
+    crypto::{fingerprint_pubkey, generate_identity_keypair, generate_nonce, sign_profile},
     privacy::{canonical_identifier, mask_identifier, mask_pubkey},
     validate_ark_server_url,
     validation::{
@@ -73,13 +73,17 @@ pub fn cmd_register(
         _ => anyhow::bail!("--ark-server and --ark-pubkey must be provided together."),
     }
 
+    let now = chrono::Utc::now().timestamp();
     let profile = PaymentProfile {
         alias: alias.clone(),
         identity_pubkey: pubkey_hex.clone(),
         methods: methods.clone(),
-        updated_at: chrono::Utc::now().timestamp(),
-        expires_at: None,
+        updated_at: now,
+        expires_at: Some(now + 30 * 24 * 3600), // default 30-day expiry per spec §28
         sequence: Some(1),
+        preferences: vec!["lightning".into(), "ark".into(), "onchain".into()],
+        nonce: Some(generate_nonce()),
+        rotation: None,
         method_verifications: Vec::new(),
     };
 
@@ -107,6 +111,13 @@ pub fn cmd_register(
         key_path.display()
     );
     println!("This is your protocol identity key — not a wallet seed or spending key.");
+    println!();
+    println!(
+        "⚠  BACKUP WARNING: If you lose this key file, you cannot update or rotate this \
+         profile. Back up {} securely.",
+        key_path.display()
+    );
+    println!("   There is no recovery mechanism in v0.1. A future version may support BIP-39.");
     println!();
     println!(
         "Prove ownership of a method:  satspath prove {} --method-index 0",

@@ -229,6 +229,9 @@ where
         alias: recipient.to_string(),
         amount_sats,
         signed_profile: signed.clone(),
+        urgency: crate::urgency::PaymentUrgency::Normal,
+        max_fee_sats: None,
+        max_fee_percent: None,
     };
     let route = match fees {
         Some(fee_est) => select_route_with_fees(&req, &fee_est),
@@ -367,6 +370,9 @@ mod tests {
             updated_at: 1_700_000_000,
             expires_at: None,
             sequence: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         };
         (profile, kp.secret_key)

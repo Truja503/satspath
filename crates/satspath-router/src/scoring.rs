@@ -193,7 +193,7 @@ pub fn score_routes(
                 .map(|max| c.estimated_fee_sats.unwrap_or(u64::MAX) <= max)
                 .unwrap_or(true)
         })
-        .max_by_key(|(_, c)| candidate_score(c, preferences, amount_sats))
+        .max_by_key(|(_, c)| candidate_score(c, preferences, amount_sats, &profile.profile.preferences))
         .map(|(idx, _)| idx)
         .ok_or_else(|| SatsPathError::NoRouteFound("no available scored route".into()))?;
 
@@ -224,6 +224,7 @@ fn candidate_score(
     candidate: &RouteCandidate,
     preferences: &RoutePreferences,
     amount_sats: u64,
+    profile_preferences: &[String],
 ) -> i64 {
     let mut score = 0i64;
     score += i64::from(candidate.reliability_score) * 10;
@@ -243,6 +244,18 @@ fn candidate_score(
     if candidate.rail == PaymentRail::Ark && !preferences.allow_experimental_ark {
         score -= 1_000;
     }
+    
+    // Apply profile preference bonus (WS-3)
+    let rail_name = match candidate.rail {
+        PaymentRail::Lightning => "lightning",
+        PaymentRail::Onchain => "onchain",
+        PaymentRail::Ark => "ark",
+    };
+    if let Some(pos) = profile_preferences.iter().position(|p| p == rail_name) {
+        // High bonus for 1st preference (50), tapering off for subsequent ones
+        score += 50i64.saturating_sub(pos as i64 * 10);
+    }
+    
     score
 }
 
@@ -281,6 +294,9 @@ mod tests {
             updated_at: 1,
             expires_at: None,
             sequence: None,
+            preferences: vec!["lightning".into(), "ark".into(), "onchain".into()],
+            nonce: Some(satspath_core::crypto::generate_nonce()),
+            rotation: None,
             method_verifications: Vec::new(),
         };
         sign_profile(profile, &kp.secret_key).unwrap()

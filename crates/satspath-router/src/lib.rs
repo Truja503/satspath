@@ -8,6 +8,7 @@ pub mod priority;
 pub mod quote_response;
 pub mod router;
 pub mod scoring;
+pub mod urgency;
 
 pub use ark_routes::{plan_ark_route, ArkRoutePlan, SenderCapabilities};
 pub use bip353_preview::quote_from_bip353_resolution;

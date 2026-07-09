@@ -1856,6 +1856,9 @@ mod tests {
             updated_at: NOW,
             expires_at: None,
             sequence: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: vec![verification],
         };
         let mut signed = sign_profile(profile, &identity.secret).unwrap();
@@ -1930,6 +1933,9 @@ mod tests {
             updated_at: NOW,
             expires_at: None,
             sequence: None,
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
             method_verifications: Vec::new(),
         }
     }
