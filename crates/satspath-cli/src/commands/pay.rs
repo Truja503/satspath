@@ -188,6 +188,7 @@ fn validate_pay_flags(
 
 // ─── Experimental Engine v0 ──────────────────────────────────────────────────
 
+#[allow(dead_code)]
 pub trait LightningExecutor {
     async fn pay_invoice(&self, invoice: &str, amount_sats: u64) -> Result<()>;
 }
@@ -208,7 +209,7 @@ async fn exec_experimental(
     amount_sats: u64,
     alias: &str,
     debug: bool,
-    executor: &dyn LightningExecutor,
+    _executor: &impl LightningExecutor,
 ) -> Result<()> {
     println!("══════════════════════════════════════════════════");
     println!("Engine v0 — EXPERIMENTAL TESTNET ONLY");

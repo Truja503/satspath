@@ -1,4 +1,4 @@
-se anyhow::Result;
+use anyhow::Result;
 use satspath_core::{
     create_invite,
     crypto::{fingerprint_pubkey, verify_signed_profile},

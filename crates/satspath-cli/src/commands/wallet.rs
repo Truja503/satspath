@@ -326,7 +326,7 @@ pub fn cmd_wallet_rotate() -> Result<()> {
         .unwrap_or(0);
         
     let t = now();
-    let rotation = satspath_core::rotation::KeyRotation::new(&old_secret, &old_pubkey_hex, &new_pubkey_hex, t)?;
+    let rotation = satspath_core::rotation::KeyRotation::create(old_pubkey_hex.clone(), &old_secret, new_pubkey_hex.clone())?;
     
     let profile = PaymentProfile {
         sequence: Some(current_sequence + 1),
