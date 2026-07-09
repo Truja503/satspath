@@ -195,7 +195,7 @@ pub fn ark_ownership_challenge(
     nonce: &str,
 ) -> String {
     format!(
-        "SatsPath Ownership Proof v1\nidentity={identity_pubkey}\nmethod=ark:{ark_server}:{receiver_pubkey}\nissued_at={nonce}"
+        "SatsPath Ownership Proof v1\nalias={alias}\nidentity={identity_pubkey}\nmethod=ark:{ark_server}:{receiver_pubkey}\nissued_at={nonce}"
     )
 }
 

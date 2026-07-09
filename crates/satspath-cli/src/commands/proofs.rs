@@ -217,6 +217,7 @@ pub async fn cmd_attach_proof(
     let mut profile = signed.profile.clone();
     upsert_method_verification(&mut profile.method_verifications, verification);
     profile.updated_at = now;
+    profile.sequence = profile.sequence.map(|s| s + 1).or(Some(1));
     let resigned = sign_profile(profile, &identity_key).map_err(|e| anyhow::anyhow!("{e}"))?;
     registry
         .update_profile(resigned.clone())

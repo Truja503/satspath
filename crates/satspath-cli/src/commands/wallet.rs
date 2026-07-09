@@ -228,9 +228,15 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
         anyhow::bail!("no receive methods set — add at least a Lightning, on-chain, or Ark method");
     }
 
+    let mut registry = open_registry()?;
+    let current_sequence = registry
+        .resolve_alias(alias)
+        .map(|signed| signed.profile.sequence.unwrap_or(0))
+        .unwrap_or(0);
+
     let secret = keystore::load_identity_key(&satspath_dir(), pubkey)?;
     let profile = PaymentProfile {
-        sequence: Some(1),
+        sequence: Some(current_sequence + 1),
         alias: alias.clone(),
         identity_pubkey: pubkey.clone(),
         methods,
@@ -240,7 +246,7 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
     };
     let signed = sign_profile(profile, &secret)?;
     let fp = fingerprint_pubkey(pubkey)?;
-    open_registry()?
+    registry
         .update_profile(signed)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(fp)

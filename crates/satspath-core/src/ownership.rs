@@ -1895,9 +1895,8 @@ mod tests {
     const ARK_SERVER: &str = "https://ark.example.com";
     const ARK_ALIAS: &str = "alice@example.com";
 
-    fn ark_method_with_inline_proof(expires_at: Option<i64>, tamper: bool) -> PaymentMethod {
+    fn ark_method_with_inline_proof(identity_pubkey: &str, expires_at: Option<i64>, tamper: bool) -> PaymentMethod {
         let k = key();
-        let identity_pubkey = key().pubkey_hex;
         let method_descriptor = format!("ark:{}", k.pubkey_hex);
         let message =
             crate::ark::ark_ownership_challenge(ARK_ALIAS, &identity_pubkey, ARK_SERVER, &k.pubkey_hex, &method_descriptor);
@@ -1923,10 +1922,10 @@ mod tests {
         }
     }
 
-    fn profile_with(methods: Vec<PaymentMethod>) -> crate::profile::PaymentProfile {
+    fn profile_with(identity_pubkey: String, methods: Vec<PaymentMethod>) -> crate::profile::PaymentProfile {
         crate::profile::PaymentProfile {
             alias: ARK_ALIAS.into(),
-            identity_pubkey: key().pubkey_hex,
+            identity_pubkey,
             methods,
             updated_at: NOW,
             expires_at: None,
@@ -1937,24 +1936,27 @@ mod tests {
 
     #[test]
     fn inline_ark_proof_surfaces_through_unified_trust() {
-        let method = ark_method_with_inline_proof(Some(NOW + 10_000), false);
-        let profile = profile_with(vec![method.clone()]);
+        let identity = key().pubkey_hex;
+        let method = ark_method_with_inline_proof(&identity, Some(NOW + 10_000), false);
+        let profile = profile_with(identity, vec![method.clone()]);
         let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
         assert_eq!(trust, MethodTrust::Verified(TrustTier::Cryptographic));
     }
 
     #[test]
     fn inline_ark_proof_expired_surfaces_as_expired() {
-        let method = ark_method_with_inline_proof(Some(NOW - 1), false);
-        let profile = profile_with(vec![method.clone()]);
+        let identity = key().pubkey_hex;
+        let method = ark_method_with_inline_proof(&identity, Some(NOW - 1), false);
+        let profile = profile_with(identity, vec![method.clone()]);
         let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
         assert_eq!(trust, MethodTrust::Expired);
     }
 
     #[test]
     fn inline_ark_proof_tampered_surfaces_as_invalid() {
-        let method = ark_method_with_inline_proof(Some(NOW + 10_000), true);
-        let profile = profile_with(vec![method.clone()]);
+        let identity = key().pubkey_hex;
+        let method = ark_method_with_inline_proof(&identity, Some(NOW + 10_000), true);
+        let profile = profile_with(identity, vec![method.clone()]);
         let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
         assert!(matches!(trust, MethodTrust::Invalid(_)));
     }
@@ -1983,8 +1985,7 @@ mod tests {
             None,
         )
         .unwrap();
-        let mut profile = profile_with(vec![method.clone()]);
-        profile.identity_pubkey = identity.pubkey_hex.clone();
+        let mut profile = profile_with(identity.pubkey_hex.clone(), vec![method.clone()]);
         profile.method_verifications = vec![v];
 
         let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
@@ -1996,7 +1997,8 @@ mod tests {
         // For a plain unverified Lightning method, the profile-aware path matches
         // the base evaluator (Unverified) — no inline Ark shortcut applies.
         let method = ln_method("alice@example.com");
-        let profile = profile_with(vec![method.clone()]);
+        let identity = key().pubkey_hex;
+        let profile = profile_with(identity, vec![method.clone()]);
         let trust = evaluate_method_trust_for_profile(&profile, &method, NOW, None);
         assert_eq!(trust, MethodTrust::Unverified);
     }

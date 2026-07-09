@@ -588,9 +588,15 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         anyhow::bail!("profile needs at least one public receive method");
     }
 
+    let mut registry = Registry::open(home)?;
+    let current_sequence = registry
+        .resolve_alias(&alias)
+        .map(|signed| signed.profile.sequence.unwrap_or(0))
+        .unwrap_or(0);
+
     let secret = load_identity_key(home, &identity_pubkey)?;
     let profile = PaymentProfile {
-        sequence: Some(1),
+        sequence: Some(current_sequence + 1),
         alias,
         identity_pubkey,
         methods,
@@ -599,7 +605,7 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         method_verifications: Vec::new(),
     };
     let signed = sign_profile(profile, &secret)?;
-    Registry::open(home)?.update_profile(signed)?;
+    registry.update_profile(signed)?;
     Ok(())
 }
 
