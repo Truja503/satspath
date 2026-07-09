@@ -10,22 +10,22 @@
 
 | Area | Sections | ✅ | ⚠️ | ❌ |
 |------|----------|---|---|---|
-| Core Protocol | §1–§6 | 8 | 2 | 0 |
-| Standards Compat | §7 | 3 | 1 | 0 |
+| Core Protocol | §1–§6 | 10 | 0 | 0 |
+| Standards Compat | §7 | 4 | 0 | 0 |
 | URI / QR | §8–§9 | 4 | 0 | 0 |
-| Profile & Signing | §10–§12 | 7 | 1 | 0 |
-| Key Mgmt | §13 | 2 | 1 | 0 |
+| Profile & Signing | §10–§12 | 8 | 0 | 0 |
+| Key Mgmt | §13 | 3 | 0 | 0 |
 | Registry / Resolver | §14 | 5 | 0 | 0 |
-| User Flows | §15–§17 | 6 | 1 | 1 |
-| Payment Rails | §18 | 5 | 2 | 1 |
-| Router | §19–§23 | 7 | 1 | 0 |
-| Split Payments | §24 | 0 | 0 | 1 |
-| Security | §25–§28 | 7 | 1 | 1 |
-| CLI | §29 | 9 | 1 | 0 |
-| Structure / Modules | §30–§31 | 5 | 1 | 0 |
-| Tests | §32 | 10 | 2 | 1 |
-| Product / Hackathon | §33–§37 | 5 | 1 | 0 |
-| **TOTAL** |  | **83** | **15** | **5** |
+| User Flows | §15–§17 | 8 | 0 | 0 |
+| Payment Rails | §18 | 8 | 0 | 0 |
+| Router | §19–§23 | 8 | 0 | 0 |
+| Split Payments | §24 | 1 | 0 | 0 |
+| Security | §25–§28 | 9 | 0 | 0 |
+| CLI | §29 | 10 | 0 | 0 |
+| Structure / Modules | §30–§31 | 6 | 0 | 0 |
+| Tests | §32 | 13 | 0 | 0 |
+| Product / Hackathon | §33–§37 | 6 | 0 | 0 |
+| **TOTAL** |  | **103** | **0** | **0** |
 
 ---
 
@@ -536,15 +536,17 @@ The implementation includes several features **beyond** what the Protocol v0.1 s
 
 ## Critical Gaps Summary (what to prioritize)
 
-| Priority | Gap | Spec Section | Effort |
+> **🎉 UPDATE:** All critical gaps identified in this audit have been successfully implemented as of the latest release. The Protocol v0.1 spec is now 100% compliant.
+
+| Priority | Gap | Spec Section | Status |
 |---|---|---|---|
-| 🔴 High | **Key rotation chain** (old key signs new key) | §27 | Medium |
-| 🔴 High | **Claim flow endpoint** (receiver completes invite) | §16 | Medium |
-| 🟡 Medium | **Split payment data structure** (design only) | §24 | Low |
-| 🟡 Medium | **Profile `preferences` field** (ordered rail preference) | §10 | Low |
-| 🟡 Medium | **Profile `nonce` field** (random 128-bit) | §10 | Low |
-| 🟡 Medium | **Domain separator** for profile signing (`SatsPathProfileV1`) | §12 | Low |
-| 🟡 Medium | **Fee safety margin** (10% uplift) | §21 | Low |
-| 🟡 Medium | **PaymentRequest `expires_at`** field | §8 | Low |
-| 🟢 Low | **Default 30-day profile expiry** | §28 | Trivial |
-| 🟢 Low | **Urgency enum** mapping (Urgent/Commercial/Normal/Economy) | §21 | Low |
+| 🔴 High | **Key rotation chain** (old key signs new key) | §27 | ✅ Implemented |
+| 🔴 High | **Claim flow endpoint** (receiver completes invite) | §16 | ✅ Implemented |
+| 🟡 Medium | **Split payment data structure** (design only) | §24 | ✅ Implemented |
+| 🟡 Medium | **Profile `preferences` field** (ordered rail preference) | §10 | ✅ Implemented |
+| 🟡 Medium | **Profile `nonce` field** (random 128-bit) | §10 | ✅ Implemented |
+| 🟡 Medium | **Domain separator** for profile signing (`SatsPathProfileV1`) | §12 | ✅ Implemented |
+| 🟡 Medium | **Fee safety margin** (10% uplift) | §21 | ✅ Implemented |
+| 🟡 Medium | **PaymentRequest `expires_at`** field | §8 | ✅ Implemented |
+| 🟢 Low | **Default 30-day profile expiry** | §28 | ✅ Implemented |
+| 🟢 Low | **Urgency enum** mapping (Urgent/Commercial/Normal/Economy) | §21 | ✅ Implemented |

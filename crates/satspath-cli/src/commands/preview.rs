@@ -1,4 +1,4 @@
-use anyhow::Result;
+se anyhow::Result;
 use satspath_core::{
     create_invite,
     crypto::{fingerprint_pubkey, verify_signed_profile},
@@ -9,7 +9,7 @@ use satspath_core::{
         assert_mainnet_preview_safe, validate_amount_sats, validate_bitcoin_address,
         validate_compressed_pubkey, validate_public_profile,
     },
-    BitcoinNetwork, ExecutionMode, PaymentMethod, SatsPathError, SignedPaymentProfile,
+    BitcoinNetwork, ExecutionMode, PaymentMethod, SatsPathError, SignedPaymentProfile, 
 };
 use satspath_router::{
     fetch_invoice, fetch_lnurl_metadata, lightning::verify_invoice_amount, select_route,
