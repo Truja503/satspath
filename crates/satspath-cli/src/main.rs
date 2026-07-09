@@ -144,7 +144,13 @@ enum Command {
     },
 
     /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
-    Invite { alias: String, amount_sats: u64 },
+    Invite { 
+        alias: String, 
+        amount_sats: u64,
+        /// Use custodial escrow to lock funds until claimed.
+        #[arg(long)]
+        escrow: bool,
+    },
 
     /// Claim an invite using a claim URL or an alias (generates local keys)
     Claim {
@@ -416,12 +422,12 @@ async fn main() -> Result<()> {
             )
             .await?
         }
-        Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats)?,
+        Command::Invite { alias, amount_sats, escrow } => commands::cmd_invite(&alias, amount_sats, escrow).await?,
         Command::Claim {
             claim_url_or_alias,
             lightning_address,
             onchain_address,
-        } => commands::cmd_claim(&claim_url_or_alias, lightning_address.as_deref(), onchain_address.as_deref())?,
+        } => commands::cmd_claim(&claim_url_or_alias, lightning_address.as_deref(), onchain_address.as_deref()).await?,
         Command::Export { alias } => commands::cmd_export(&alias)?,
         Command::Import { file, url } => {
             commands::cmd_import(file.as_deref(), url.as_deref()).await?

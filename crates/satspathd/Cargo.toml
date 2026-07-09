@@ -20,6 +20,7 @@ satspath-router = { path = "../satspath-router" }
 secp256k1 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2.workspace = true
 tiny_http = "0.12"
 tokio = { workspace = true }
 

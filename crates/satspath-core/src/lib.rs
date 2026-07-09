@@ -4,6 +4,7 @@ pub mod bip353;
 pub mod bip353_publish;
 pub mod codec;
 pub mod crypto;
+pub mod escrow;
 pub mod errors;
 pub mod execution;
 pub mod ownership;
