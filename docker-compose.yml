@@ -48,6 +48,35 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # ── SatsPath Daemon ─────────────────────────────────────────────────────────
+  satspathd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime-daemon
+    image: satspathd:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9737:9737"
+    volumes:
+      - satspath-data:/data
+    environment:
+      SATSPATH_DATA_DIR: /data
+      SATSPATHD_BIND: "0.0.0.0:9737"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9737/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   # ── ARK Bridge (opt-in via --profile bridge) ────────────────────────────────
   ark-bridge:
     build:

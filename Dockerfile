@@ -34,8 +34,8 @@ COPY --from=cacher /build/target target
 COPY --from=cacher /usr/local/cargo /usr/local/cargo
 # Copy full workspace source
 COPY . .
-# Build the release binary — this is the `cargo build --release` the user wants
-RUN cargo build --release --bin satspath
+# Build the release binaries — CLI and Daemon
+RUN cargo build --release --bin satspath --bin satspathd
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 4 — Runtime
@@ -80,3 +80,44 @@ ENV SATSPATH_DATA_DIR=/data
 # satspath is a CLI tool; the default command shows help.
 ENTRYPOINT ["/usr/local/bin/satspath"]
 CMD ["--help"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 5 — Runtime Daemon (satspathd)
+#   Runs the local receiver-profile daemon with strict security.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM docker.io/debian:bookworm-slim AS runtime-daemon
+
+LABEL org.opencontainers.image.title="satspathd" \
+      org.opencontainers.image.description="SatsPath Daemon — receiver-profile registry and API" \
+      org.opencontainers.image.vendor="SatsPath" \
+      org.opencontainers.image.licenses="MIT"
+
+# Security: install CA certificates and curl (for docker healthchecks).
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Security: create a dedicated non-root user.
+RUN groupadd --system --gid 10002 satspathd \
+    && useradd  --system --uid 10002 --gid satspathd \
+                --no-create-home --shell /sbin/nologin satspathd
+
+# Copy the daemon binary.
+COPY --from=builder /build/target/release/satspathd /usr/local/bin/satspathd
+RUN chmod 755 /usr/local/bin/satspathd
+
+# Writable data directory.
+RUN mkdir -p /data && chown satspathd:satspathd /data
+
+USER satspathd
+WORKDIR /data
+
+ENV SATSPATH_DATA_DIR=/data \
+    SATSPATHD_BIND="0.0.0.0:9737"
+
+EXPOSE 9737
+
+ENTRYPOINT ["/usr/local/bin/satspathd"]
+CMD ["--home", "/data", "--no-open"]
+
