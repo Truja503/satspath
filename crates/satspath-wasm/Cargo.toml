@@ -1,0 +1,37 @@
+[package]
+name = "satspath-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WASM bindings for SatsPath crypto primitives — verify signed profiles, derive P2P topics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+wasm-bindgen = "=0.2.92"
+console_error_panic_hook = { version = "0.1", optional = true }
+
+# Crypto — same crates as satspath-core, but without tokio/reqwest/rand-std
+# which don't compile to wasm32-unknown-unknown.
+# We only need: verify (secp256k1), hash (sha2), canonical JSON.
+secp256k1     = { version = "0.29" }
+sha2          = { workspace = true }
+hex           = { workspace = true }
+canonical_json = "0.5"
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+
+# getrandom must use the "js" backend when targeting WASM
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+secp256k1      = { version = "0.29" }
+sha2           = { workspace = true }
+hex            = { workspace = true }
+canonical_json = "0.5"
+serde_json     = { workspace = true }

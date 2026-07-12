@@ -1,7 +1,7 @@
 {
   "name": "@satspath/p2p",
   "version": "0.1.0",
-  "description": "Resolve & serve SatsPath signed payment profiles peer-to-peer over the Holepunch stack (Hyperswarm/HyperDHT) with NAT hole-punching. Transport + signature verification only — never moves funds.",
+  "description": "Resolve & serve SatsPath signed payment profiles peer-to-peer over the Holepunch stack (Hyperswarm/HyperDHT) with NAT hole-punching. Transport + Rust WASM signature verification — never moves funds.",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -9,14 +9,18 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
+    "build:wasm": "wasm-pack build ../../crates/satspath-wasm --target nodejs --out-dir pkg",
+    "build:wasm:cli": "cargo build -p satspath-wasm --target wasm32-unknown-unknown --release && wasm-bindgen ../../target/wasm32-unknown-unknown/release/satspath_wasm.wasm --out-dir pkg --target nodejs",
     "example:publish": "node examples/publish.mjs",
     "example:resolve": "node examples/resolve.mjs"
   },
   "dependencies": {
-    "@noble/curves": "^1.9.7",
-    "@noble/hashes": "^1.8.0",
     "hyperdht": "^6.20.0",
     "hyperswarm": "^4.11.7"
+  },
+  "devDependencies": {},
+  "notes": {
+    "wasm": "Crypto (secp256k1, SHA-256, canonical JSON) is provided by the Rust WASM module in pkg/. Run `npm run build:wasm` (requires wasm-pack) or `npm run build:wasm:cli` (requires wasm-bindgen-cli) to regenerate after changing crates/satspath-wasm."
   },
   "license": "MIT"
 }

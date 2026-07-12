@@ -1,50 +1,70 @@
-// SatsPath signed-profile verification, native in JS.
+// SatsPath signed-profile verification — backed by Rust→WASM.
 //
-// Current Rust signs `SHA-256(canonical_json(profile))` with secp256k1 ECDSA
-// (DER signature, compressed pubkey), where canonical JSON sorts object keys.
-// Older fixtures used Rust's serde insertion order, so verification accepts both
-// current canonical JSON and the legacy compact JSON encoding.
+// Replaces @noble/curves/secp256k1 + @noble/hashes/sha256 + manual canonical JSON.
+// The WASM module (compiled from satspath-core primitives) runs the exact same
+// algorithm as the Rust daemon, eliminating any drift between implementations.
+//
+// Hyperswarm transport stays in Node.js — only crypto moves to WASM.
 
-import { secp256k1 } from "@noble/curves/secp256k1";
-import { sha256 } from "@noble/hashes/sha256";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
+// Lazy-load the WASM module so the file can be imported even before wasm-pack
+// has run (useful for unit tests that mock the functions).
+let _wasm = null;
+
+async function getWasm() {
+  if (_wasm) return _wasm;
+  try {
+    // wasm-pack --target nodejs emits a CJS bundle with synchronous init
+    _wasm = require("../pkg/satspath_wasm.js");
+  } catch (e) {
+    throw new Error(
+      `[satspath-p2p] Could not load WASM module: ${e.message}\n` +
+      `  Run: wasm-pack build crates/satspath-wasm --target nodejs --out-dir sdk/satspath-p2p/pkg`
+    );
+  }
+  return _wasm;
+}
 
 /** Canonical alias form used for topic derivation and matching. */
 export function canonicalAlias(alias) {
   return String(alias).trim().toLowerCase();
 }
 
-/** Current canonical JSON bytes: UTF-8 of JSON with object keys sorted. */
-export function canonicalProfileBytes(profile) {
-  return new TextEncoder().encode(canonicalJson(profile));
-}
-
 /**
  * Verify a SatsPath `SignedPaymentProfile` `{ profile, signature }`.
- * Returns `true` only if the secp256k1 signature is valid for the profile's
- * `identity_pubkey`. Never throws.
+ * Returns `true` only if the secp256k1 ECDSA signature is valid for the
+ * profile's `identity_pubkey`. Never throws.
+ *
+ * Delegates to the Rust WASM implementation — byte-for-byte identical to
+ * what `satspathd` does on the server side.
  */
 export function verifySignedProfile(signed) {
   try {
-    const pubkey = signed?.profile?.identity_pubkey;
-    const signature = signed?.signature;
-    if (typeof pubkey !== "string" || typeof signature !== "string") return false;
-    const sig = secp256k1.Signature.fromDER(signature);
-    const currentHash = sha256(canonicalProfileBytes(signed.profile));
-    if (secp256k1.verify(sig, currentHash, pubkey)) return true;
-
-    const legacyHash = sha256(new TextEncoder().encode(JSON.stringify(signed.profile)));
-    return secp256k1.verify(sig, legacyHash, pubkey);
+    const wasm = getWasmSync();
+    return wasm.verify_signed_profile(JSON.stringify(signed));
   } catch {
     return false;
   }
 }
 
-function canonicalJson(value) {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+/**
+ * Return the canonical UTF-8 bytes of a profile (key-sorted JSON).
+ * Returns `Uint8Array` — same output as `satspath-core::crypto::canonical_profile_bytes`.
+ */
+export function canonicalProfileBytes(profile) {
+  try {
+    const wasm = getWasmSync();
+    return wasm.canonical_profile_json(JSON.stringify(profile));
+  } catch {
+    return new Uint8Array(0);
+  }
+}
 
-  return `{${Object.keys(value)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
-    .join(",")}}`;
+// Synchronous WASM load for Node.js (wasm-pack --target nodejs uses sync init).
+function getWasmSync() {
+  if (_wasm) return _wasm;
+  _wasm = require("../pkg/satspath_wasm.js");
+  return _wasm;
 }

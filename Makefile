@@ -3,7 +3,7 @@
 # Convenience targets for Docker build, run, and development workflows.
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help build build-cli build-bridge run shell up down logs clean scan
+.PHONY: help build build-cli build-bridge build-wasm run shell up down logs clean scan
 
 # ── Default ──────────────────────────────────────────────────────────────────
 help: ## Show this help message
@@ -12,6 +12,14 @@ help: ## Show this help message
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 build: build-cli build-bridge ## Build all Docker images
+
+build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli v0.2.92)
+	source $(HOME)/.cargo/env && \
+	  cargo build -p satspath-wasm --target wasm32-unknown-unknown --release && \
+	  wasm-bindgen target/wasm32-unknown-unknown/release/satspath_wasm.wasm \
+	    --out-dir sdk/satspath-p2p/pkg --target nodejs && \
+	  echo '{"type":"commonjs"}' > sdk/satspath-p2p/pkg/package.json
+	@echo "WASM built → sdk/satspath-p2p/pkg/"
 
 build-cli: ## Build the SatsPath CLI image
 	docker build \
