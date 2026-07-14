@@ -1,0 +1,112 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{release-readiness-checklist-for-satspath-v0}{%
+\section{Release Readiness Checklist for SatsPath
+v0}\label{release-readiness-checklist-for-satspath-v0}}
+
+\hypertarget{security-and-privacy}{%
+\subsection{Security and Privacy}\label{security-and-privacy}}
+
+\begin{itemize}
+\tightlist
+\item[$\boxtimes$]
+  All cryptographic implementations reviewed.
+\item[$\boxtimes$]
+  No private material (seeds, keys) included in profiles or payment
+  pointers.
+\item[$\boxtimes$]
+  Sensitive user data masked in preview modes.
+\end{itemize}
+
+\hypertarget{functional-testing}{%
+\subsection{Functional Testing}\label{functional-testing}}
+
+\begin{itemize}
+\tightlist
+\item[$\boxtimes$]
+  All unit tests pass across workspaces.
+\item[$\boxtimes$]
+  Integration tests for HTTP resolver and LNURL pass.
+\item[$\boxtimes$]
+  Testnet execution paths enabled; mainnet execution paths strictly
+  disabled.
+\end{itemize}
+
+\hypertarget{code-quality}{%
+\subsection{Code Quality}\label{code-quality}}
+
+\begin{itemize}
+\tightlist
+\item[$\boxtimes$]
+  CI workflows in place for formatting, linting, and testing.
+\item[$\boxtimes$]
+  PR template and branch protection guidelines established.
+\end{itemize}
+
+\hypertarget{documentation}{%
+\subsection{Documentation}\label{documentation}}
+
+\begin{itemize}
+\tightlist
+\item[$\boxtimes$]
+  README reflects experimental nature of swap engine.
+\item[$\boxtimes$]
+  Core architecture and protocol concepts fully documented.
+\end{itemize}
+
+\end{document}

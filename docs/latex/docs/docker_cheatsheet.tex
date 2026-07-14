@@ -1,0 +1,260 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-docker-cheat-sheet}{%
+\section{🐳 SatsPath Docker Cheat
+Sheet}\label{satspath-docker-cheat-sheet}}
+
+Esta guía contiene todos los comandos necesarios para construir,
+ejecutar y probar la funcionalidad completa de \textbf{SatsPath} usando
+los contenedores de Docker de manera segura.
+
+\begin{quote}
+{[}!NOTE{]} Dado que el CLI se ejecuta de forma efímera, el formato base
+para correr cualquier comando es:
+\texttt{docker\ compose\ run\ -\/-rm\ satspath-cli\ \textless{}comando\textgreater{}}
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{construcciuxf3n-y-entorno-base}{%
+\subsection{1. Construcción y Entorno
+Base}\label{construcciuxf3n-y-entorno-base}}
+
+Antes de ejecutar comandos, necesitas construir las imágenes e iniciar
+el daemon en segundo plano.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Construir todas las imágenes (CLI, Daemon y Ark Bridge)}
+\ExtensionTok{docker}\NormalTok{ compose build}
+
+\CommentTok{\# Levantar el Daemon local (satspathd) en segundo plano}
+\ExtensionTok{docker}\NormalTok{ compose up }\AttributeTok{{-}d}\NormalTok{ satspathd}
+
+\CommentTok{\# Verificar que el Daemon esté corriendo y saludable (Healthcheck)}
+\ExtensionTok{docker}\NormalTok{ compose ps}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{inicializaciuxf3n-de-billetera-y-perfil}{%
+\subsection{2. Inicialización de Billetera y
+Perfil}\label{inicializaciuxf3n-de-billetera-y-perfil}}
+
+SatsPath es una billetera ``receiver-profile''. Gestiona tu identidad y
+tus métodos de pago públicos, sin custodiar fondos.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# 1. Inicializar las llaves de identidad criptográfica}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli wallet init}
+
+\CommentTok{\# 2. Registrar tu alias y configurar tus métodos de pago públicos}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli wallet add{-}methods bob@satspath.local }\DataTypeTok{\textbackslash{}}
+    \AttributeTok{{-}{-}lightning{-}address}\NormalTok{ bob@getalby.com }\DataTypeTok{\textbackslash{}}
+    \AttributeTok{{-}{-}onchain{-}address}\NormalTok{ tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx }\DataTypeTok{\textbackslash{}}
+    \AttributeTok{{-}{-}ark{-}server}\NormalTok{ https://ark{-}testnet.example.com }\DataTypeTok{\textbackslash{}}
+    \AttributeTok{{-}{-}ark{-}pubkey}\NormalTok{ 025b90f4a...}
+
+\CommentTok{\# 3. Ver tu perfil actual y el estado de la firma criptográfica}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli wallet show}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{resolviendo-pagos-simulaciones-y-quotes}{%
+\subsection{3. Resolviendo Pagos (Simulaciones y
+Quotes)}\label{resolviendo-pagos-simulaciones-y-quotes}}
+
+Antes de enviar un pago, el sistema de SatsPath debe evaluar las tarifas
+de red, urgencia y métodos de la contraparte para decidir la ruta
+óptima.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Consultar el perfil público de otro usuario}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli resolve bob@satspath.local}
+
+\CommentTok{\# Generar un "Quote" de pago por 50,000 sats (SatsPath decide la mejor ruta)}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli quote bob@satspath.local 50000}
+
+\CommentTok{\# Forzar una urgencia de pago rápida (altera la selección de red Lightning vs On{-}chain)}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli quote bob@satspath.local 250000 }\AttributeTok{{-}{-}urgency}\NormalTok{ fast}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{ejecuciuxf3n-de-pagos-y-swaps}{%
+\subsection{4. Ejecución de Pagos y
+Swaps}\label{ejecuciuxf3n-de-pagos-y-swaps}}
+
+El comando \texttt{pay} muestra la instrucción de pago. Si le agregas
+los flags experimentales, puedes simular la ejecución a través del
+\texttt{LightningExecutor} u orquestar Swaps Submarinos.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Pagar a un destinatario y ver las instrucciones del QR (No mueve fondos)}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli pay bob@satspath.local 1000}
+
+\CommentTok{\# Simular la ejecución experimental del pago/swap en testnet}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli pay bob@satspath.local 100000 }\AttributeTok{{-}{-}testnet} \AttributeTok{{-}{-}experimental{-}swaps}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{el-flujo-de-invitaciones-invites-claims}{%
+\subsection{5. El Flujo de Invitaciones (Invites \&
+Claims)}\label{el-flujo-de-invitaciones-invites-claims}}
+
+Si le pagas a un usuario que \textbf{no} tiene un perfil registrado,
+SatsPath genera automáticamente un enlace de invitación.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# 1. Intentar pagarle a un usuario nuevo (Genera la invitación)}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli pay nuevo\_usuario@satspath.local 50000}
+
+\CommentTok{\# El comando anterior te devolverá un enlace (ej: https://satspath.local/claim?alias\_hash=...)}
+\CommentTok{\# 2. El nuevo usuario reclama su perfil usando el enlace}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli claim }\StringTok{"https://satspath.local/claim?alias\_hash=abc123def456\&amount=50000"}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{mantenimiento-de-seguridad-rotaciuxf3n-de-llaves}{%
+\subsection{6. Mantenimiento de Seguridad (Rotación de
+Llaves)}\label{mantenimiento-de-seguridad-rotaciuxf3n-de-llaves}}
+
+Si crees que tu llave de identidad fue comprometida, debes rotarla.
+SatsPath usa rotación criptográfica con pruebas \texttt{KeyRotation}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# 1. Rotar las llaves de identidad (crea una nueva llave y adjunta la prueba)}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli wallet rotate}
+
+\CommentTok{\# 2. Validar el estado del perfil}
+\CommentTok{\# Deberías ver un aviso indicando que el perfil ha sido rotado recientemente}
+\ExtensionTok{docker}\NormalTok{ compose run }\AttributeTok{{-}{-}rm}\NormalTok{ satspath{-}cli wallet show}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{ark-bridge-opcional}{%
+\subsection{7. ARK Bridge (Opcional)}\label{ark-bridge-opcional}}
+
+Si necesitas utilizar el puente TypeScript de Ark para validación
+avanzada del cliente, debes levantar el perfil \texttt{bridge}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Iniciar el contenedor de ark{-}bridge}
+\ExtensionTok{docker}\NormalTok{ compose }\AttributeTok{{-}{-}profile}\NormalTok{ bridge up }\AttributeTok{{-}d}\NormalTok{ ark{-}bridge}
+
+\CommentTok{\# Detener todos los servicios al terminar}
+\ExtensionTok{docker}\NormalTok{ compose }\AttributeTok{{-}{-}profile}\NormalTok{ bridge down}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}

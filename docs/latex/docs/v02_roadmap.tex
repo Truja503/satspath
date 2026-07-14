@@ -1,0 +1,192 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-estado-actual-p2p-y-roadmap-v0.2}{%
+\section{SatsPath: Estado Actual (P2P) y Roadmap
+v0.2}\label{satspath-estado-actual-p2p-y-roadmap-v0.2}}
+
+Este documento resume el estado actual del proyecto (tras alcanzar el
+100\% de cumplimiento de la especificación \textbf{SatsPath Protocol
+v0.1}) y detalla las funcionalidades que el PDF original especifica como
+pendientes para futuras versiones (``Future behavior'' / ``Production''
+/ ``Do not build yet'').
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{lo-que-ya-funciona-v0.1-completada-p2p}{%
+\subsection{1. Lo que ya funciona (v0.1 Completada +
+P2P)}\label{lo-que-ya-funciona-v0.1-completada-p2p}}
+
+Hemos superado los requisitos básicos del Hackathon. Actualmente el
+sistema cuenta con:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{100\% Cumplimiento de la Spec v0.1}: Resolver, Router,
+  perfiles firmados, rotación de llaves, verificación de firmas y
+  estimación de comisiones.
+\item
+  \textbf{Integración P2P Funcional}: Los perfiles pueden publicarse y
+  resolverse de manera descentralizada utilizando Holepunch / Pear,
+  eliminando la necesidad de un servidor central
+  (\texttt{satspath\ wallet\ publish}).
+\item
+  \textbf{Resolución Multi-backend}: Además del registro local y P2P, se
+  soportan resolutores HTTP (\texttt{.well-known}) y Nostr (NIP-05).
+\item
+  \textbf{CLI y Daemon Nativos y Dockerizados}: Entorno seguro y
+  funcional tanto vía Docker como compilado en Rust de forma nativa
+  (\texttt{satspath-cli}, \texttt{satspathd}).
+\item
+  \textbf{Pruebas de Propiedad (Ownership Proofs)}: Sistema avanzado de
+  mitigación de ataques que supera la especificación original.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{funcionalidades-faltantes-roadmap-v0.2-producciuxf3n}{%
+\subsection{2. Funcionalidades Faltantes (Roadmap v0.2 /
+Producción)}\label{funcionalidades-faltantes-roadmap-v0.2-producciuxf3n}}
+
+Al revisar el documento \texttt{SatsPath\ Protocol\ v0.1.pdf}, las
+siguientes funcionalidades fueron explícitamente marcadas como
+\textbf{``Future behavior''}, \textbf{``Production rule''} o
+\textbf{``Do not build yet''} (Sección 34). Esto es lo que falta
+construir para llevar el protocolo a producción real:
+
+\hypertarget{a.-ejecuciuxf3n-real-de-pagos-payment-execution}{%
+\subsubsection{A. Ejecución Real de Pagos (Payment
+Execution)}\label{a.-ejecuciuxf3n-real-de-pagos-payment-execution}}
+
+Actualmente el sistema genera \textbf{Intenciones de Pago} (URIs,
+códigos QR, facturas LN) y simula el éxito. Falta integrar la ejecución
+real: - \textbf{Lightning Network Real (§18.1 y §34)}: Pagar facturas
+automáticamente desde un nodo Lightning integrado. - \textbf{Transmisión
+On-chain Real (§34)}: Construcción de PSBTs (Partially Signed Bitcoin
+Transactions), firma de transacciones y \emph{broadcasting} a la
+mempool. - \textbf{Implementación Real de Ark (§18.3 y §34)}: Conectarse
+a un ASP (Ark Service Provider) real para transferir VTXOs. -
+\textbf{Ejecución de Pagos Divididos / Split Payments (§24)}: La
+estructura de datos ya está diseñada, pero el router aún no soporta la
+resolución recursiva y ejecución por lotes (\emph{batching}) para
+múltiples receptores. - \textbf{Custodial Escrow (§34)}: Depósito de
+garantía en custodia temporal (marcado como ``Do not build yet'').
+
+\hypertarget{b.-privacidad-y-criptografuxeda}{%
+\subsubsection{B. Privacidad y
+Criptografía}\label{b.-privacidad-y-criptografuxeda}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Silent Payments (§13 y §18.2)}: Para producción, la
+  especificación exige no reutilizar direcciones estáticas. Se debe
+  implementar generación de direcciones frescas o \textbf{Silent
+  Payments} (BIP-352) para privacidad On-chain.
+\item
+  \textbf{Cálculo Real de Tamaño de Transacción (§18.2)}: Actualmente se
+  usan estimaciones estáticas (ej. 140 vB para P2WPKH). En producción,
+  se debe armar el PSBT para calcular los \emph{virtual bytes} exactos.
+\item
+  \textbf{Campos de Perfil Encriptados (§26 y §27)}: Para evitar fugas
+  de privacidad en registros públicos, la especificación sugiere
+  encriptación de campos usando secretos compartidos (ECDH).
+\end{itemize}
+
+\hypertarget{c.-seguridad-avanzada-y-modelo-de-amenazas-26}{%
+\subsubsection{C. Seguridad Avanzada y Modelo de Amenazas
+(§26)}\label{c.-seguridad-avanzada-y-modelo-de-amenazas-26}}
+
+Las mitigaciones a futuro para vectores de ataque avanzados incluyen: -
+\textbf{DNSSEC / BIP-353}: Validación criptográfica de resolución de
+nombres a través de DNS para mitigar registros de alias falsos. -
+\textbf{Logs de Transparencia (Transparency Logs)}: Para auditar y
+evitar la manipulación de registros en servidores centrales/HTTP. -
+\textbf{Políticas de Recuperación de Llaves (Multisig)}: Para mitigar la
+pérdida de la llave de identidad. - \textbf{Invitaciones Firmadas y
+Verificación de Dominio (§27)}: Para mitigar ataques de enlaces de
+invitación maliciosos. - \textbf{Validación de Pruebas y Reputación de
+Servidores Ark (§27)}: Para proteger a los usuarios de ASPs maliciosos.
+
+\hypertarget{d.-experiencia-de-usuario-client-ux}{%
+\subsubsection{D. Experiencia de Usuario (Client /
+UX)}\label{d.-experiencia-de-usuario-client-ux}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Billetera Móvil Completa (§34)}: El entregable actual es un
+  Daemon y un CLI. Se requiere una aplicación móvil nativa (iOS/Android)
+  para usuarios finales (``Do not build yet'').
+\item
+  \textbf{Soporte Completo para BOLT12 (§18.1)}: Obtención e interacción
+  nativa con Ofertas BOLT12.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{conclusiuxf3n}{%
+\subsection{Conclusión}\label{conclusiuxf3n}}
+
+El entregable actual es un \textbf{prototipo funcional} perfecto para el
+MVP y el hackathon, cumpliendo con la filosofía de \emph{``Trust
+cryptographic signatures, not servers''}. El próximo gran salto (v0.2)
+será integrar los motores de firmas para mover fondos reales y añadir
+\emph{Silent Payments} para garantizar la privacidad.
+
+\end{document}

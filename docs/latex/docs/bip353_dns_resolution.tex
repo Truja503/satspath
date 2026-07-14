@@ -1,0 +1,427 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{bip-353-dns-payment-instructions}{%
+\section{BIP-353 DNS Payment
+Instructions}\label{bip-353-dns-payment-instructions}}
+
+SatsPath can resolve \textbf{DNSSEC-backed BIP-353 payment instructions}
+for domains the receiver controls. A receiver publishes a
+\texttt{bitcoin:} URI in DNS; any SatsPath-compatible client can then
+resolve \texttt{₿user@domain} without the sender having the receiver
+locally registered.
+
+\begin{quote}
+\textbf{Mainnet Preview only.} This is a resolver/publisher layer.
+SatsPath does not execute mainnet payments. It resolves, verifies,
+routes, and displays payment instructions --- it never pays, signs, or
+broadcasts.
+\end{quote}
+
+\hypertarget{what-bip-353-is}{%
+\subsection{What BIP-353 is}\label{what-bip-353-is}}
+
+\href{https://github.com/bitcoin/bips/blob/master/bip-0353.mediawiki}{BIP-353}
+defines human-readable Bitcoin payment names of the form
+\texttt{₿user@domain}, resolved through DNSSEC-signed DNS \texttt{TXT}
+records.
+
+\begin{itemize}
+\tightlist
+\item
+  Records live at:
+  \texttt{\textless{}user\textgreater{}.user.\_bitcoin-payment.\textless{}domain\textgreater{}}
+\item
+  The \texttt{TXT} RDATA reconstructs into a \texttt{bitcoin:} URI
+  (BIP-321 payment instructions).
+\item
+  All payment instructions \textbf{must} be DNSSEC-signed.
+\end{itemize}
+
+Example:
+
+\begin{verbatim}
+rodrigo.user._bitcoin-payment.satspath.dev TXT "bitcoin:?lno=lno1..."
+\end{verbatim}
+
+\hypertarget{how-satspath-uses-it}{%
+\subsection{How SatsPath uses it}\label{how-satspath-uses-it}}
+
+\begin{verbatim}
+₿rodrigo@satspath.dev  ──parse──▶  rodrigo.user._bitcoin-payment.satspath.dev
+                                          │ DNSSEC-validated TXT lookup
+                                          ▼
+                          bitcoin:?lno=lno1...   (BIP-321 URI)
+                                          │ parse + screen
+                                          ▼
+                      Bip353Resolution → Mainnet-Preview QuoteResponse
+\end{verbatim}
+
+CLI:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ dns resolve ₿rodrigo@satspath.dev}
+\ExtensionTok{satspath}\NormalTok{ dns resolve rodrigo@satspath.dev }\AttributeTok{{-}{-}json}
+\end{Highlighting}
+\end{Shaded}
+
+Resolution rules SatsPath enforces (per BIP-353):
+
+\begin{itemize}
+\tightlist
+\item
+  Reconstruct a \texttt{TXT} record by concatenating its
+  \texttt{\textless{}=255}-byte character-strings in RDATA order,
+  \textbf{without separators}. Never concatenate across records.
+\item
+  Ignore \texttt{TXT} records that do not begin with \texttt{bitcoin:}.
+\item
+  If \textbf{more than one} \texttt{bitcoin:} record exists at the same
+  name, the result is \textbf{invalid}.
+\item
+  The payload must parse as a valid BIP-321 URI and must contain
+  \textbf{no private material}.
+\item
+  Do not cache longer than the DNS TTL.
+\item
+  Prefer displaying verified names as \texttt{₿user@domain}.
+\end{itemize}
+
+\hypertarget{dnssec-requirement-fail-closed}{%
+\subsection{DNSSEC requirement (fail
+closed)}\label{dnssec-requirement-fail-closed}}
+
+BIP-353 payment instructions are only trustworthy if DNSSEC-validated.
+SatsPath \textbf{does not trust an upstream resolver's AD bit} --- that
+can be spoofed by a malicious resolver.
+
+\texttt{DnssecPolicy} has two modes:
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3750}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6250}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Mode
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Behavior
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{Strict} (default) & Require real DNSSEC validation; \textbf{fail
+closed} otherwise. \\
+\texttt{DevInsecure} & Local testing only. Accept unvalidated records
+with loud warnings. Never the default; requires
+\texttt{-\/-allow-insecure-dns-for-dev}. \\
+\end{longtable}
+
+This build does not ship a local DNSSEC validator, so \texttt{Strict}
+resolution \textbf{fails closed} with a clear message (option C of the
+BIP-353 DNSSEC guidance). A future release can plug in a validating
+resolver without changing the contract. The
+\texttt{-\/-allow-insecure-dns-for-dev} flag prints a scary warning and
+must never be used on mainnet.
+
+\hypertarget{direct-txt-model-option-a}{%
+\subsection{Direct TXT model (Option
+A)}\label{direct-txt-model-option-a}}
+
+The receiver controls their domain and publishes the record directly:
+
+\begin{verbatim}
+Name:
+rodrigo.user._bitcoin-payment.satspath.dev
+
+TXT:
+bitcoin:?lno=lno1...
+\end{verbatim}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Pros:} simple, direct, no platform dependency.
+\item
+  \textbf{Cons:} the receiver must update DNS whenever payment
+  instructions change.
+\end{itemize}
+
+\hypertarget{managed-cnamedname-delegation-model-option-b}{%
+\subsection{Managed CNAME/DNAME delegation model (Option
+B)}\label{managed-cnamedname-delegation-model-option-b}}
+
+The receiver delegates the BIP-353 label once to a SatsPath-managed
+zone, which then maintains the \texttt{TXT}:
+
+\begin{verbatim}
+On example.com (added once by the receiver):
+rodrigo.user._bitcoin-payment.example.com CNAME rodrigo.user._bitcoin-payment.satspath.dev
+
+On satspath.dev (SatsPath-managed):
+rodrigo.user._bitcoin-payment.satspath.dev TXT "bitcoin:?lno=lno1..."
+\end{verbatim}
+
+\begin{itemize}
+\tightlist
+\item
+  Both the receiver's domain chain \textbf{and} the managed zone must be
+  DNSSEC-signed.
+\item
+  The CNAME/DNAME chain must be DNSSEC-validated; resolution
+  \textbf{fails closed} if not.
+\item
+  \textbf{Pros:} the receiver configures DNS once; SatsPath can rotate
+  instructions safely.
+\item
+  \textbf{Cons:} requires trust in SatsPath managed-DNS availability;
+  SatsPath must secure its DNS-provider API credentials (never
+  committed).
+\end{itemize}
+
+\hypertarget{why-gmail-style-emails-cannot-be-verified-through-bip-353}{%
+\subsection{Why Gmail-style emails cannot be verified through
+BIP-353}\label{why-gmail-style-emails-cannot-be-verified-through-bip-353}}
+
+BIP-353 requires publishing a DNS record under the \textbf{domain} of
+the name. A user of \texttt{rodrigo@gmail.com} cannot publish
+\texttt{rodrigo.user.\_bitcoin-payment.gmail.com} because they do not
+control \texttt{gmail.com}.
+
+\begin{quote}
+SatsPath can resolve DNSSEC-backed BIP-353 payment instructions for
+domains the receiver controls. For consumer email addresses like
+\texttt{gmail.com}, SatsPath uses platform verification / the invite
+flow instead, because the user cannot publish DNS records under
+\texttt{gmail.com}.
+\end{quote}
+
+\hypertarget{rotating-payment-instructions}{%
+\subsection{Rotating payment
+instructions}\label{rotating-payment-instructions}}
+
+DNS record changes require a \textbf{cryptographic identity-key
+signature} --- never email login alone.
+
+\begin{verbatim}
+1. The receiver holds their SatsPath identity key locally.
+2. The platform builds a challenge:
+   satspath-dns-update:<alias>:<dns_name>:<sha256(new_uri)>:<nonce>:<expires_at>
+3. The receiver signs the challenge with their identity key.
+4. The platform verifies the signature against the profile's identity_pubkey.
+5. The platform updates the DNS TXT record via the DnsPublisher adapter.
+6. The platform records an audit entry:
+   { alias, dns_name, old_uri_hash, new_uri_hash, timestamp, identity_fingerprint }.
+\end{verbatim}
+
+Email verification may gate \textbf{account access}, but DNS
+payment-instruction changes always require identity proof.
+
+\hypertarget{ttl-recommendations}{%
+\subsection{TTL recommendations}\label{ttl-recommendations}}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Instruction kind & TTL \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Rotating on-chain address & 300 seconds \\
+Reusable BOLT12 offer / Silent Payment & 1800 seconds \\
+\end{longtable}
+
+A direct on-chain address in a record is treated as \textbf{rotating}
+and emits a privacy warning at publish time.
+
+\hypertarget{bip-321-payload-handling}{%
+\subsection{BIP-321 payload handling}\label{bip-321-payload-handling}}
+
+A resolved record is parsed as BIP-321 payment instructions. Supported:
+
+\begin{itemize}
+\tightlist
+\item
+  on-chain address in the URI path
+\item
+  \texttt{amount} query parameter
+\item
+  \texttt{lightning} (BOLT11 invoice)
+\item
+  \texttt{lno} (BOLT12 offer)
+\item
+  \texttt{sp} (Silent Payment, \textbf{preview-only})
+\item
+  unknown non-\texttt{req-*} parameters are ignored safely
+\item
+  unknown \texttt{req-*} parameters make the URI \textbf{invalid}
+\end{itemize}
+
+\hypertarget{optional-satspath-profile-pointer-extension}{%
+\subsubsection{Optional SatsPath profile pointer
+extension}\label{optional-satspath-profile-pointer-extension}}
+
+For richer SatsPath data without breaking BIP-321, a record may carry a
+\textbf{non-required} key:
+
+\begin{verbatim}
+sp-profile=https%3A%2F%2Fsatspath.dev%2F.well-known%2Fsatspath%2Frodrigo
+sp-profile-hash=<sha256>
+\end{verbatim}
+
+Wallets that don't understand SatsPath ignore it. SatsPath can use it to
+fetch the signed profile \textbf{after} BIP-353 verifies the domain.
+
+\hypertarget{security-checklist}{%
+\subsection{Security checklist}\label{security-checklist}}
+
+\begin{itemize}
+\tightlist
+\item[$\boxtimes$]
+  DNSSEC required; \texttt{Strict} fails closed (no AD-bit trust).
+\item[$\boxtimes$]
+  Multiple \texttt{bitcoin:} records at one name → invalid.
+\item[$\boxtimes$]
+  Non-\texttt{bitcoin:} \texttt{TXT} records ignored.
+\item[$\boxtimes$]
+  Unknown \texttt{req-*} parameters → invalid.
+\item[$\boxtimes$]
+  Private material (\texttt{seed}, \texttt{xprv}/\texttt{tprv},
+  \texttt{mnemonic}, \texttt{macaroon}, \texttt{cert},
+  \texttt{api\_key}, \texttt{claim\_key}, \texttt{refund\_key},
+  \texttt{preimage}, \ldots) rejected before publish and on resolve.
+\item[$\boxtimes$]
+  DNS updates require identity-key signatures; email-only rejected.
+\item[$\boxtimes$]
+  DNS-provider credentials never committed (trait +
+  \texttt{MockDnsPublisher} only).
+\item[$\boxtimes$]
+  On-chain addresses use short TTL + rotation warning.
+\item[$\boxtimes$]
+  No funds moved, no signing, no broadcast --- \textbf{Mainnet Preview
+  only}.
+\end{itemize}
+
+\hypertarget{example-mainnet-preview}{%
+\subsection{Example: Mainnet Preview}\label{example-mainnet-preview}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ preview ₿rodrigo@satspath.dev 1000 }\AttributeTok{{-}{-}mainnet}
+\end{Highlighting}
+\end{Shaded}
+
+Expected:
+
+\begin{verbatim}
+DNSSEC: valid
+BIP-353: resolved
+Payment URI: bitcoin:?lno=...
+Mode: Mainnet Preview
+No funds moved.
+\end{verbatim}
+
+\end{document}

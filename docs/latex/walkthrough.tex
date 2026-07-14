@@ -1,0 +1,262 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-engine-v0-walkthrough}{%
+\section{SatsPath Engine v0 ---
+Walkthrough}\label{satspath-engine-v0-walkthrough}}
+
+\hypertarget{what-engine-v0-is}{%
+\subsection{What Engine v0 is}\label{what-engine-v0-is}}
+
+SatsPath Engine v0 is an experimental signed payment resolver and
+router. It is \textbf{not} a production wallet or automatic payment
+engine.
+
+It can: - Resolve a local or peer-registered signed profile - Select a
+payment rail (Lightning, on-chain, Ark) based on live mempool fees -
+Fetch a real LNURL invoice and display a scannable QR code - Display a
+BIP-21 URI with a QR code for on-chain payments - Preview which swap
+directive would be needed (testnet only, no execution)
+
+It cannot (and intentionally does not): - Move funds automatically -
+Sign Bitcoin transactions - Broadcast anything to the network - Store or
+generate seed phrases - Execute mainnet swaps
+
+\hypertarget{swap-engine-status-engine-v0-scaffolding-only}{%
+\subsection{Swap engine status --- Engine v0 scaffolding
+only}\label{swap-engine-status-engine-v0-scaffolding-only}}
+
+The \texttt{satspath-swaps} crate is an \textbf{experimental
+testnet-only scaffold} for Boltz Exchange v2 swap integration.
+
+\textbf{Claim and refund transaction construction is not implemented
+(Engine v1 work).}\\
+\textbf{Mainnet payment execution is not implemented.}
+
+\begin{itemize}
+\tightlist
+\item
+  PSBT signing is not implemented
+\item
+  Mainnet execution paths are closed
+\item
+  The swap engine is only reachable via
+  \texttt{-\/-experimental-swaps\ -\/-testnet}
+\item
+  Without those flags, no swap code runs at all
+\end{itemize}
+
+\hypertarget{default-behavior-what-satspath-pay-does}{%
+\subsection{\texorpdfstring{Default behavior --- what
+\texttt{satspath\ pay}
+does}{Default behavior --- what satspath pay does}}\label{default-behavior-what-satspath-pay-does}}
+
+\begin{verbatim}
+satspath pay rodrigodiazgt7@gmail.com 1000
+\end{verbatim}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Resolves the alias to a signed local profile
+\item
+  Verifies the identity signature (ECDSA/secp256k1)
+\item
+  Fetches live mempool fee rates from mempool.space
+\item
+  Selects the best payment rail based on fees and amount
+\item
+  For Lightning: performs LNURL-pay two-step fetch → real BOLT11 invoice
+  → QR
+\item
+  For on-chain: builds BIP-21 URI → QR
+\end{enumerate}
+
+\textbf{SatsPath does not send any funds. No keys are touched. No
+transactions are signed or broadcast. The displayed invoice/URI is for
+the user to scan with their own wallet.}
+
+\hypertarget{experimental-swap-engine-testnet-intent-preview-only}{%
+\subsection{Experimental swap engine --- testnet intent preview
+only}\label{experimental-swap-engine-testnet-intent-preview-only}}
+
+\begin{verbatim}
+satspath pay rodrigodiazgt7@gmail.com 1000 --experimental-swaps --testnet
+\end{verbatim}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Same resolution and routing
+\item
+  Shows swap directive intent only
+\item
+  Does NOT execute the swap
+\item
+  Does NOT build any transaction
+\item
+  \texttt{-\/-experimental-swaps} without \texttt{-\/-testnet} is
+  rejected with a hard error
+\end{enumerate}
+
+\textbf{No funds are moved. This is a preview of what a swap would look
+like.}
+
+\hypertarget{persistence-and-secrets}{%
+\subsection{Persistence and secrets}\label{persistence-and-secrets}}
+
+\begin{itemize}
+\tightlist
+\item
+  All local state lives in \texttt{.satspath/} (gitignored --- never
+  committed)
+\item
+  \texttt{LocalPeerRegistry} stores SHA-256(canonical\_identifier) as
+  the DB key --- raw email is never stored as primary key
+\item
+  \texttt{SwapStore} writes sensitive swap secrets
+  (\texttt{preimage\_hex}, \texttt{refund\_key\_hex},
+  \texttt{claim\_key\_hex}) only when an AES-256-GCM encryption key is
+  provided
+\item
+  Writing sensitive swap material to plaintext storage is rejected at
+  the record level
+\item
+  No private keys, seeds, macaroons, or API tokens are committed to this
+  repository
+\end{itemize}
+
+\hypertarget{ark-bridge-status}{%
+\subsection{ARK bridge status}\label{ark-bridge-status}}
+
+The \texttt{ark-bridge/} directory contains a JSON-RPC bridge skeleton
+that would connect the Rust CLI to the ARK client-side validation SDK.
+
+\textbf{Current status:} - The TypeScript bridge compiles and handles
+all protocol methods with stub responses - VTXO DAG validation is not
+implemented (requires the full Ark SDK --- tracked as Engine v1) - The
+Rust \texttt{ArkBridge::spawn()} call is non-fatal: if the bridge is
+unavailable, the CLI continues in pointer/intent mode and prints a clear
+warning - Ark payments in Engine v0 display the payment pointer and an
+explicit experimental warning
+
+\hypertarget{what-is-implemented-vs.-what-is-not}{%
+\subsection{What is implemented vs.~what is
+not}\label{what-is-implemented-vs.-what-is-not}}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Feature & Status \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Signed profile resolution (local registry) & ✅ \\
+secp256k1 identity signature verification & ✅ \\
+Live mempool fee fetch (mempool.space) & ✅ \\
+Lightning rail selection (amount \textless{} 100k sats) & ✅ \\
+On-chain rail (fastestFee ≤ 20 sat/vB = next block) & ✅ \\
+Ark fallback (high fees) & ✅ \\
+LNURL-pay two-step invoice fetch & ✅ \\
+BOLT11 invoice amount verification (HRP parse) & ✅ \\
+Terminal QR code (Dense1x2 unicode) & ✅ \\
+BIP-21 on-chain URI with QR & ✅ \\
+LocalPeerRegistry (SHA-256 keyed, no raw email) & ✅ \\
+SwapStore AES-256-GCM encryption & ✅ \\
+SwapStore sensitive-record guard (plaintext rejected) & ✅ \\
+Boltz API client (testnet scaffolding) & ✅ scaffold \\
+Submarine/Reverse/Chain swap creation scaffolding & ✅ scaffold \\
+Claim/Refund transaction construction & ❌ Engine v1 \\
+PSBT signing & ❌ Engine v1 \\
+BOLT11 expiry verification (needs bech32 data decode) & ❌ Engine v1 \\
+Ark VTXO DAG validation & ❌ Engine v1 \\
+Mainnet swap execution & ❌ Intentionally closed \\
+\end{longtable}
+
+\hypertarget{engine-v1-scope-future-work}{%
+\subsection{Engine v1 scope (future
+work)}\label{engine-v1-scope-future-work}}
+
+\begin{itemize}
+\tightlist
+\item
+  PSBT construction and signing (rust-bitcoin + BDK)
+\item
+  BOLT11 expiry parsing via bech32 data field decode
+\item
+  Ark VTXO DAG validation via full ARK SDK
+\item
+  Cooperative Taproot/MuSig2 spend for chain swaps
+\item
+  Refund recovery for failed swaps
+\item
+  BIP-353 DNS-based payment address resolution
+\end{itemize}
+
+\end{document}

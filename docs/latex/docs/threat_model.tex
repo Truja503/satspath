@@ -1,0 +1,194 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-threat-model}{%
+\section{SatsPath Threat Model}\label{satspath-threat-model}}
+
+\begin{quote}
+\textbf{Disclaimer:} This is hackathon software. Do not use with real
+funds.
+\end{quote}
+
+\hypertarget{scope}{%
+\subsection{Scope}\label{scope}}
+
+This document covers threats against the SatsPath protocol prototype,
+focusing on the resolution, signing, and routing layers. It does not
+cover the underlying Bitcoin, Lightning, or Ark security models.
+
+\hypertarget{threat-table}{%
+\subsection{Threat Table}\label{threat-table}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1633}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1224}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3265}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3878}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Threat
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Risk
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+MVP Mitigation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Future Mitigation
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Fake alias registration} & Attacker registers
+\texttt{alice@bank.com} before Alice & First-come-first-served local
+registry; no domain verification & Domain-ownership proof via BIP-353
+DNS TXT records; DKIM-signed registration challenges \\
+\textbf{Server/registry tampering} & Registry file modified to replace
+Alice's pubkey with attacker's & All profiles are signed by the identity
+key; signature verified before payment & Decentralized registry (Nostr,
+DHT) with append-only semantics; client-side signature pinning \\
+\textbf{Key replacement attack} & Attacker replaces
+\texttt{identity\_pubkey} in a profile & Signature covers the entire
+profile including the pubkey; swapping the key breaks the signature &
+Pinned pubkey in BIP-353 DNS record; certificate transparency for pubkey
+changes \\
+\textbf{Email takeover} & Attacker takes over alice@example.com and
+re-registers & Registry does not verify email ownership at MVP & DKIM
+challenge during registration; WebAuthn-based domain binding \\
+\textbf{LNURL spoofing} & Attacker serves a malicious LNURL endpoint &
+LNURL not verified at MVP; routing is simulated & TLS certificate
+pinning; LNURL-auth for identity binding; domain-bound LNURL
+endpoints \\
+\textbf{On-chain privacy leaks} & Multiple payments to the same address
+reveal transaction graph & Multiple on-chain methods supported;
+different addresses per method & Silent Payments (BIP-352); hierarchical
+derivation so each payment gets a fresh address \\
+\textbf{Lost keys} & User loses their \texttt{.satspath/keys.json} &
+Keys are local; demo only; no recovery mechanism at MVP & Nostr-based
+key backup (NIP-06); seed phrase with BIP-39; multi-sig recovery \\
+\textbf{Malicious invite links} & Attacker crafts an invite URL for a
+different alias/amount & Invite contains alias hash + amount; receiver
+should verify independently & Signed invites using sender's identity
+key; expiry timestamps; single-use tokens \\
+\textbf{Ark server trust assumptions} & Ark server can censor or delay
+payments & MockArkClient at MVP; no real Ark integration &
+Covenants-based Ark with client-side verification; multi-server
+federation \\
+\textbf{Fee manipulation} & Attacker serves a fake mempool.space
+response & Falls back to safe \texttt{hourFee=5} on API error & Multiple
+fee data sources; user-configurable fee source; local fee estimation \\
+\textbf{Replay attacks} & Old payment request reused &
+\texttt{updated\_at} timestamp in profile; profiles can be revoked by
+re-signing & Nonce in payment requests; short-lived payment intents with
+expiry \\
+\textbf{Profile downgrade} & Attacker strips Lightning method to force
+on-chain & Profile is signed; removing methods breaks signature &
+Version-pinned profiles; minimum method count enforcement \\
+\end{longtable}
+
+\hypertarget{trust-model}{%
+\subsection{Trust Model}\label{trust-model}}
+
+\begin{verbatim}
+TRUSTED:
+  - User's own keypair (generated locally, never transmitted)
+  - secp256k1 / ECDSA signature validity
+
+PARTIALLY TRUSTED:
+  - Local registry (file system trust)
+  - mempool.space fee API (falls back to mock on failure)
+
+NOT TRUSTED (at MVP):
+  - Email ownership
+  - Domain ownership
+  - Ark server
+  - LNURL endpoint content
+\end{verbatim}
+
+\hypertarget{key-principles}{%
+\subsection{Key Principles}\label{key-principles}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Receiver controls keys.} SatsPath never generates or stores
+  keys on behalf of the receiver.
+\item
+  \textbf{Signatures are mandatory.} No payment should proceed against
+  an unverified profile.
+\item
+  \textbf{Fail safe.} When in doubt, reject and show a clear error
+  rather than proceeding.
+\item
+  \textbf{Privacy by default.} Multiple on-chain addresses; avoid
+  address reuse.
+\item
+  \textbf{Invite rather than proxy.} For unknown users, create an invite
+  that the receiver claims with their own keys.
+\end{enumerate}
+
+\end{document}

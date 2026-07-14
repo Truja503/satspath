@@ -1,0 +1,904 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-security-audit-report}{%
+\section{SatsPath Security Audit
+Report}\label{satspath-security-audit-report}}
+
+\textbf{Target:} SatsPath Protocol v1 Prototype (Resolution + Routing +
+Experimental Swaps) \textbf{Scope:} White-box code review (Rust crates +
+TypeScript Ark Bridge) + Black-box protocol analysis \textbf{Date:}
+2026-06-30 \textbf{Classification:} Hackathon Prototype --- Do Not Use
+With Real Funds
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{executive-summary}{%
+\subsection{Executive Summary}\label{executive-summary}}
+
+SatsPath is a well-designed resolution and routing layer with strong
+cryptographic foundations. The codebase demonstrates \textbf{excellent
+security hygiene} for a prototype: mandatory signature verification,
+fail-closed defaults, private material detection, encrypted swap
+storage, and comprehensive ownership proof infrastructure.
+
+However, as a \textbf{prototype}, it has known gaps documented in
+\texttt{threat\_model.md} and several \textbf{critical findings} that
+must be addressed before any mainnet deployment.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{critical-findings-must-fix}{%
+\subsection{Critical Findings (Must
+Fix)}\label{critical-findings-must-fix}}
+
+\hypertarget{critical-fee-estimation-trust-violation-single-point-of-failure}{%
+\subsubsection{1. 🔴 CRITICAL: Fee Estimation Trust Violation --- Single
+Point of
+Failure}\label{critical-fee-estimation-trust-violation-single-point-of-failure}}
+
+\textbf{Location:} \texttt{crates/satspath-router/src/fees.rs:28-45}
+\textbf{Impact:} Routing decisions for on-chain vs Ark are based on
+\texttt{mempool.space} API. If attacker controls DNS or MITM, they can
+force all large payments to Ark (or on-chain at high fees).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// fees.rs {-} Single external API, no redundancy, no signature verification}
+\KeywordTok{async} \KeywordTok{fn}\NormalTok{ fetch\_fee\_estimate() }\OperatorTok{{-}\textgreater{}}\NormalTok{ FeeEstimate }\OperatorTok{\{}
+    \ControlFlowTok{match}\NormalTok{ try\_fetch\_fee\_estimate()}\OperatorTok{.}\KeywordTok{await} \OperatorTok{\{}
+        \ConstantTok{Ok}\NormalTok{(est) }\OperatorTok{=\textgreater{}}\NormalTok{ est}\OperatorTok{,}
+        \ConstantTok{Err}\NormalTok{(\_) }\OperatorTok{=\textgreater{}} \PreprocessorTok{FeeEstimate::}\NormalTok{fallback()}\OperatorTok{,}  \CommentTok{// Silent fallback to 10 sat/vB}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Attack Vectors:} - DNS hijacking → route all payments to Ark
+server (censorship) - MITM → inflate \texttt{fastest\_fee} to 500 sat/vB
+→ force Ark fallback - API compromise → arbitrary fee manipulation
+
+\textbf{Mitigation Required:} - Multiple fee sources (mempool.space +
+blockstream.info + local node) - Consensus: reject if sources disagree
+by \textgreater{} 2x - Optional: pinned TLS certs for fee API endpoints
+- User-configurable fee source with local Bitcoin Core RPC as ground
+truth
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{critical-bip-353-dnssec-fails-closed-but-has-no-production-validator}{%
+\subsubsection{2. 🔴 CRITICAL: BIP-353 DNSSEC Fails Closed but Has No
+Production
+Validator}\label{critical-bip-353-dnssec-fails-closed-but-has-no-production-validator}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/bip353.rs:240-244},
+\texttt{DohTxtResolver} \textbf{Impact:} Default \texttt{Strict} mode
+\textbf{always fails} because \texttt{DohTxtResolver} marks all records
+\texttt{dnssec\_validated:\ false}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// bip353.rs {-} DohTxtResolver CANNOT validate DNSSEC locally}
+\AttributeTok{\#[}\NormalTok{async\_trait}\AttributeTok{]}
+\KeywordTok{impl}\NormalTok{ DnsTxtResolver }\ControlFlowTok{for}\NormalTok{ DohTxtResolver }\OperatorTok{\{}
+    \KeywordTok{async} \KeywordTok{fn}\NormalTok{ query\_txt(}\OperatorTok{\&}\KeywordTok{self}\OperatorTok{,}\NormalTok{ fqdn}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\DataTypeTok{Vec}\OperatorTok{\textless{}}\NormalTok{DnsTxtRecord}\OperatorTok{\textgreater{}\textgreater{}} \OperatorTok{\{}
+        \CommentTok{// ... fetch from cloudflare{-}dns.com ...}
+\NormalTok{        dnssec\_validated}\OperatorTok{:} \ConstantTok{false}\OperatorTok{,}  \CommentTok{// ALWAYS false}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Result:} \texttt{resolve\_bip353("₿alice@domain.com")} →
+\texttt{Err(DnssecUnavailable)} on mainnet.
+
+\textbf{Mitigation Required:} - Integrate a local DNSSEC validator
+(e.g., \texttt{trust-dns-resolver} with DNSSEC) - Or: document that
+BIP-353 requires external DNSSEC-validating resolver - Add
+\texttt{DnssecPolicy::DevInsecure} guard: require explicit CLI flag +
+env var
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{critical-swap-engine-refundclaim-builders-not-implemented}{%
+\subsubsection{3. 🔴 CRITICAL: Swap Engine --- Refund/Claim Builders Not
+Implemented}\label{critical-swap-engine-refundclaim-builders-not-implemented}}
+
+\textbf{Location:}
+\texttt{crates/satspath-swaps/src/execution\_gate.rs:4-18},
+\texttt{submarine.rs:174-202} \textbf{Impact:} Submarine/Reverse/Chain
+swaps \textbf{cannot complete refund path} if Boltz fails to pay
+invoice. Funds locked in HTLC until CLTV expiry (hours/days).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// execution\_gate.rs {-} ALL swap kinds return false}
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ claim\_refund\_builders\_available(kind}\OperatorTok{:}\NormalTok{ SwapKind) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{bool} \OperatorTok{\{}
+    \ControlFlowTok{match}\NormalTok{ kind }\OperatorTok{\{}
+        \PreprocessorTok{SwapKind::}\NormalTok{Submarine }\OperatorTok{|} \PreprocessorTok{SwapKind::}\NormalTok{Reverse }\OperatorTok{|} \PreprocessorTok{SwapKind::}\NormalTok{Chain }\OperatorTok{=\textgreater{}} \ConstantTok{false}\OperatorTok{,}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// submarine.rs {-} Refund attempt returns error, doesn\textquotesingle{}t build tx}
+\KeywordTok{async} \KeywordTok{fn}\NormalTok{ attempt\_submarine\_refund(}\OperatorTok{...}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\DataTypeTok{String}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+    \ConstantTok{Err}\NormalTok{(}\PreprocessorTok{SwapError::}\NormalTok{Key(}\StringTok{"Refund tx building not yet implemented..."}\OperatorTok{.}\NormalTok{into()))}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Risk:} User deposits on-chain BTC → Boltz fails to route →
+\textbf{no automatic refund} → user must manually construct HTLC refund
+transaction using redeem script.
+
+\textbf{Mitigation Required:} - Implement \texttt{tx\_builder.rs} with
+\texttt{bitcoin} crate for HTLC/Taproot refund paths - Add integration
+tests with Boltz testnet for full lifecycle (deposit → timeout → refund)
+- Document manual recovery procedure in \texttt{README.md}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{critical-ark-ownership-proof-challenge-message-binding-weakness}{%
+\subsubsection{4. 🔴 CRITICAL: Ark Ownership Proof --- Challenge Message
+Binding
+Weakness}\label{critical-ark-ownership-proof-challenge-message-binding-weakness}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/ark.rs:190-197},
+\texttt{verify\_ark\_ownership\_proof:253-257} \textbf{Impact:}
+Challenge message prefix check allows message extension attacks.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// ark.rs {-} ark\_ownership\_challenge}
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ ark\_ownership\_challenge(alias}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\OperatorTok{,}\NormalTok{ ark\_server}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\OperatorTok{,}\NormalTok{ receiver\_pubkey}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\OperatorTok{,}\NormalTok{ nonce}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{String} \OperatorTok{\{}
+    \PreprocessorTok{format!}\NormalTok{(}\StringTok{"satspath{-}proof:\{alias\}:ark:\{ark\_server\}:\{receiver\_pubkey\}:\{nonce\}"}\NormalTok{)}
+\OperatorTok{\}}
+
+\CommentTok{// verify\_ark\_ownership\_proof {-} WEAK CHECK}
+\KeywordTok{let}\NormalTok{ expected\_prefix }\OperatorTok{=}\NormalTok{ ark\_ownership\_challenge(alias}\OperatorTok{,} \OperatorTok{\&}\NormalTok{pointer}\OperatorTok{.}\NormalTok{server}\OperatorTok{,} \OperatorTok{\&}\NormalTok{pointer}\OperatorTok{.}\NormalTok{receiver\_pubkey}\OperatorTok{,} \StringTok{""}\NormalTok{)}\OperatorTok{;}
+\ControlFlowTok{if} \OperatorTok{!}\NormalTok{proof}\OperatorTok{.}\NormalTok{message}\OperatorTok{.}\NormalTok{starts\_with(}\OperatorTok{\&}\NormalTok{expected\_prefix) }\OperatorTok{||}\NormalTok{ proof}\OperatorTok{.}\NormalTok{message }\OperatorTok{==}\NormalTok{ expected\_prefix }\OperatorTok{\{}
+    \ControlFlowTok{return} \ConstantTok{Err}\NormalTok{(}\PreprocessorTok{SatsPathError::}\NormalTok{InvalidSignature)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Attack:} Attacker gets valid signature for
+\texttt{nonce="legit"}, then presents
+\texttt{message\ =\ "satspath-proof:alice@...:ark:...:legit:extra\_malicious\_data"}.
+Prefix matches, signature verifies, but message semantics changed.
+
+\textbf{Fix:} Require exact message match or structured parsing (e.g.,
+require \texttt{nonce} at end with delimiter).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{critical-profile-substitution-in-chainresolver-sec-02-only-checks-canonical-form}{%
+\subsubsection{5. 🔴 CRITICAL: Profile Substitution in ChainResolver
+(SEC-02) --- Only Checks Canonical
+Form}\label{critical-profile-substitution-in-chainresolver-sec-02-only-checks-canonical-form}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/resolver.rs:48-61}
+\textbf{Impact:} Attacker registers \texttt{alíce@example.com} (with
+accented í) → canonicalized to different hash but displays identically
+to \texttt{alice@example.com}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let}\NormalTok{ requested\_canonical }\OperatorTok{=}\NormalTok{ canonical\_identifier(alias)}\OperatorTok{;}  \CommentTok{// "alice@example.com"}
+\KeywordTok{let}\NormalTok{ returned\_canonical }\OperatorTok{=}\NormalTok{ canonical\_identifier(}\OperatorTok{\&}\NormalTok{profile}\OperatorTok{.}\NormalTok{profile}\OperatorTok{.}\NormalTok{alias)}\OperatorTok{;}  \CommentTok{// "alíce@example.com" → different}
+\end{Highlighting}
+\end{Shaded}
+
+Wait --- \texttt{canonical\_identifier} lowercases ASCII only. Non-ASCII
+passes through. This \textbf{is} a homograph attack vector.
+
+\textbf{Fix:} Reject non-ASCII in alias during registration/resolution,
+or use IDNA2008/punycode normalization.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{high-severity-findings}{%
+\subsection{High Severity Findings}\label{high-severity-findings}}
+
+\hypertarget{high-on-chain-fee-threshold-logic-inconsistency}{%
+\subsubsection{6. 🟠 HIGH: On-chain Fee Threshold Logic
+Inconsistency}\label{high-on-chain-fee-threshold-logic-inconsistency}}
+
+\textbf{Location:} \texttt{docs/protocol.md:169} vs
+\texttt{crates/satspath-router/src/router.rs:111} \textbf{Protocol
+Spec:} \texttt{hourFee\ ≤\ 10\ sat/vB} → On-chain \textbf{Router Code:}
+\texttt{fastest\_fee\ ≤\ 20\ sat/vB} → On-chain
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// router.rs {-} Uses fastestFee (next block), threshold 20}
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ is\_onchain\_fee\_acceptable(estimate}\OperatorTok{:} \OperatorTok{\&}\NormalTok{FeeEstimate) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{bool} \OperatorTok{\{}
+\NormalTok{    estimate}\OperatorTok{.}\NormalTok{fastest\_fee }\OperatorTok{\textless{}=} \DecValTok{20}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Risk:} Protocol promises ``hour fee ≤ 10'', but router uses
+``next-block fee ≤ 20''. During fee spikes, user gets on-chain
+confirmation in hours (not \textless10 min) or pays 2x expected fee.
+
+\textbf{Fix:} Align router to protocol spec (use \texttt{hour\_fee} with
+threshold 10) OR update protocol doc to match implementation.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{high-registry-downgrade-attack-sec-03-only-checks-updated_at}{%
+\subsubsection{\texorpdfstring{7. 🟠 HIGH: Registry Downgrade Attack
+(SEC-03) --- Only Checks
+\texttt{updated\_at}}{7. 🟠 HIGH: Registry Downgrade Attack (SEC-03) --- Only Checks updated\_at}}\label{high-registry-downgrade-attack-sec-03-only-checks-updated_at}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/registry.rs:66-75}
+\textbf{Impact:} Attacker with write access to registry file can replace
+profile with older version (removing Lightning method, forcing
+on-chain).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if} \KeywordTok{let} \ConstantTok{Some}\NormalTok{(existing) }\OperatorTok{=} \KeywordTok{self}\OperatorTok{.}\NormalTok{data}\OperatorTok{.}\NormalTok{profiles}\OperatorTok{.}\NormalTok{get(}\OperatorTok{\&}\NormalTok{key) }\OperatorTok{\{}
+    \ControlFlowTok{if}\NormalTok{ signed}\OperatorTok{.}\NormalTok{profile}\OperatorTok{.}\NormalTok{updated\_at }\OperatorTok{\textless{}}\NormalTok{ existing}\OperatorTok{.}\NormalTok{profile}\OperatorTok{.}\NormalTok{updated\_at }\OperatorTok{\{}  \CommentTok{// ONLY timestamp check}
+        \ControlFlowTok{return} \ConstantTok{Err}\NormalTok{(}\OperatorTok{...}\NormalTok{)}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Bypass:} Attacker sets \texttt{updated\_at} to future timestamp
+(e.g., \texttt{now\ +\ 1\ year}). Registry accepts it. Profile now
+``newer'' but stripped of methods.
+
+\textbf{Fix:} - Require monotonic \texttt{updated\_at} AND method set
+superset check - Or: version-pinned profiles with append-only registry
+(Nostr/DHT)
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{high-no-replay-protection-on-payment-profiles}{%
+\subsubsection{8. 🟠 HIGH: No Replay Protection on Payment
+Profiles}\label{high-no-replay-protection-on-payment-profiles}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/profile.rs:116-141},
+\texttt{crypto.rs:33-47} \textbf{Impact:} Old signed profile (with old
+methods) can be replayed indefinitely until \texttt{expires\_at}.
+
+\textbf{Scenario:} User rotates keys, publishes new profile. Attacker
+intercepts old profile and serves it to payers. Payers route to old
+Lightning Address (attacker-controlled).
+
+\textbf{Fix:} - Add \texttt{nonce} or \texttt{sequence} to profile,
+require strictly increasing - Short \texttt{expires\_at} (e.g., 24h)
+with automatic refresh - Client-side pinning: remember
+\texttt{identity\_pubkey} + \texttt{updated\_at} per alias
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{high-invite-flow-no-sender-authentication}{%
+\subsubsection{9. 🟠 HIGH: Invite Flow --- No Sender
+Authentication}\label{high-invite-flow-no-sender-authentication}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/lib.rs:66-84},
+\texttt{docs/protocol.md:211-232} \textbf{Impact:} Anyone can create
+invite for any alias with any amount. Receiver sees invite but cannot
+verify sender.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ create\_invite(alias}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\OperatorTok{,}\NormalTok{ amount\_sats}\OperatorTok{:} \DataTypeTok{u64}\NormalTok{) }\OperatorTok{{-}\textgreater{}}\NormalTok{ Invite }\OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ digest }\OperatorTok{=} \PreprocessorTok{Sha256::}\NormalTok{digest(}\PreprocessorTok{privacy::}\NormalTok{canonical\_identifier(alias)}\OperatorTok{.}\NormalTok{as\_bytes())}\OperatorTok{;}
+    \KeywordTok{let}\NormalTok{ alias\_hash }\OperatorTok{=} \PreprocessorTok{hex::}\NormalTok{encode(digest)}\OperatorTok{;}
+    \KeywordTok{let}\NormalTok{ claim\_url }\OperatorTok{=} \PreprocessorTok{format!}\NormalTok{(}\StringTok{"https://satspath.local/claim?alias\_hash=\{\}\&amount=\{\}"}\OperatorTok{,} \OperatorTok{\&}\NormalTok{alias\_hash[}\OperatorTok{..}\DecValTok{16}\NormalTok{]}\OperatorTok{,}\NormalTok{ amount\_sats)}\OperatorTok{;}
+    \CommentTok{// No sender identity, no signature, no expiry enforcement on claim}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Attack:} Attacker spams invites to target alias with large
+amounts. Receiver claims, publishes profile. Attacker pays\ldots{} but
+wait, invite has no binding to sender.
+
+\textbf{Fix:} Sign invite with sender's identity key. Include
+\texttt{sender\_pubkey}, \texttt{created\_at}, \texttt{expires\_at}.
+Receiver verifies sender owns claimed identity.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{high-canonical-json-serialization-not-truly-deterministic}{%
+\subsubsection{10. 🟠 HIGH: Canonical JSON Serialization Not Truly
+Deterministic}\label{high-canonical-json-serialization-not-truly-deterministic}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/crypto.rs:23-31},
+\texttt{docs/protocol.md:100-101} \textbf{Claim:} ``Field order
+preserved via Rust's derived \texttt{Serialize}''
+
+\textbf{Reality:} \texttt{serde\_json::to\_string} preserves struct
+field order \textbf{only for the same binary}. Different Rust versions,
+feature flags, or crate compilations \textbf{can change field order}.
+This breaks signature verification across versions.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ canonical\_profile\_bytes(profile}\OperatorTok{:} \OperatorTok{\&}\NormalTok{PaymentProfile) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\DataTypeTok{Vec}\OperatorTok{\textless{}}\DataTypeTok{u8}\OperatorTok{\textgreater{}\textgreater{}} \OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ json }\OperatorTok{=} \PreprocessorTok{serde\_json::}\NormalTok{to\_string(profile)  }\CommentTok{// NOT canonical!}
+        \OperatorTok{.}\NormalTok{map\_err(}\OperatorTok{|}\NormalTok{e}\OperatorTok{|} \PreprocessorTok{SatsPathError::}\NormalTok{SerializationError(e}\OperatorTok{.}\NormalTok{to\_string()))}\OperatorTok{?;}
+    \ConstantTok{Ok}\NormalTok{(json}\OperatorTok{.}\NormalTok{into\_bytes())}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Fix:} Use true canonical serialization (e.g.,
+\texttt{serde\_cbor} with deterministic map ordering, or implement
+custom canonical JSON with sorted keys).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{medium-severity-findings}{%
+\subsection{Medium Severity Findings}\label{medium-severity-findings}}
+
+\hypertarget{medium-arkade-opaque-uri-no-ownership-verification-possible}{%
+\subsubsection{11. 🟡 MEDIUM: Arkade Opaque URI --- No Ownership
+Verification
+Possible}\label{medium-arkade-opaque-uri-no-ownership-verification-possible}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/ark.rs:80-95},
+\texttt{validate\_arkade\_opaque\_uri} \textbf{Impact:}
+\texttt{opaque\_uri} (ark1q\ldots{} or ark:\ldots) accepts any string
+starting with prefix. No proof that user controls the Arkade address.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ validate\_arkade\_opaque\_uri(uri}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\NormalTok{()}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ lower }\OperatorTok{=}\NormalTok{ trimmed}\OperatorTok{.}\NormalTok{to\_ascii\_lowercase()}\OperatorTok{;}
+    \ControlFlowTok{if} \OperatorTok{!}\NormalTok{lower}\OperatorTok{.}\NormalTok{starts\_with(}\StringTok{"ark1"}\NormalTok{) }\OperatorTok{\&\&} \OperatorTok{!}\NormalTok{lower}\OperatorTok{.}\NormalTok{starts\_with(}\StringTok{"ark:"}\NormalTok{) }\OperatorTok{\{} \OperatorTok{...} \OperatorTok{\}}
+\NormalTok{    assert\_no\_private\_material(trimmed)}\OperatorTok{?;}  \CommentTok{// Only check}
+    \ConstantTok{Ok}\NormalTok{(())}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Risk:} User pastes attacker's \texttt{ark1q...} address.
+SatsPath routes to attacker's Arkade account. No cryptographic binding
+to identity.
+
+\textbf{Mitigation:} Document clearly: \texttt{opaque\_uri} =
+\textbf{preview only}, \texttt{execution:\ manual\_wallet}. Never
+auto-execute.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{medium-fee-estimation-fallback-is-dangerous-default}{%
+\subsubsection{12. 🟡 MEDIUM: Fee Estimation Fallback is Dangerous
+Default}\label{medium-fee-estimation-fallback-is-dangerous-default}}
+
+\textbf{Location:} \texttt{crates/satspath-router/src/fees.rs:14-24}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ fallback() }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Self} \OperatorTok{\{}
+\NormalTok{    FeeEstimate }\OperatorTok{\{}
+\NormalTok{        fastest\_fee}\OperatorTok{:} \DecValTok{10}\OperatorTok{,}  \CommentTok{// 10 sat/vB = \textasciitilde{}$1.50 for 141 vByte}
+\NormalTok{        half\_hour\_fee}\OperatorTok{:} \DecValTok{7}\OperatorTok{,}
+\NormalTok{        hour\_fee}\OperatorTok{:} \DecValTok{5}\OperatorTok{,}
+\NormalTok{        economy\_fee}\OperatorTok{:} \DecValTok{3}\OperatorTok{,}
+\NormalTok{        minimum\_fee}\OperatorTok{:} \DecValTok{1}\OperatorTok{,}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Risk:} API fails → router assumes 5 sat/vB (hour fee) → selects
+on-chain for large amounts. Actual fee may be 50 sat/vB → user pays 10x
+or transaction stalls.
+
+\textbf{Fix:} On API failure, \textbf{fail closed} (return error) rather
+than optimistic fallback. Or require explicit \texttt{-\/-assume-fee}
+flag.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{medium-lightning-dust-threshold-not-enforced-in-router}{%
+\subsubsection{13. 🟡 MEDIUM: Lightning Dust Threshold Not Enforced in
+Router}\label{medium-lightning-dust-threshold-not-enforced-in-router}}
+
+\textbf{Location:} \texttt{crates/satspath-router/src/router.rs:75-99}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// Protocol: "The dust threshold must NOT block Lightning route selection."}
+\ControlFlowTok{if}\NormalTok{ req}\OperatorTok{.}\NormalTok{amount\_sats }\OperatorTok{\textless{}}\NormalTok{ LIGHTNING\_THRESHOLD\_SATS }\OperatorTok{\{}  \CommentTok{// 100,000 sats}
+    \ControlFlowTok{if} \KeywordTok{let} \ConstantTok{Some}\NormalTok{(ln) }\OperatorTok{=}\NormalTok{ methods}\OperatorTok{.}\NormalTok{iter()}\OperatorTok{.}\NormalTok{find(}\OperatorTok{|}\NormalTok{m}\OperatorTok{|}\NormalTok{ is\_lightning\_available(m)) }\OperatorTok{\{}
+        \ControlFlowTok{return} \ConstantTok{Ok}\NormalTok{(RouteQuote }\OperatorTok{\{} \OperatorTok{...} \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}  \CommentTok{// No dust check!}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Issue:} Lightning invoices have minimum amounts (often 1 sat,
+but some LSPs enforce higher). Router selects Lightning for 1 sat
+without verifying the LNURL/Address accepts it.
+
+\textbf{Fix:} Fetch LNURL metadata first to check \texttt{minSendable}
+before selecting Lightning.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{medium-privacy-identifier-hash-is-sha-256email-trivially-reversible}{%
+\subsubsection{14. 🟡 MEDIUM: Privacy --- Identifier Hash is
+SHA-256(email) --- Trivially
+Reversible}\label{medium-privacy-identifier-hash-is-sha-256email-trivially-reversible}}
+
+\textbf{Location:} \texttt{crates/satspath-core/src/privacy.rs:7-11},
+\texttt{peer\_registry.rs:29-34}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ identifier\_hash(identifier}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{String} \OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ digest }\OperatorTok{=} \PreprocessorTok{Sha256::}\NormalTok{digest(canonical\_identifier(identifier)}\OperatorTok{.}\NormalTok{as\_bytes())}\OperatorTok{;}
+    \PreprocessorTok{hex::}\NormalTok{encode(digest)}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Impact:} Email addresses are low-entropy. Attacker with registry
+dump can rainbow-table all common emails.
+
+\textbf{Fix:} Use HMAC with secret pepper, or Argon2id. Or accept this
+is ``privacy hint only'' and document clearly.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{medium-bolt12-invoice-validation-only-checks-prefix}{%
+\subsubsection{15. 🟡 MEDIUM: BOLT12 Invoice Validation --- Only Checks
+Prefix}\label{medium-bolt12-invoice-validation-only-checks-prefix}}
+
+\textbf{Location:}
+\texttt{crates/satspath-router/src/scoring.rs:249-251},
+\texttt{validation.rs:229-231}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{fn}\NormalTok{ bolt11\_like(value}\OperatorTok{:} \DataTypeTok{Option}\OperatorTok{\textless{}\&}\DataTypeTok{str}\OperatorTok{\textgreater{}}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Option}\OperatorTok{\textless{}\&}\DataTypeTok{str}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+\NormalTok{    value}\OperatorTok{.}\NormalTok{filter(}\OperatorTok{|}\NormalTok{invoice}\OperatorTok{|}\NormalTok{ invoice}\OperatorTok{.}\NormalTok{starts\_with(}\StringTok{"lnbc"}\NormalTok{) }\OperatorTok{||}\NormalTok{ invoice}\OperatorTok{.}\NormalTok{starts\_with(}\StringTok{"lntb"}\NormalTok{))}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Issue:} Accepts any string starting with
+\texttt{lnbc}/\texttt{lntb}. No validation of invoice structure,
+amounts, expiry, or signature.
+
+\textbf{Fix:} Use \texttt{bolt12} crate to parse and validate
+offer/invoice, or reject BOLT12 in preview mode.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{low-severity-defense-in-depth}{%
+\subsection{Low Severity /
+Defense-in-Depth}\label{low-severity-defense-in-depth}}
+
+\hypertarget{low-private-material-detection-string-matching-only}{%
+\subsubsection{16. 🔵 LOW: Private Material Detection --- String
+Matching
+Only}\label{low-private-material-detection-string-matching-only}}
+
+\textbf{Location:}
+\texttt{crates/satspath-core/src/validation.rs:79-161}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let}\NormalTok{ blocked }\OperatorTok{=}\NormalTok{ [}\StringTok{"xprv"}\OperatorTok{,} \StringTok{"tprv"}\OperatorTok{,} \StringTok{"seed phrase"}\OperatorTok{,} \StringTok{"mnemonic"}\OperatorTok{,} \StringTok{"private\_key"}\OperatorTok{,} \OperatorTok{...}\NormalTok{]}\OperatorTok{;}
+\ControlFlowTok{if} \KeywordTok{let} \ConstantTok{Some}\NormalTok{(term) }\OperatorTok{=}\NormalTok{ blocked}\OperatorTok{.}\NormalTok{iter()}\OperatorTok{.}\NormalTok{find(}\OperatorTok{|}\NormalTok{term}\OperatorTok{|}\NormalTok{ lower}\OperatorTok{.}\NormalTok{contains(}\OperatorTok{**}\NormalTok{term)) }\OperatorTok{\{} \OperatorTok{...} \OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Bypass:} \texttt{xprv} encoded as \texttt{xprv} with zero-width
+spaces, base64, or split across JSON fields.
+
+\textbf{Fix:} This is a defense-in-depth layer (correct). Document it's
+not a cryptographic guarantee.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{low-swap-store-no-key-derivation-function-specified}{%
+\subsubsection{17. 🔵 LOW: Swap Store --- No Key Derivation Function
+Specified}\label{low-swap-store-no-key-derivation-function-specified}}
+
+\textbf{Location:}
+\texttt{crates/satspath-swaps/src/swap\_store.rs:44-55}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ open\_encrypted(key}\OperatorTok{:}\NormalTok{ [}\DataTypeTok{u8}\OperatorTok{;} \DecValTok{32}\NormalTok{]) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\DataTypeTok{Self}\OperatorTok{\textgreater{}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Issue:} Caller must provide 32-byte key. No standard KDF
+(PBKDF2/Argon2) recommended. Weak passwords → weak encryption.
+
+\textbf{Fix:} Add \texttt{open\_with\_password(password:\ \&str)} using
+Argon2id, or document required KDF.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{low-ark-route-planning-no-sender-balance-check}{%
+\subsubsection{18. 🔵 LOW: Ark Route Planning --- No Sender Balance
+Check}\label{low-ark-route-planning-no-sender-balance-check}}
+
+\textbf{Location:}
+\texttt{crates/satspath-router/src/ark\_routes.rs:20-91} \textbf{Issue:}
+\texttt{plan\_ark\_route} assumes sender has funds on
+Ark/Lightning/on-chain. No validation.
+
+\textbf{Fix:} Add balance check in swap engine before creating swap.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{black-box-protocol-analysis}{%
+\subsection{Black-Box Protocol
+Analysis}\label{black-box-protocol-analysis}}
+
+\hypertarget{protocol-routing-algorithm-edge-cases}{%
+\subsubsection{19. 🔵 PROTOCOL: Routing Algorithm Edge
+Cases}\label{protocol-routing-algorithm-edge-cases}}
+
+\textbf{Spec:} \texttt{docs/protocol.md:156-176}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2381}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3571}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.4048}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Scenario
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Spec Behavior
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Potential Issue
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Amount = 99,999 sats, Lightning + On-chain & Lightning & OK \\
+Amount = 100,000 sats, Lightning + On-chain (fee=5) & On-chain &
+Lightning skipped despite being cheaper \\
+Amount = 500,000 sats, On-chain (fee=25) + Ark & Ark & Correct
+fallback \\
+Amount = 500,000 sats, NO Lightning, NO On-chain, NO Ark & Error &
+Correct \\
+Amount = 1 sat, Lightning Address exists & Lightning & Dust risk (see
+\#13) \\
+\end{longtable}
+
+\textbf{Finding:} Threshold at exactly 100,000 sats creates
+discontinuity. At 99,999 → Lightning (instant, \textasciitilde1 sat
+fee). At 100,000 → On-chain (10 min, \textasciitilde700 sat fee @ 5
+sat/vB). User incentivized to split payments.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{protocol-invite-flow-no-rate-limiting}{%
+\subsubsection{20. 🔵 PROTOCOL: Invite Flow --- No Rate
+Limiting}\label{protocol-invite-flow-no-rate-limiting}}
+
+\textbf{Spec:} \texttt{docs/protocol.md:211-232}
+
+Attacker can generate unlimited invites for target alias, causing: -
+Spam in receiver's claim inbox - Registry pollution (if invites stored
+server-side) - Social engineering: ``You received 10 BTC, claim now!''
+
+\textbf{Fix:} Rate limit invite creation per sender fingerprint/IP. Add
+\texttt{expires\_at} to invite (currently only in \texttt{InviteRecord},
+not \texttt{Invite}).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{protocol-bip-353-consumer-email-domains-excluded}{%
+\subsubsection{21. 🔵 PROTOCOL: BIP-353 --- Consumer Email Domains
+Excluded}\label{protocol-bip-353-consumer-email-domains-excluded}}
+
+\textbf{Spec:} \texttt{docs/protocol.md:250-258}
+
+\begin{quote}
+``Consumer email domains (e.g.~gmail.com) cannot use BIP-353 --- they
+fall back to platform verification / the invite flow.''
+\end{quote}
+
+\textbf{Implication:} 90\%+ of users (Gmail, Outlook, Yahoo)
+\textbf{cannot use DNSSEC resolution}. They rely on centralized platform
+verification, defeating decentralization.
+
+\textbf{Fix:} Document this limitation clearly. Explore Nostr NIP-05 as
+alternative for consumer domains.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{protocol-mainnet-preview-no-execution-but-invoice-fetching}{%
+\subsubsection{22. 🔵 PROTOCOL: Mainnet Preview --- No Execution, But
+Invoice
+Fetching}\label{protocol-mainnet-preview-no-execution-but-invoice-fetching}}
+
+\textbf{Spec:} \texttt{docs/protocol.md:178-205}
+
+\begin{quote}
+``It must not: execute Lightning payments\ldots{} but may display BOLT11
+invoice string only when explicitly fetched by the caller''
+\end{quote}
+
+\textbf{Risk:} Caller fetches BOLT11 invoice → displays to user → user
+pays. But invoice could be: - For different amount - Expired - From
+different node (if LNURL compromised)
+
+\textbf{Fix:} Validate fetched invoice matches requested amount, hasn't
+expired, and (if possible) matches receiver pubkey in profile.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{positive-security-observations}{%
+\subsection{Positive Security Observations
+✅}\label{positive-security-observations}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3750}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6250}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Area
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Strength
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Signature Verification} & Mandatory on ALL profile resolution
+paths (local + remote) \\
+\textbf{Private Material Rejection} & Comprehensive blocklist +
+heuristic detection in validation \\
+\textbf{Ownership Proofs} & Multi-tier
+(Cryptographic/DomainControl/SelfAsserted) with replay protection \\
+\textbf{Swap Storage} & Encrypted-by-default (AES-256-GCM), refuses
+sensitive data without key \\
+\textbf{Registry} & Downgrade protection (SEC-03), conflict detection on
+pubkey mismatch \\
+\textbf{Resolver} & Profile substitution attack mitigation (SEC-02) \\
+\textbf{VTXO Verification} & Full DAG reconstruction + on-chain
+anchoring verification (Ark Bridge) \\
+\textbf{Fee Fallback} & Conservative (5 sat/vB hour fee) rather than
+optimistic \\
+\textbf{Test Coverage} & Extensive unit + integration tests for crypto,
+ownership, routing, swaps \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{recommended-remediation-priority}{%
+\subsection{Recommended Remediation
+Priority}\label{recommended-remediation-priority}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3571}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3571}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2857}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Priority
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Findings
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Effort
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{P0 (Before Mainnet)} & \#1 Fee API redundancy, \#2 BIP-353
+DNSSEC validator, \#3 Swap refund builders, \#4 Ark challenge binding,
+\#5 Homograph attack & High \\
+\textbf{P1 (Before Testnet w/ Real Value)} & \#6 Fee threshold
+alignment, \#7 Registry downgrade, \#8 Profile replay, \#9 Invite
+signing & Medium \\
+\textbf{P2 (Hardening)} & \#10 Canonical JSON, \#11 Opaque URI docs,
+\#12 Fee fallback fail-closed, \#13 LN dust check, \#14 Peppered hashes,
+\#15 BOLT12 validation & Low-Medium \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{testing-recommendations}{%
+\subsection{Testing Recommendations}\label{testing-recommendations}}
+
+\hypertarget{white-box-add-to-ci}{%
+\subsubsection{White-Box (Add to CI)}\label{white-box-add-to-ci}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Property-based tests} for canonical serialization (proptest)
+\item
+  \textbf{Fuzzing} on profile parsing, signature verification, URI
+  parsing
+\item
+  \textbf{Mutation testing} on validation logic (cargo-mutants)
+\item
+  \textbf{Cross-version signature compatibility} tests
+\end{enumerate}
+
+\hypertarget{black-box-protocol-level}{%
+\subsubsection{Black-Box (Protocol
+Level)}\label{black-box-protocol-level}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Network simulation} tests: MITM fee API, DNS hijacking,
+  registry corruption
+\item
+  \textbf{Invite flow abuse} testing: rate limits, spam, social
+  engineering
+\item
+  \textbf{Routing edge cases}: fee boundary oscillation, method removal
+  during payment
+\item
+  \textbf{Ark VTXO verification} against malicious ASP (already
+  well-tested in \texttt{blackboxSec.test.ts})
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{appendix-file-reference-map}{%
+\subsection{Appendix: File Reference
+Map}\label{appendix-file-reference-map}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3889}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Component
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Files
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Core Crypto & \texttt{crates/satspath-core/src/crypto.rs} \\
+Profile/Validation & \texttt{crates/satspath-core/src/profile.rs},
+\texttt{validation.rs} \\
+Ownership Proofs & \texttt{crates/satspath-core/src/ownership.rs} \\
+Registry/Resolver & \texttt{crates/satspath-core/src/registry.rs},
+\texttt{resolver.rs} \\
+BIP-353 & \texttt{crates/satspath-core/src/bip353.rs},
+\texttt{bip353\_publish.rs} \\
+Router/Fees & \texttt{crates/satspath-router/src/router.rs},
+\texttt{fees.rs}, \texttt{scoring.rs} \\
+Ark & \texttt{crates/satspath-core/src/ark.rs},
+\texttt{crates/satspath-router/src/ark\_routes.rs} \\
+Swaps & \texttt{crates/satspath-swaps/src/} (submarine, reverse, chain,
+boltz\_client) \\
+Ark Bridge (TS) & \texttt{ark-bridge/src/vtxoDAGVerification.ts},
+\texttt{arkdProvider.ts}, \texttt{blackboxSec.test.ts} \\
+Docs & \texttt{docs/protocol.md}, \texttt{docs/threat\_model.md},
+\texttt{docs/architecture.md} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{End of Audit Report}
+
+\emph{This report covers the prototype codebase as of commit
+\texttt{HEAD}. Findings reflect the ``hackathon prototype'' threat model
+--- not production-ready software.}
+
+\end{document}

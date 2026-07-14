@@ -1,0 +1,283 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspathp2p}{%
+\section{@satspath/p2p}\label{satspathp2p}}
+
+Resolve \& serve \textbf{SatsPath signed payment profiles peer-to-peer}
+over the \href{https://holepunch.to}{Holepunch} stack (Hyperswarm /
+HyperDHT), with NAT hole-punching --- no central server and no local
+pre-registration of the receiver.
+
+A wallet that embeds this SDK automatically gets a \textbf{random node
+address} and can publish or resolve \texttt{user@domain} payment
+profiles directly between devices.
+
+\begin{quote}
+Transport + verification only. This SDK moves \textbf{only public,
+signed payment profiles}. It never moves funds, signs Bitcoin
+transactions, or broadcasts. Trust comes from the secp256k1
+\textbf{signature}, not from the transport.
+\end{quote}
+
+\hypertarget{how-it-works}{%
+\subsection{How it works}\label{how-it-works}}
+
+\begin{verbatim}
+receiver device                         sender device
+───────────────                         ─────────────
+satspath export rodrigo@x.dev           node = new SatsPathP2PNode()
+   → rodrigo.json                       node.address  ← auto-generated, random
+node.publish(rodrigo.json)              await node.resolve("rodrigo@x.dev")
+   topic = sha256("…:rodrigo@x.dev")        │ join same topic, DHT lookup
+   announce on HyperDHT  ───────────────────┘ hole-punch + connect
+   serve profile to peers  ───────────────▶  receive → VERIFY SIGNATURE → return
+\end{verbatim}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Address.} Each node has an auto-generated random Ed25519
+  keypair (Hyperswarm's Noise identity). \texttt{node.address} is its
+  hex public key --- \emph{not} a Bitcoin key and controls no funds.
+\item
+  \textbf{Discovery.} The DHT topic is
+  \texttt{sha256("satspath:p2p:v1:"\ +\ canonicalAlias)}, so publisher
+  and resolver find each other from the alias alone.
+\item
+  \textbf{Trust.} A resolved profile is accepted only if
+  \texttt{verifySignedProfile} passes (secp256k1 ECDSA over
+  \texttt{sha256(serde\_json(profile))}, matching the Rust core) and its
+  alias matches the request. A tampered profile is rejected.
+\end{itemize}
+
+\hypertarget{install}{%
+\subsection{Install}\label{install}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{npm}\NormalTok{ install @satspath/p2p}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{wallet-integration}{%
+\subsection{Wallet integration}\label{wallet-integration}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{import}\NormalTok{ \{ SatsPathP2PNode \} }\ImportTok{from} \StringTok{"@satspath/p2p"}\OperatorTok{;}
+
+\KeywordTok{const}\NormalTok{ node }\OperatorTok{=} \KeywordTok{new} \FunctionTok{SatsPathP2PNode}\NormalTok{()}\OperatorTok{;}
+\BuiltInTok{console}\OperatorTok{.}\FunctionTok{log}\NormalTok{(}\StringTok{"my P2P address:"}\OperatorTok{,}\NormalTok{ node}\OperatorTok{.}\AttributeTok{address}\NormalTok{)}\OperatorTok{;} \CommentTok{// auto{-}generated, random}
+
+\CommentTok{// ── Receiver: publish your signed profile (from \textasciigrave{}satspath export\textasciigrave{}) ──}
+\ImportTok{import}\NormalTok{ \{ readFileSync \} }\ImportTok{from} \StringTok{"node:fs"}\OperatorTok{;}
+\KeywordTok{const}\NormalTok{ signed }\OperatorTok{=} \BuiltInTok{JSON}\OperatorTok{.}\FunctionTok{parse}\NormalTok{(}\FunctionTok{readFileSync}\NormalTok{(}\StringTok{"rodrigo.json"}\OperatorTok{,} \StringTok{"utf8"}\NormalTok{))}\OperatorTok{;}
+\ControlFlowTok{await}\NormalTok{ node}\OperatorTok{.}\FunctionTok{publish}\NormalTok{(signed)}\OperatorTok{;} \CommentTok{// announces on the DHT, serves to peers}
+
+\CommentTok{// ── Sender (another device): resolve by alias, get a VERIFIED profile ──}
+\KeywordTok{const}\NormalTok{ profile }\OperatorTok{=} \ControlFlowTok{await}\NormalTok{ node}\OperatorTok{.}\FunctionTok{resolve}\NormalTok{(}\StringTok{"rodrigo@satspath.dev"}\OperatorTok{,}\NormalTok{ \{ }\DataTypeTok{timeoutMs}\OperatorTok{:} \DecValTok{20000}\NormalTok{ \})}\OperatorTok{;}
+\CommentTok{// profile.profile.methods → route/pay with your own wallet}
+\end{Highlighting}
+\end{Shaded}
+
+To persist a node's address across restarts, pass a saved keypair:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{import}\NormalTok{ \{ generateNodeKeyPair \} }\ImportTok{from} \StringTok{"@satspath/p2p"}\OperatorTok{;}
+\KeywordTok{const}\NormalTok{ keyPair }\OperatorTok{=} \FunctionTok{generateNodeKeyPair}\NormalTok{()}\OperatorTok{;} \CommentTok{// store keyPair.secretKey securely (it is NOT a wallet key)}
+\KeywordTok{const}\NormalTok{ node }\OperatorTok{=} \KeywordTok{new} \FunctionTok{SatsPathP2PNode}\NormalTok{(\{ keyPair \})}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{try-it-on-two-computers}{%
+\subsection{Try it on two computers}\label{try-it-on-two-computers}}
+
+On the \textbf{receiver's} machine (in the SatsPath repo, build the CLI
+first):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ export rodrigo@satspath.dev }\OperatorTok{\textgreater{}}\NormalTok{ rodrigo.json}
+\BuiltInTok{cd}\NormalTok{ sdk/satspath{-}p2p }\KeywordTok{\&\&} \ExtensionTok{npm}\NormalTok{ install}
+\ExtensionTok{node}\NormalTok{ examples/publish.mjs ../../rodrigo.json     }\CommentTok{\# leave running}
+\end{Highlighting}
+\end{Shaded}
+
+On the \textbf{sender's} machine (different computer / network):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\BuiltInTok{cd}\NormalTok{ sdk/satspath{-}p2p }\KeywordTok{\&\&} \ExtensionTok{npm}\NormalTok{ install}
+\ExtensionTok{node}\NormalTok{ examples/resolve.mjs rodrigo@satspath.dev   }\CommentTok{\# prints the verified profile}
+\end{Highlighting}
+\end{Shaded}
+
+DHT announce + lookup typically takes a few seconds to
+\textasciitilde30s on a cold start.
+
+\hypertarget{api}{%
+\subsection{API}\label{api}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.4706}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5294}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Export
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Purpose
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{new\ SatsPathP2PNode(\{\ keyPair?,\ swarm?\ \})} & A node with
+an auto-generated (or supplied) random address. \\
+\texttt{node.address} & The node's hex public-key address. \\
+\texttt{node.publish(signed)} & Announce + serve a signed profile on its
+alias topic. Rejects an unsigned/invalid profile. \\
+\texttt{node.resolve(alias,\ \{\ timeoutMs\ \})} & Resolve over the DHT;
+returns a \textbf{signature-verified} profile or rejects on timeout. \\
+\texttt{node.destroy()} & Tear down the swarm. \\
+\texttt{generateNodeKeyPair()} & A fresh random node keypair. \\
+\texttt{topicForAlias(alias)} & The 32-byte DHT topic for an alias. \\
+\texttt{verifySignedProfile(signed)} & Verify a SatsPath signature
+natively in JS. \\
+\end{longtable}
+
+\hypertarget{tests}{%
+\subsection{Tests}\label{tests}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{npm}\NormalTok{ test}
+\end{Highlighting}
+\end{Shaded}
+
+Unit tests cover topic determinism, address randomness, and
+\textbf{verifying a real Rust-signed profile fixture} (proving JS
+canonicalization matches the Rust core), plus tamper rejection. The live
+two-node DHT round-trip is exercised via the examples above (it needs
+network access to the DHT and is not a CI unit test).
+
+\hypertarget{safety}{%
+\subsection{Safety}\label{safety}}
+
+\begin{itemize}
+\tightlist
+\item
+  No funds moved, nothing signed or broadcast --- public signed profiles
+  only.
+\item
+  The node keypair is a P2P identity, \textbf{not} a wallet
+  seed/spending key.
+\item
+  A profile is trusted only after its signature verifies; the
+  DHT/transport is never trusted on its own.
+\end{itemize}
+
+\end{document}

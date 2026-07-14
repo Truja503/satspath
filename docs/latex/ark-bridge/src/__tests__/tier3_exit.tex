@@ -1,0 +1,164 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{test-documentation-tier-3---sovereign-unilateral-exit}{%
+\section{Test Documentation: Tier 3 - Sovereign Unilateral
+Exit}\label{test-documentation-tier-3---sovereign-unilateral-exit}}
+
+\hypertarget{overview}{%
+\subsection{Overview}\label{overview}}
+
+This suite validates the SDK's ability to operate autonomously after a
+VTXO has been received, ensuring all data required for on-chain
+withdrawal is permanently secured and broadcastable without contacting
+the Ark Service Provider (ASP).
+
+\hypertarget{test-goals}{%
+\subsubsection{🎯 Test Goals}\label{test-goals}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Sovereign Save}: Confirming that all raw transactions from the
+  \textbf{Anchoring Leaf} (commitment) to the \textbf{VTXO Root} are
+  correctly isolated and persisted.
+\item
+  \textbf{Top-Down Persistence}: Ensuring the storage adapter maintains
+  the strict topological ordering of transactions (Anchor
+  -\textgreater{} Root) to satisfy on-chain dependency rules.
+\item
+  \textbf{ASP-Independent Broadcast}: Verifying that the withdrawal
+  sequence can be reconstructed and broadcast even with a completely
+  disconnected IndexerService.
+\end{enumerate}
+
+\hypertarget{environment}{%
+\subsubsection{🌐 Environment}\label{environment}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Providers}: \texttt{MockStorageProvider} (simulating local
+  disk/browser storage) and \texttt{OnchainProvider} (simulating Node
+  RPC).
+\item
+  \textbf{Condition}: ASP (Indexer) simulation is explicitly disabled
+  during the exit execution phase to guarantee sovereignty.
+\end{itemize}
+
+\hypertarget{evaluated-scenarios}{%
+\subsubsection{🧪 Evaluated Scenarios}\label{evaluated-scenarios}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Scenario
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Description
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Expected
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Secure Save} & Saving a verified 5-depth VTXO and checking its
+persistence. & \textbf{PASS} \\
+\textbf{Encrypted Save} & Storage of VTXO exit data with AES-256-GCM. &
+\textbf{PASS} \\
+\textbf{Tampered Data} & Modification of encrypted ciphertext in
+storage. & \textbf{FAIL (AUTH\_TAG\_MISMATCH)} \\
+\textbf{Recovery \& Exit} & Reconstructing the broadcast sequence from
+local storage and pushing to network. & \textbf{PASS} \\
+\textbf{Topological Sequence} & Verifying the Anchoring Leaf (spending
+commitment) is the first tx in the sequence. & \textbf{PASS} \\
+\textbf{Missing Data} & Attempting an exit for a VTXO that was not
+locally secured. & \textbf{FAIL (NO\_LOCAL\_DATA)} \\
+\end{longtable}
+
+\hypertarget{results}{%
+\subsubsection{📈 Results}\label{results}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Resilience}: The SDK successfully identifies and secures the
+  necessary 100\% of ``Exit Data'' during the \texttt{onReceiveVtxo}
+  hook.
+\item
+  \textbf{Independence}: Successfully completed 10+ withdrawal
+  simulations with the Indexer service turned off.
+\item
+  \textbf{Security Audit}: COMPLIANT. PBKDF2-HMAC-SHA256 (100k
+  iterations) used for key derivation. (87/87 tests passed).
+\end{itemize}
+
+\end{document}

@@ -1,0 +1,440 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-implementations}{%
+\section{SatsPath Implementations}\label{satspath-implementations}}
+
+This document maps the SatsPath Protocol v1 specification to the current
+repository implementation.
+
+The implementation must be understood as a protocol stack, not as a
+single P2P system. P2P is one transport implementation among several.
+
+\hypertarget{repository-layout}{%
+\subsection{Repository Layout}\label{repository-layout}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspath{-}core      protocol data types, signatures, resolvers, validation}
+\NormalTok{crates/satspath{-}router    quote response contract and route selection}
+\NormalTok{crates/satspath{-}cli       command{-}line reference client}
+\NormalTok{crates/satspathd          local daemon and HTTP API}
+\NormalTok{sdk/satspath{-}p2p          optional Pear/Holepunch transport}
+\NormalTok{docs/                     protocol and operational documentation}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{core-protocol-types}{%
+\subsection{Core Protocol Types}\label{core-protocol-types}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspath{-}core/src/profile.rs}
+\end{Highlighting}
+\end{Shaded}
+
+Spec mapping:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Spec object & Rust type \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{PaymentProfile} & \texttt{PaymentProfile} \\
+\texttt{SignedPaymentProfile} & \texttt{SignedPaymentProfile} \\
+\texttt{PaymentMethod.Lightning} & \texttt{PaymentMethod::Lightning} \\
+\texttt{PaymentMethod.Onchain} & \texttt{PaymentMethod::Onchain} \\
+\texttt{PaymentMethod.Ark} & \texttt{PaymentMethod::Ark} \\
+Invite & \texttt{Invite}, \texttt{InviteRecord} \\
+\end{longtable}
+
+\hypertarget{signature-and-safety-validation}{%
+\subsection{Signature and Safety
+Validation}\label{signature-and-safety-validation}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspath{-}core/src/crypto.rs}
+\NormalTok{crates/satspath{-}core/src/validation.rs}
+\end{Highlighting}
+\end{Shaded}
+
+Responsibilities:
+
+\begin{itemize}
+\tightlist
+\item
+  Generate protocol identity keypairs.
+\item
+  Sign public profiles.
+\item
+  Verify signed profiles.
+\item
+  Compute identity fingerprints.
+\item
+  Reject malformed public keys.
+\item
+  Reject private material in public protocol objects.
+\item
+  Validate Lightning addresses, Bitcoin addresses, Ark URLs, and
+  compressed pubkeys.
+\end{itemize}
+
+Protocol identity keys are not wallet spending keys.
+
+\hypertarget{resolver-implementations}{%
+\subsection{Resolver Implementations}\label{resolver-implementations}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspath{-}core/src/resolver.rs}
+\NormalTok{crates/satspath{-}core/src/resolvers/}
+\NormalTok{crates/satspath{-}core/src/registry.rs}
+\NormalTok{crates/satspath{-}core/src/peer\_registry.rs}
+\end{Highlighting}
+\end{Shaded}
+
+Current resolver surfaces:
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Resolver
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+File
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Local registry & \texttt{registry.rs} & Active \\
+Local peer registry & \texttt{peer\_registry.rs} & Active local
+storage \\
+BIP-353 & \texttt{resolvers/bip353.rs}, \texttt{bip353.rs} & Resolver
+and DNS primitives; strict DNSSEC fails closed without validator \\
+HTTPS & \texttt{resolvers/http.rs} & Active \\
+Nostr & \texttt{resolvers/nostr.rs} & Active NIP-05 + kind 30078
+resolver \\
+Platform & \texttt{resolvers/platform.rs} & Scaffold \\
+\end{longtable}
+
+Resolver chain behavior is implemented by \texttt{ChainResolver}.
+
+\hypertarget{quote-response-and-routing}{%
+\subsection{Quote Response and
+Routing}\label{quote-response-and-routing}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspath{-}router/src/quote\_response.rs}
+\NormalTok{crates/satspath{-}router/src/router.rs}
+\NormalTok{crates/satspath{-}router/src/fees.rs}
+\NormalTok{crates/satspath{-}router/src/lightning.rs}
+\end{Highlighting}
+\end{Shaded}
+
+Spec mapping:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Spec behavior & Implementation \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Resolve identifier & \texttt{quote\_inner} + \texttt{ProfileResolver} \\
+Verify profile & \texttt{verify\_signed\_profile} \\
+Check expiry & \texttt{check\_profile\_expiry} \\
+Select route & \texttt{select\_route},
+\texttt{select\_route\_with\_fees} \\
+Build payment payload & \texttt{build\_qr\_payload} \\
+Stable response & \texttt{QuoteResponse} \\
+\end{longtable}
+
+\texttt{QuoteResponse} status values:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ok}
+\NormalTok{not\_registered}
+\NormalTok{no\_route}
+\NormalTok{invalid\_signature}
+\end{Highlighting}
+\end{Shaded}
+
+These values are the UI and API contract.
+
+\hypertarget{daemon-implementation}{%
+\subsection{Daemon Implementation}\label{daemon-implementation}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspathd/src/main.rs}
+\end{Highlighting}
+\end{Shaded}
+
+The daemon exposes the protocol over a local HTTP API:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Endpoint & Purpose \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{GET\ /health} & Liveness \\
+\texttt{GET\ /v1/status} & Local daemon/protocol status \\
+\texttt{GET\ /v1/node} & Aggregate status, profile, peers,
+connections \\
+\texttt{GET\ /v1/profile} & Local wallet profile state \\
+\texttt{PUT/POST\ /v1/profile} & Create or update local public
+profile \\
+\texttt{POST\ /v1/profile/methods} & Update receive methods \\
+\texttt{POST\ /v1/resolve} & Resolve a local profile \\
+\texttt{POST\ /v1/quote} & Protocol quote response \\
+\texttt{POST\ /v1/pay} & Wallet handoff using protocol quote response \\
+\texttt{POST\ /v1/dns/resolve} & BIP-353/DNS resolution \\
+\texttt{GET\ /v1/peers} & Local peer registry view \\
+\texttt{GET\ /v1/connections} & Transport/connection diagnostics \\
+\end{longtable}
+
+\texttt{/v1/pay} does not move funds. It returns a wallet handoff
+containing a public payment payload and QR SVG.
+
+\hypertarget{cli-implementation}{%
+\subsection{CLI Implementation}\label{cli-implementation}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{crates/satspath{-}cli/src/}
+\end{Highlighting}
+\end{Shaded}
+
+Important commands:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Command area & Protocol role \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{register} & Create signed public profile \\
+\texttt{wallet} & Manage local receive profile \\
+\texttt{quote} & Produce quote response \\
+\texttt{pay} & Preview/handoff flow \\
+\texttt{dns} & BIP-353 resolver tooling \\
+\texttt{peer\ export/import} & Manual transport for signed profiles \\
+\end{longtable}
+
+The CLI is a reference client for local development and protocol
+testing.
+
+\hypertarget{p2p-transport-implementation}{%
+\subsection{P2P Transport
+Implementation}\label{p2p-transport-implementation}}
+
+Implemented in:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sdk/satspath{-}p2p/}
+\end{Highlighting}
+\end{Shaded}
+
+This SDK is an optional transport. It publishes and resolves signed
+profiles over Pear/Holepunch. It must be treated as a resolver
+transport, not the whole protocol.
+
+Conformance requirements:
+
+\begin{itemize}
+\tightlist
+\item
+  Return \texttt{SignedPaymentProfile} objects.
+\item
+  Verify before import or route use.
+\item
+  Never treat peer connectivity as profile ownership.
+\item
+  Never carry wallet private material.
+\end{itemize}
+
+Wire behavior is documented in \href{./wire_p2p.md}{wire\_p2p.md}.
+
+\hypertarget{current-gaps}{%
+\subsection{Current Gaps}\label{current-gaps}}
+
+Known v1 implementation gaps:
+
+\begin{itemize}
+\tightlist
+\item
+  DNSSEC strict mode needs a local DNSSEC-validating resolver to fully
+  trust BIP-353 on mainnet.
+\item
+  Nostr publishing is not yet exposed as a Rust CLI command; use a Nostr
+  client to publish the kind 30078 event. Platform resolvers are
+  scaffolds.
+\item
+  Resolver provenance is not yet carried through
+  \texttt{ProfileResolver}, so signed-profile quote responses mark
+  \texttt{identifier\_verified:\ false} unless a direct BIP-353 preview
+  provides DNSSEC validation.
+\item
+  Mainnet payment execution is intentionally not implemented.
+\item
+  P2P wire envelopes should be formalized in the SDK to match
+  \href{./wire_p2p.md}{wire\_p2p.md}.
+\item
+  Method ownership proofs exist in core but need broader resolver
+  integration.
+\end{itemize}
+
+\hypertarget{conformance-checklist}{%
+\subsection{Conformance Checklist}\label{conformance-checklist}}
+
+An implementation in this repo should be considered conformant when it:
+
+\begin{itemize}
+\tightlist
+\item
+  Uses \texttt{SignedPaymentProfile} for receiver data.
+\item
+  Verifies signatures before routing.
+\item
+  Applies expiry checks.
+\item
+  Rejects unsafe private material.
+\item
+  Produces the four-status \texttt{QuoteResponse}.
+\item
+  Keeps resolver transports separate from protocol verification.
+\item
+  Treats Pear/Holepunch as optional transport.
+\item
+  Returns wallet handoff data instead of executing mainnet payments.
+\end{itemize}
+
+\end{document}

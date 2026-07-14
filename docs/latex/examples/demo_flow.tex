@@ -1,0 +1,324 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-demo-flow}{%
+\section{SatsPath Demo Flow}\label{satspath-demo-flow}}
+
+This document shows a complete example session using the SatsPath CLI.
+
+\hypertarget{setup}{%
+\subsection{Setup}\label{setup}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\BuiltInTok{cd}\NormalTok{ \textasciitilde{}/Desktop/satspath}
+\ExtensionTok{cargo}\NormalTok{ build }\AttributeTok{{-}{-}release}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{step-by-step}{%
+\subsection{Step-by-step}\label{step-by-step}}
+
+\hypertarget{initialize}{%
+\subsubsection{1. Initialize}\label{initialize}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ init}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+Created .satspath/registry.json
+Created .satspath/keys.json
+
+SatsPath initialized at .satspath/
+NOTE: .satspath/ is git-ignored and stays local to this machine.
+\end{verbatim}
+
+\hypertarget{register}{%
+\subsubsection{2. Register}\label{register}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ register rodrigo@satspath.dev}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+Registered: rodrigo@satspath.dev
+Identity pubkey: 02a1b2c3...
+Fingerprint:     a1b2c3d4
+
+Payment methods registered:
+  - Lightning Address
+  - Bitcoin on-chain (primary)
+  - Bitcoin on-chain (secondary, privacy address)
+  - Ark
+
+Profile signed and stored in .satspath/registry.json
+DEMO secret key stored in .satspath/keys.json (git-ignored)
+\end{verbatim}
+
+\hypertarget{show}{%
+\subsubsection{3. Show}\label{show}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ show rodrigo@satspath.dev}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+Alias:           rodrigo@satspath.dev
+Identity pubkey: 02a1b2c3...
+Fingerprint:     a1b2c3d4
+Signature valid: yes
+Updated at:      1735000000
+
+Methods:
+  - Lightning Address [Lightning]
+      Lightning Address: rodrigo@satspath.dev
+  - Bitcoin (primary) [On-chain]
+      Address: bc1qa1b2...
+  - Bitcoin (secondary) [On-chain]
+      Address: bc1qb3c4...
+  - Ark [Ark]
+      Server: ark.satspath.dev
+\end{verbatim}
+
+\hypertarget{encode-a-payment-request}{%
+\subsubsection{4. Encode a payment
+request}\label{encode-a-payment-request}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ encode rodrigo@satspath.dev 21000 }\AttributeTok{{-}{-}memo} \StringTok{"coffee"}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+Encoded SatsPath URI:
+satspath:v1:eyJ2ZXJzaW9uIjoxLCJhbGlhcyI6InJvZHJpZ29Ac2F0c3BhdGguZGV2IiwiYW1vdW50X3NhdHMiOjIxMDAwLCJtZW1vIjoiY29mZmVlIiwicHJvZmlsZV9oaW50IjpudWxsfQ
+\end{verbatim}
+
+\hypertarget{decode}{%
+\subsubsection{5. Decode}\label{decode}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ decode }\StringTok{"satspath:v1:eyJ2ZXJzaW9uIjoxLCJhbGlhcyI6InJvZHJpZ29Ac2F0c3BhdGguZGV2IiwiYW1vdW50X3NhdHMiOjIxMDAwLCJtZW1vIjoiY29mZmVlIiwicHJvZmlsZV9oaW50IjpudWxsfQ"}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+Decoded payment request:
+  Version:     1
+  Alias:       rodrigo@satspath.dev
+  Amount:      21000 sats
+  Memo:        coffee
+  Profile hint:(none)
+\end{verbatim}
+
+\hypertarget{get-a-quote}{%
+\subsubsection{6. Get a quote}\label{get-a-quote}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ quote rodrigo@satspath.dev 21000}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+Resolving alias 'rodrigo@satspath.dev'...
+Verifying signature...
+Signature valid.
+Checking payment rails for 21000 sats...
+
+Route Quote:
+  Selected rail:   Lightning
+  Label:           Lightning Address
+  Reason:          Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
+  Estimated fee:   2 sats
+  Confirmation:    instant
+\end{verbatim}
+
+\hypertarget{simulate-payment}{%
+\subsubsection{7. Simulate payment}\label{simulate-payment}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ pay rodrigo@satspath.dev 21000}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+─────────────────────────────────────────
+SatsPath Payment Simulation
+─────────────────────────────────────────
+Resolving alias 'rodrigo@satspath.dev'...
+  Found profile.
+Verifying signed profile...
+  Signature valid.
+Checking available payment rails...
+  Route selected: Lightning
+
+Selected route: Lightning
+Reason:         Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
+Estimated fee:  2 sats
+
+Executing simulated payment of 21000 sats to rodrigo@satspath.dev...
+  [Lightning] Generating invoice from rodrigo@satspath.dev...
+  [Lightning] Invoice received.
+  [Lightning] Sending payment...
+
+Payment status: simulated_success
+
+DISCLAIMER: This is a simulation. No real Bitcoin was moved.
+\end{verbatim}
+
+\hypertarget{invite-flow-for-unknown-user}{%
+\subsubsection{8. Invite flow for unknown
+user}\label{invite-flow-for-unknown-user}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ invite julian@example.com 21000}
+\end{Highlighting}
+\end{Shaded}
+
+Output:
+
+\begin{verbatim}
+'julian@example.com' is not registered on SatsPath.
+
+Invite link:
+https://satspath.local/claim?alias_hash=a1b2c3d4e5f6g7h8&amount=21000
+
+Alias hash:  sha256(julian@example.com)
+Amount:      21000 sats
+Created at:  1735000000
+
+WARNING: The receiver must claim this payment by generating their own keys locally.
+         SatsPath never holds or generates keys on behalf of users.
+\end{verbatim}
+
+\hypertarget{run-full-demo-automatically}{%
+\subsubsection{9. Run full demo
+automatically}\label{run-full-demo-automatically}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ demo}
+\end{Highlighting}
+\end{Shaded}
+
+Runs all of the above steps in sequence.
+
+\end{document}

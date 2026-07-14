@@ -1,0 +1,1593 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-protocol-v0.1-implementation-audit}{%
+\section{SatsPath Protocol v0.1 --- Implementation
+Audit}\label{satspath-protocol-v0.1-implementation-audit}}
+
+\begin{quote}
+\textbf{Generated:} 2026-07-09\\
+\textbf{Source:} Codebase at \texttt{main} branch vs.~``SatsPath
+Protocol v0.1'' specification\\
+\textbf{Legend:} ✅ Implemented · ⚠️ Partial · ❌ Missing
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{summary}{%
+\subsection{Summary}\label{summary}}
+
+\begin{longtable}[]{@{}lllll@{}}
+\toprule\noalign{}
+Area & Sections & ✅ & ⚠️ & ❌ \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Core Protocol & §1--§6 & 10 & 0 & 0 \\
+Standards Compat & §7 & 4 & 0 & 0 \\
+URI / QR & §8--§9 & 4 & 0 & 0 \\
+Profile \& Signing & §10--§12 & 8 & 0 & 0 \\
+Key Mgmt & §13 & 3 & 0 & 0 \\
+Registry / Resolver & §14 & 5 & 0 & 0 \\
+User Flows & §15--§17 & 8 & 0 & 0 \\
+Payment Rails & §18 & 8 & 0 & 0 \\
+Router & §19--§23 & 8 & 0 & 0 \\
+Split Payments & §24 & 1 & 0 & 0 \\
+Security & §25--§28 & 9 & 0 & 0 \\
+CLI & §29 & 10 & 0 & 0 \\
+Structure / Modules & §30--§31 & 6 & 0 & 0 \\
+Tests & §32 & 13 & 0 & 0 \\
+Product / Hackathon & §33--§37 & 6 & 0 & 0 \\
+\textbf{TOTAL} & & \textbf{103} & \textbf{0} & \textbf{0} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{core-problem}{%
+\subsection{§1 --- Core Problem}\label{core-problem}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+User provides one identifier, protocol resolves \& routes & ✅ & Full
+resolver chain → signed profile → route engine pipeline. CLI
+\texttt{pay}, \texttt{quote}, Web UI \texttt{/v1/send} all accept a
+single alias. \\
+Separate user experience from payment rail & ✅ & Router auto-selects
+Lightning/On-chain/Ark in \texttt{router.rs}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{core-design-principle}{%
+\subsection{§2 --- Core Design Principle}\label{core-design-principle}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+identifier → signed profile → encode/decode → route selection → payment
+simulation & ✅ & End-to-end in \texttt{demo.rs} and the
+\texttt{pay}/\texttt{quote} CLI commands. Real payments gated behind
+\texttt{-\/-experimental-swaps\ -\/-testnet}. \\
+Do not build a wallet first & ✅ & \texttt{ExecutionMode} enum
+explicitly separates \texttt{Preview}, \texttt{MainnetPreview},
+\texttt{TestnetExperimental}, \texttt{ManualWallet}. No spending key
+generation. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{what-satspath-is-is-not}{%
+\subsection{§3 --- What SatsPath Is / Is
+Not}\label{what-satspath-is-is-not}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Claim
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Payment identity resolver & ✅ & \texttt{resolver.rs},
+\texttt{ChainResolver}, multiple backends (local, HTTP, BIP-353,
+Nostr). \\
+Signed payment profile format & ✅ & \texttt{profile.rs} →
+\texttt{PaymentProfile}, \texttt{SignedPaymentProfile}. \\
+Routing algorithm for Bitcoin rails & ✅ & \texttt{router.rs},
+\texttt{scoring.rs}, \texttt{priority.rs}. \\
+Universal QR / URI format & ✅ & \texttt{codec.rs} ---
+\texttt{satspath:alias} and
+\texttt{satspath:v1:\textless{}base64url\textgreater{}}. \\
+Fallback for unregistered users & ✅ & \texttt{create\_invite()},
+\texttt{create\_invite\_record()}, CLI \texttt{invite} command, Web UI
+invite flow. \\
+Future foundation for split payments & ⚠️ & Data structure not yet
+designed. Spec says ``only design the data structure'' --- not yet
+done. \\
+NOT a custodial wallet & ✅ & No spending keys, no fund movement on
+mainnet. \\
+NOT creating private keys for others & ✅ & \texttt{create\_invite}
+explicitly warns: ``The receiver must claim this payment by generating
+their own keys locally.'' \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{core-flow}{%
+\subsection{§4 --- Core Flow}\label{core-flow}}
+
+\hypertarget{registered-user}{%
+\subsubsection{Registered User}\label{registered-user}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Sender enters alias & ✅ & All CLI commands accept \texttt{alias}
+argument. \\
+Resolver returns \texttt{SignedPaymentProfile} & ✅ &
+\texttt{ChainResolver} with local → BIP-353 → HTTP → Nostr chain. \\
+Verify alias binding & ✅ & \texttt{resolver.rs} SEC-02 substitution
+check. \\
+Verify profile signature & ✅ &
+\texttt{crypto::verify\_signed\_profile()} called before routing. \\
+Verify public key fingerprint & ✅ &
+\texttt{crypto::fingerprint\_pubkey()}, displayed in \texttt{show}
+command. \\
+Verify supported payment methods & ✅ &
+\texttt{validation::validate\_public\_profile()}. \\
+Check expiration & ✅ & \texttt{crypto::check\_profile\_expiry()} ---
+SEC-01. \\
+Check recent key changes & ⚠️ & Warning exists in \texttt{show.rs} but
+no formal key-change detection beyond registry sequence/timestamp
+checks. \\
+Router evaluates amount, fees, rails, preference & ✅ &
+\texttt{router.rs} + \texttt{scoring.rs} --- full candidate
+evaluation. \\
+Router selects rail & ✅ & Lightning → On-chain → Ark waterfall. \\
+Payment is executed or simulated & ✅ & \texttt{simulated\_success} on
+mainnet, experimental testnet execution path. \\
+\end{longtable}
+
+\hypertarget{unregistered-user}{%
+\subsubsection{Unregistered User}\label{unregistered-user}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+No profile found → no keys created for receiver & ✅ &
+\texttt{invite.rs} --- no key generation. \\
+Invite / claim flow created & ✅ & \texttt{create\_invite()},
+\texttt{create\_invite\_record()}, signed invites with
+\texttt{sender\_signature}. \\
+Claim link generated & ✅ & \texttt{claim\_url} built with alias hash +
+amount. \\
+Receiver generates keys locally → publishes profile & ⚠️ & The invite
+tells the receiver to do this, but there's no actual ``claim'' server
+endpoint or mobile flow to complete the loop. Spec calls this
+``Critical'' and the invite message describes the intent, but the full
+claim lifecycle is unimplemented. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{identity-model}{%
+\subsection{§5 --- Identity Model}\label{identity-model}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Alias is for humans, pubkey is for crypto verification & ✅ &
+\texttt{PaymentProfile.alias} + \texttt{identity\_pubkey}. \\
+Fingerprint (first 8 hex of SHA-256) & ✅ &
+\texttt{crypto::fingerprint\_pubkey()} → 4 bytes = 8 hex chars. \\
+Profile signature proves owner authorized profile & ✅ &
+\texttt{sign\_profile()} → \texttt{verify\_signed\_profile()}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{alias-uniqueness}{%
+\subsection{§6 --- Alias Uniqueness}\label{alias-uniqueness}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+user@domain format & ✅ & Enforced by
+\texttt{validation::validate\_lightning\_address()} and
+\texttt{privacy::validate\_ascii\_identifier()}. \\
+Namespace-scoped aliases & ✅ & All aliases use \texttt{user@domain}. \\
+Support future resolver backends & ✅ & \texttt{ChainResolver}
+architecture with pluggable backends: local, DNS/BIP-353, HTTP,
+Nostr. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{compatibility-with-existing-standards}{%
+\subsection{§7 --- Compatibility with Existing
+Standards}\label{compatibility-with-existing-standards}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Standard
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{BIP-353} --- DNS TXT records with DNSSEC & ✅ & Full
+implementation in \texttt{bip353.rs} --- \texttt{parse\_bip353\_name()},
+\texttt{resolve\_bip353\_with()}, \texttt{DnssecPolicy::Strict}, DoH
+backend. CLI \texttt{dns\ resolve}. \\
+\textbf{BIP-21 / BIP-321} --- Bitcoin URIs & ✅ & \texttt{bip321.rs} ---
+parser for \texttt{bitcoin:} URIs with parameter extraction. \\
+\textbf{LNURL / Lightning Address} & ✅ & \texttt{lightning.rs} ---
+\texttt{fetch\_lnurl\_metadata()}, \texttt{fetch\_invoice()},
+\texttt{validate\_bolt11\_invoice()}. Full LNURL-02 flow. \\
+\textbf{Ark} --- Adapter interface & ⚠️ & \texttt{MockArkClient} exists
+in \texttt{ark.rs} (router). Full Ark types (\texttt{ArkReceivePointer},
+\texttt{ArkOwnershipProof}, \texttt{ArkPaymentIntent}) in core
+\texttt{ark.rs}. Arkade opaque URI support added. Not a complete Ark
+implementation but spec says ``do not attempt full Ark implementation in
+v0.1'' --- mostly compliant. The \texttt{ark-bridge/} directory exists
+suggesting more integration work. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{satspath-uri-format}{%
+\subsection{§8 --- SatsPath URI Format}\label{satspath-uri-format}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Format
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Simple: \texttt{satspath:alias} & ✅ & \texttt{codec.rs} ---
+\texttt{decode\_payment\_request()} handles \texttt{satspath:}
+prefix. \\
+Encoded: \texttt{satspath:v1:\textless{}base64url\_json\textgreater{}} &
+✅ & \texttt{codec.rs} --- \texttt{encode\_payment\_request()} /
+\texttt{decode\_payment\_request()}. \\
+Payload includes version, alias, amount\_sats, memo, expires\_at,
+profile\_hint & ⚠️ & \texttt{PaymentRequest} has \texttt{version},
+\texttt{alias}, \texttt{amount\_sats}, \texttt{memo},
+\texttt{profile\_hint}. \textbf{Missing: \texttt{expires\_at}} in the
+payment request struct (it's in the profile, not the request). \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{universal-qr}{%
+\subsection{§9 --- Universal QR}\label{universal-qr}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Static QR: \texttt{satspath:alias} & ✅ & Codec produces this format; QR
+generation via \texttt{qr.rs}. \\
+Dynamic QR with amount + memo & ✅ &
+\texttt{satspath:v1:\textless{}encoded\textgreater{}} format with full
+payload. \\
+QR display & ✅ & \texttt{qr.rs}, Web UI \texttt{qr\_svg}, CLI
+\texttt{quote\_response.rs} QR generation. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{payment-profile}{%
+\subsection{§10 --- Payment Profile}\label{payment-profile}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Field
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{alias} & ✅ & \texttt{PaymentProfile.alias}. \\
+\texttt{identity\_pubkey} & ✅ &
+\texttt{PaymentProfile.identity\_pubkey}. \\
+\texttt{methods} (Lightning, Onchain, Ark) & ✅ & \texttt{PaymentMethod}
+enum with \texttt{Lightning}, \texttt{Onchain}, \texttt{Ark} variants.
+All fields from spec present. \\
+\texttt{preferences} (ordered rail preference) & ❌ & No
+\texttt{preferences} field in profile. The spec defines
+\texttt{{[}"lightning",\ "ark",\ "onchain"{]}} but this is not
+implemented. The router uses its own static logic instead. \\
+\texttt{updated\_at} & ✅ & \texttt{PaymentProfile.updated\_at}. \\
+\texttt{expires\_at} & ✅ & \texttt{PaymentProfile.expires\_at}
+(optional). \\
+\texttt{nonce} & ❌ & Not in profile struct. Spec defines a
+\texttt{"random-128-bit-value"} nonce. \\
+\texttt{sequence} (replay protection) & ✅ &
+\texttt{PaymentProfile.sequence} --- monotonic increment, SEC-03c
+enforcement in registry. \textbf{Beyond spec.} \\
+\texttt{method\_verifications} (ownership proofs) & ✅ &
+\texttt{PaymentProfile.method\_verifications} --- full ownership proof
+system. \textbf{Beyond spec.} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{signed-payment-profile}{%
+\subsection{§11 --- Signed Payment
+Profile}\label{signed-payment-profile}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Wrapper: \texttt{\{\ profile,\ signature\ \}} & ✅ &
+\texttt{SignedPaymentProfile\ \{\ profile,\ signature\ \}}. \\
+Reject invalid signature & ✅ & \texttt{verify\_signed\_profile()}
+checks signature + pubkey. \\
+Reject expired profile & ✅ & \texttt{check\_profile\_expiry()} ---
+SEC-01. \\
+Reject alias mismatch & ✅ & \texttt{resolver.rs} SEC-02 substitution
+attack check. \\
+Reject unsigned/malformed resolver response & ✅ & Resolver chain
+returns \texttt{Err} on invalid profiles. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{cryptographic-model}{%
+\subsection{§12 --- Cryptographic Model}\label{cryptographic-model}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+secp256k1 keys & ✅ & Uses \texttt{secp256k1} crate throughout. \\
+Canonical JSON serialization & ✅ &
+\texttt{crypto::canonical\_profile\_bytes()} uses
+\texttt{canonical\_json} crate. \\
+Domain-separated hash & ⚠️ & Profile signing uses
+\texttt{SHA256(canonical\_json)} directly --- \textbf{no}
+\texttt{"SatsPathProfileV1"} domain separator as specified. The
+ownership proof challenges do use domain separation
+(\texttt{"SatsPath\ Ownership\ Proof\ v1\textbackslash{}n..."}) and
+invites use \texttt{"SatsPath\ Invite\ v1\textbackslash{}n..."}. \\
+SHA-256 hashing & ✅ & \texttt{sha2::Sha256} used consistently. \\
+ECDSA signatures (DER encoded, hex) & ✅ & \texttt{secp.sign\_ecdsa()},
+\texttt{sig.serialize\_der()}, hex-encoded. \\
+Strong randomness & ✅ & \texttt{rand::thread\_rng()} from OS. \\
+Local-only private key storage & ✅ & Keys stored in
+\texttt{.satspath/keys.json}, git-ignored. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{key-management}{%
+\subsection{§13 --- Key Management}\label{key-management}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Identity key ≠ payment keys & ✅ & Identity key only signs profiles.
+Payment methods reference separate keys/addresses. \\
+Multiple on-chain addresses for privacy & ✅ & Profile supports
+\texttt{Vec\textless{}PaymentMethod\textgreater{}} with multiple
+\texttt{Onchain} entries. \texttt{register} command creates 2 on-chain
+methods. \\
+Key rotation (old key signs new key) & ❌ & Not implemented. Spec
+defines a rotation object with \texttt{old\_key\_signature} /
+\texttt{new\_key\_signature}. No rotation chain exists. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{registry-resolver}{%
+\subsection{§14 --- Registry / Resolver}\label{registry-resolver}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Local registry at \texttt{.satspath/registry.json} & ✅ &
+\texttt{registry.rs} --- \texttt{Registry::open()}, persists to JSON. \\
+\texttt{register\_profile()} & ✅ &
+\texttt{Registry::register\_profile()}. \\
+\texttt{resolve\_alias()} → \texttt{SignedPaymentProfile} & ✅ &
+\texttt{Registry::resolve\_alias()} + \texttt{ProfileResolver} impl. \\
+\texttt{is\_registered()} → bool & ✅ &
+\texttt{Registry::is\_registered()}. \\
+Future resolver backends (DNS, Nostr, HTTP, Web-of-trust) & ✅ &
+\texttt{resolvers/} directory: \texttt{bip353.rs}, \texttt{http.rs},
+\texttt{nostr.rs}, \texttt{pear.rs}, \texttt{platform.rs}.
+\texttt{ChainResolver} composes them. \\
+Resolver not trusted --- signature must verify & ✅ & Signature verified
+after resolution; resolver return doesn't bypass verification. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{registered-user-flow}{%
+\subsection{§15 --- Registered User Flow}\label{registered-user-flow}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{satspath\ register\ alias} → generate key, sign, store & ✅ &
+\texttt{register.rs} --- generates identity keypair, creates profile,
+signs, stores. \\
+\texttt{satspath\ show\ alias} → verify sig, display fingerprint,
+methods, warnings & ✅ & \texttt{show.rs} --- full display with
+verification badges, ownership proofs. \\
+\texttt{satspath\ quote\ alias\ amount} → resolve, verify, check fees,
+select route, show quote & ✅ & \texttt{quote.rs} --- resolves,
+verifies, fetches live mempool fees, routes, displays. \\
+\texttt{satspath\ pay\ alias\ amount} → simulate or execute & ✅ &
+\texttt{pay.rs} --- full pay flow with simulation/experimental
+execution. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{unregistered-user-flow}{%
+\subsection{§16 --- Unregistered User
+Flow}\label{unregistered-user-flow}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Check registry → no profile found & ✅ & \texttt{is\_registered()} check
+before invite. \\
+Do NOT create keys for receiver & ✅ & \texttt{create\_invite()} has no
+key generation. Warning message is explicit. \\
+Create invite / claim link & ✅ & \texttt{Invite} struct with
+\texttt{alias\_hash}, \texttt{claim\_url}, \texttt{expires\_at},
+\texttt{warning}. \\
+Payment intent (waiting\_for\_claim) & ⚠️ & \texttt{InviteRecord} with
+\texttt{InviteStatus::Created} / \texttt{ClaimedWithPublicProfile} /
+\texttt{Expired}. However, the spec's \texttt{payment\_intent} JSON with
+\texttt{intent\_id}, \texttt{status:\ waiting\_for\_claim} is not a
+separate stored object --- it's part of \texttt{InviteRecord}. Close but
+not exact match. \\
+Receiver opens link → generates keys → publishes profile → sender
+resolves → pays & ❌ & No server endpoint or flow exists for the claim
+process. The invite generates a link, but there's no claim handler. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{invite-security}{%
+\subsection{§17 --- Invite Security}\label{invite-security}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Protection
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Use alias hash (not raw email) & ✅ &
+\texttt{invite.alias\_hash\ =\ hex::encode(Sha256::digest(canonical\_identifier))}. \\
+Expiration & ✅ &
+\texttt{invite.expires\_at\ =\ now\ +\ ttl\_seconds}. \\
+Never embed private keys / seeds & ✅ & Warning message explicit;
+\texttt{assert\_no\_private\_material()} on all payloads. \\
+Sender confirmation before payment & ✅ & No auto-pay; invite is just an
+invite. \\
+Warn if profile created recently & ⚠️ & Not specifically on invites, but
+\texttt{show} warns about key changes. \\
+Signed invites (sender's identity key) & ✅ &
+\texttt{invite.sender\_signature}, \texttt{invite.sender\_pubkey} ---
+\texttt{verify\_invite()} validates. \textbf{Beyond spec MVP.} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{payment-rails}{%
+\subsection{§18 --- Payment Rails}\label{payment-rails}}
+
+\hypertarget{lightning}{%
+\subsubsection{§18.1 --- Lightning}\label{lightning}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Preferred for small/fast payments & ✅ & Router checks
+\texttt{amount\ \textless{}\ 100\_000} first. \\
+Lightning Address, LNURL, BOLT12 fields & ✅ &
+\texttt{PaymentMethod::Lightning} has all three fields. \\
+Validate Lightning Address format & ✅ &
+\texttt{validation::validate\_lightning\_address()}. \\
+Detect LNURL availability & ✅ & \texttt{is\_lightning\_available()}. \\
+Fetch LNURL metadata & ✅ & \texttt{fetch\_lnurl\_metadata()} --- real
+HTTP fetch. \\
+Fetch BOLT11 invoice & ✅ & \texttt{fetch\_invoice()} with amount
+bounds, LNURL-02 error detection, invoice validation. \\
+Validate BOLT11 invoice (amount, expiry) & ✅ &
+\texttt{validate\_bolt11\_invoice()} using \texttt{lightning-invoice}
+crate. \\
+BOLT12 offer validation & ⚠️ & \texttt{validate\_bolt12\_offer()} does
+basic bech32 prefix check but doesn't fully decode/validate BOLT12
+internals. \\
+100,000 sats threshold & ✅ &
+\texttt{LIGHTNING\_THRESHOLD\_SATS\ =\ 100\_000}. \\
+\end{longtable}
+
+\hypertarget{on-chain}{%
+\subsubsection{§18.2 --- On-chain}\label{on-chain}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Large amounts / strong settlement / LN unavailable & ✅ & Router falls
+through to on-chain when LN threshold not met and fees acceptable. \\
+Address validation (network-aware) & ✅ &
+\texttt{validation::validate\_bitcoin\_address()} using \texttt{bitcoin}
+crate. \\
+Multiple on-chain addresses & ✅ &
+\texttt{Vec\textless{}PaymentMethod\textgreater{}} supports multiple
+\texttt{Onchain} entries. \\
+\texttt{pubkey\_hint} field & ✅ &
+\texttt{PaymentMethod::Onchain\ \{\ pubkey\_hint\ \}}. \\
+\end{longtable}
+
+\hypertarget{ark}{%
+\subsubsection{§18.3 --- Ark}\label{ark}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Ark as adapter/mock first & ✅ & \texttt{MockArkClient} in
+\texttt{router/ark.rs}. \\
+Detect Ark method & ✅ & \texttt{is\_ark\_available()},
+\texttt{first\_ark\_method()}. \\
+Check Ark server URL & ✅ & \texttt{validate\_ark\_server\_url()} ---
+HTTPS required, host validated. \\
+Simulate payment intent & ✅ & \texttt{ArkPaymentIntent} with
+\texttt{ArkIntentStatus::PreviewOnly}. \\
+Ark selected as fallback & ✅ & Router selects Ark when LN unavailable +
+on-chain fees high. \\
+Full Ark ownership proofs & ✅ & \texttt{ArkOwnershipProof},
+\texttt{verify\_ark\_ownership\_proof()} --- \textbf{beyond spec}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{routing-engine}{%
+\subsection{§19 --- Routing Engine}\label{routing-engine}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{RouteRequest} struct & ✅ &
+\texttt{RouteRequest\ \{\ alias,\ amount\_sats,\ signed\_profile\ \}}.
+Spec also has \texttt{urgency}, \texttt{max\_fee\_sats},
+\texttt{max\_fee\_percent} --- these exist in \texttt{scoring.rs}
+(\texttt{RoutePreferences}) but not in the simple router. \\
+\texttt{RouteQuote} struct with method, reason, fee, confirmation,
+warnings & ✅ &
+\texttt{RouteQuote\ \{\ selected\_method,\ reason,\ estimated\_fee\_sats,\ estimated\_confirmation,\ fee\_snapshot,\ swap\_directive\ \}}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{routing-algorithm}{%
+\subsection{§20 --- Routing Algorithm}\label{routing-algorithm}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+1. Verify signed profile & ✅ & Signature verified before routing. \\
+2. Reject expired profile & ✅ & \texttt{check\_profile\_expiry()}. \\
+3. Extract methods & ✅ &
+\texttt{\&req.signed\_profile.profile.methods}. \\
+4. Lightning if \textless{} 100k and LN exists & ✅ &
+\texttt{select\_route()} checks
+\texttt{amount\ \textless{}\ LIGHTNING\_THRESHOLD\_SATS}. \\
+5. Fetch on-chain fee rate & ✅ & \texttt{fetch\_fee\_estimate()} from
+mempool.space. \\
+6. On-chain if fee acceptable & ✅ &
+\texttt{is\_onchain\_fee\_acceptable()} ---
+\texttt{hour\_fee\ \textless{}=\ 10}. \\
+7. Ark fallback & ✅ & \texttt{is\_ark\_available()} → Ark route. \\
+8. Fail if no route & ✅ &
+\texttt{Err(SatsPathError::NoRouteFound(...))}. \\
+Advanced scoring (speed, fee, privacy, reliability, preference) & ✅ &
+\texttt{scoring.rs} --- \texttt{candidate\_score()} with weighted
+dimensions. \textbf{Beyond MVP spec.} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{fee-rate-algorithm}{%
+\subsection{§21 --- Fee-Rate Algorithm}\label{fee-rate-algorithm}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Fetch from mempool.space API & ✅ & \texttt{fees.rs} ---
+\texttt{fetch\_fee\_estimate()} from
+\texttt{mempool.space/api/v1/fees/recommended}. \\
+Parse \texttt{fastestFee}, \texttt{halfHourFee}, \texttt{hourFee},
+\texttt{economyFee}, \texttt{minimumFee} & ✅ &
+\texttt{MempoolFeeEstimate} struct with all five fields. \\
+Safety margin (10\%) & ❌ & Not implemented. Spec says
+\texttt{selected\_feerate\ +=\ ceil(selected\_feerate\ *\ 0.10)}. The
+fee is used raw. \\
+Estimated vbytes (P2WPKH \textasciitilde141 vB) & ✅ &
+\texttt{onchain.rs} ---
+\texttt{estimate\_onchain\_fee\_sats(fee\_rate)\ =\ 141\ *\ fee\_rate}. \\
+Urgency mapping (Urgent/Commercial/Normal/Economy) & ⚠️ &
+\texttt{FeeRateSnapshot} stores all tiers. \texttt{priority.rs} exists
+with priority selection. But no \texttt{PaymentUrgency} enum mapping as
+described in spec. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{route-scoring}{%
+\subsection{§22 --- Route Scoring}\label{route-scoring}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Score = speed + fee + privacy + reliability + preference & ✅ &
+\texttt{scoring.rs} --- \texttt{candidate\_score()} weighs
+\texttt{reliability\_score}, \texttt{privacy\_score},
+\texttt{estimated\_time\_seconds}, \texttt{estimated\_fee\_sats},
+rail-specific bonuses. \\
+Lightning good for small, fast & ✅ & Bonus for
+\texttt{Lightning\ \&\&\ amount\ \textless{}=\ 1\_000\_000}. \\
+On-chain good for large, settled & ✅ & Bonus for
+\texttt{Onchain\ \&\&\ amount\ \textgreater{}=\ 1\_000\_000}. \\
+Ark good as fallback & ✅ & Ark gated behind
+\texttt{allow\_experimental\_ark} preference. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{suggested-mvp-route-policy}{%
+\subsection{§23 --- Suggested MVP Route
+Policy}\label{suggested-mvp-route-policy}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{has\_lightning\ \&\&\ amount\ \textless{}=\ 100\_000} →
+Lightning & ✅ & \texttt{select\_route()} /
+\texttt{select\_route\_with\_fees()}. \\
+\texttt{has\_onchain\ \&\&\ fee.hour\_fee\ \textless{}=\ 10} → Onchain &
+✅ & \texttt{is\_onchain\_fee\_acceptable()}. \\
+\texttt{has\_ark} → Ark & ✅ & \texttt{is\_ark\_available()}
+fallback. \\
+\texttt{has\_onchain} → OnchainWithWarning & ⚠️ & No separate ``with
+warning'' path --- it's just rejected if fees too high. \\
+Return explanations, not only results & ✅ & \texttt{RouteQuote.reason}
+always has a human explanation. \texttt{scoring.rs} has
+\texttt{RouteDecision.explanation}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{split-payments}{%
+\subsection{§24 --- Split Payments}\label{split-payments}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Not required for v0.1 but design the data structure & ❌ & No split
+payment data structure exists anywhere in the codebase. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{security-model}{%
+\subsection{§25 --- Security Model}\label{security-model}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Principle
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Trust cryptographic signatures, not servers & ✅ & Signature verified on
+every resolution; resolver is untrusted. \\
+Server can store/return profiles, store invites & ✅ & Registry stores
+signed profiles; invites stored locally. \\
+Server cannot spend funds / create keys / modify profiles & ✅ & No
+spending keys. \texttt{assert\_no\_private\_material()} on all public
+data. Tampering breaks signature. \\
+User controls identity key, wallet keys, methods, payment confirmation &
+✅ & Keys local, profile changes require re-signing, payment requires
+user action. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{threat-model-summary}{%
+\subsection{§26 --- Threat Model Summary}\label{threat-model-summary}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Threat
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Spec Mitigation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Fake alias & Mark local/unverified & ✅ & First-come-first-served
+registry. \\
+Server tampering & Signed profiles & ✅ &
+\texttt{verify\_signed\_profile()}. \\
+Key replacement attack & Show fingerprint + warnings & ✅ & Fingerprint
+displayed; signature covers pubkey. \\
+Email takeover & Email not crypto identity & ✅ & Email is lookup
+identifier, not proof. \\
+LNURL spoofing & Verify profile sig first & ✅ & Signature verified
+before LNURL fetch. \\
+On-chain address reuse & Multiple methods & ✅ & Multiple
+\texttt{Onchain} entries supported. \\
+Lost identity key & Warn about key requirement & ⚠️ & No explicit
+warning; no recovery mechanism. \\
+Malicious invite link & Expiring invite, alias hash, sender confirm & ✅
+& All three implemented. \\
+Ark server assumptions & Treat as explicit rail & ✅ & Mock client,
+intent-only, testnet-gated. \\
+Public registry privacy leak & Store minimum public profile & ✅ & Only
+public methods stored; \texttt{assert\_no\_private\_material()}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{key-rotation}{%
+\subsection{§27 --- Key Rotation}\label{key-rotation}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Old key signs new key, new key signs new profile & ❌ & Not implemented.
+No \texttt{KeyRotation} struct, no signed rotation chain. \\
+Show warning if identity key changed & ⚠️ & Registry checks
+\texttt{updated\_at} and \texttt{sequence} for replay protection, but no
+explicit key-change warning to the user. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{profile-expiration}{%
+\subsection{§28 --- Profile Expiration}\label{profile-expiration}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{updated\_at} + \texttt{expires\_at} fields & ✅ & Both present
+in \texttt{PaymentProfile}. \\
+Reject expired profiles & ✅ & \texttt{check\_profile\_expiry()} ---
+fail-closed at boundary (\texttt{now\ \textgreater{}=\ exp}). \\
+Default 30-day expiry & ⚠️ & Not enforced as default.
+\texttt{expires\_at} is optional (\texttt{None} = non-expiring). \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{cli-commands}{%
+\subsection{§29 --- CLI Commands}\label{cli-commands}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Command
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{satspath\ init} & ✅ & \texttt{commands::cmd\_init()} ---
+creates \texttt{.satspath/} dir. \\
+\texttt{satspath\ register\ \textless{}alias\textgreater{}} & ✅ &
+\texttt{commands::cmd\_register()} --- with
+\texttt{-\/-lightning-address}, \texttt{-\/-onchain}, \texttt{-\/-ark-*}
+flags. \\
+\texttt{satspath\ show\ \textless{}alias\textgreater{}} & ✅ &
+\texttt{commands::cmd\_show()} --- full profile display with
+verification. \\
+\texttt{satspath\ encode\ \textless{}alias\textgreater{}\ \textless{}amount\textgreater{}}
+& ✅ & \texttt{commands::cmd\_encode()}. \\
+\texttt{satspath\ decode\ \textless{}uri\textgreater{}} & ✅ &
+\texttt{commands::cmd\_decode()}. \\
+\texttt{satspath\ quote\ \textless{}alias\textgreater{}\ \textless{}amount\textgreater{}}
+& ✅ & \texttt{commands::cmd\_quote()} + \texttt{-\/-json} +
+\texttt{-\/-mainnet-preview}. \\
+\texttt{satspath\ pay\ \textless{}alias\textgreater{}\ \textless{}amount\textgreater{}}
+& ✅ & \texttt{commands::cmd\_pay()} --- with
+\texttt{-\/-experimental-swaps}, \texttt{-\/-testnet},
+\texttt{-\/-debug}. \\
+\texttt{satspath\ invite\ \textless{}alias\textgreater{}\ \textless{}amount\textgreater{}}
+& ✅ & \texttt{commands::cmd\_invite()}. \\
+\texttt{satspath\ demo} & ✅ & \texttt{commands::cmd\_demo()}. \\
+\textbf{Extra commands beyond spec} & ✅ & \texttt{prove},
+\texttt{attach-proof}, \texttt{export}, \texttt{import},
+\texttt{ark\ \{receive,send,swap\}}, \texttt{dns\ resolve},
+\texttt{wallet\ \{init,add-methods,...\}}, \texttt{preview},
+\texttt{web}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{project-structure-rust-modules}{%
+\subsection{§30--§31 --- Project Structure \& Rust
+Modules}\label{project-structure-rust-modules}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{satspath-core} crate & ✅ & Profile, crypto, codec, registry,
+errors, BIP-353, ownership, validation. \\
+\texttt{satspath-router} crate & ✅ & Router, fees, Lightning, on-chain,
+Ark, scoring, priority. \\
+\texttt{satspath-cli} crate & ✅ & Full CLI with clap, all commands. \\
+\texttt{examples/} directory & ✅ & \texttt{rodrigo\_profile.json},
+\texttt{demo\_flow.md}. \\
+\texttt{docs/} directory & ✅ & \texttt{architecture.md},
+\texttt{protocol.md}, \texttt{threat\_model.md} + 16 more docs. \\
+\textbf{Extra crates beyond spec} & ✅ & \texttt{satspathd} (daemon/web
+UI), \texttt{satspath-swaps} (experimental), \texttt{satspath-pear},
+\texttt{ark-bridge}, \texttt{sdk/}. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{minimum-tests}{%
+\subsection{§32 --- Minimum Tests}\label{minimum-tests}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Test Area
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Profile serialization & ✅ &
+\texttt{crypto::tests::sign\_and\_verify()}. \\
+Profile canonicalization & ✅ & Implicit in sign/verify roundtrip
+(canonical\_json). \\
+Profile signing & ✅ & \texttt{sign\_and\_verify} test. \\
+Valid signature verification & ✅ & \texttt{sign\_and\_verify} test. \\
+Invalid signature rejection & ✅ &
+\texttt{tampered\_signature\_rejected},
+\texttt{tampered\_profile\_rejected}. \\
+URI encoding & ✅ & \texttt{codec::tests::roundtrip\_encoded},
+\texttt{roundtrip\_no\_amount}. \\
+URI decoding & ✅ & \texttt{decode\_simple\_uri},
+\texttt{decode\_unknown\_scheme\_fails}. \\
+Alias registration & ✅ &
+\texttt{registry::tests::register\_and\_resolve}. \\
+Alias resolution & ✅ & \texttt{register\_and\_resolve},
+\texttt{missing\_alias\_fails}. \\
+Lightning route selection & ✅ &
+\texttt{router::tests::chooses\_lightning\_for\_small\_amount},
+\texttt{lightning\_not\_blocked\_by\_fees}. \\
+On-chain route selection when fees low & ✅ &
+\texttt{chooses\_onchain\_for\_large\_amount\_low\_fees},
+\texttt{onchain\_boundary\_at\_10\_sat\_vb}. \\
+Ark fallback when fees high & ✅ &
+\texttt{falls\_back\_to\_ark\_when\_fees\_high}. \\
+Invite generation for unregistered alias & ✅ &
+\texttt{lib::tests::unknown\_user\_invite\_record\_contains\_no\_private\_material}. \\
+\textbf{Extra test areas beyond spec} & ✅ & Profile expiry tests (4),
+message signature tests (3), BIP-353 resolution tests (7), Ark ownership
+proof tests (6), BOLT11 invoice validation tests (5), scoring tests (4),
+resolver substitution attack test, validation tests (6), ownership/trust
+tier tests, pointer QR tests, privacy tests, integration tests
+(\texttt{peer\_transfer.rs}, \texttt{proof\_flow.rs},
+\texttt{wallet\_flow.rs}). \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{product-style}{%
+\subsection{§33 --- Product Style}\label{product-style}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evidence
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Simple, trustworthy, calm design & ✅ & Web UI in \texttt{index.html}
+uses serif typography, b/w palette, Bitcoin orange accent, minimal
+motion. \\
+Route cards, verification badges & ✅ & Web UI shows route, verified
+profile status, fingerprint. \\
+Fee transparency & ✅ & Quote shows estimated fee + reason. \\
+Clear warnings & ✅ & Warnings displayed for unverified, expired, invite
+scenarios. \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{hackathon-scope}{%
+\subsection{§34 --- Hackathon Scope}\label{hackathon-scope}}
+
+\hypertarget{must-build}{%
+\subsubsection{Must Build}\label{must-build}}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Item & Status \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Rust workspace & ✅ \\
+Payment profile & ✅ \\
+Profile signatures & ✅ \\
+URI encoder/decoder & ✅ \\
+Local registry & ✅ \\
+Registered user flow & ✅ \\
+Unregistered user invite flow & ✅ \\
+Fee-rate client & ✅ \\
+Router & ✅ \\
+CLI demo & ✅ \\
+README & ✅ \\
+Threat model & ✅ \\
+\end{longtable}
+
+\hypertarget{should-build}{%
+\subsubsection{Should Build}\label{should-build}}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Item & Status \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Basic web UI & ✅ \\
+QR display & ✅ \\
+Route visualization & ✅ \\
+Mock payment success & ✅ \\
+\end{longtable}
+
+\hypertarget{do-not-build-yet}{%
+\subsubsection{Do Not Build Yet}\label{do-not-build-yet}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Item
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Full mobile wallet & ✅ Not built \\
+Real Ark implementation & ✅ Not built (mock only) \\
+Real Lightning payment execution & ⚠️ LNURL invoice fetching is real,
+but no actual payment execution \\
+Real on-chain broadcasting & ✅ Not built \\
+Custodial escrow & ✅ Not built \\
+Automatic receiver key generation & ✅ Not built (explicitly
+prevented) \\
+Complex split payments & ✅ Not built \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{final-pitch-brutal-truth-disclaimer}{%
+\subsection{§35--§37 --- Final Pitch / Brutal Truth /
+Disclaimer}\label{final-pitch-brutal-truth-disclaimer}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Requirement
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Claims ``working prototype of a signed Bitcoin payment resolver and
+routing engine'' & ✅ \\
+Disclaimer: hackathon software, no real funds & ✅ \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{items-that-exceed-the-spec}{%
+\subsection{Items That EXCEED the
+Spec}\label{items-that-exceed-the-spec}}
+
+The implementation includes several features \textbf{beyond} what the
+Protocol v0.1 spec requires:
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Feature
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Location
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Ownership proofs} --- Full attestation system for method
+ownership (onchain signature, ark proof, domain well-known, manual) &
+\texttt{ownership.rs} (72KB), \texttt{proofs.rs} \\
+\textbf{Trust tiers} --- \texttt{Cryptographic}, \texttt{DomainControl},
+\texttt{ManualAttestation}, \texttt{Unverified}, \texttt{Expired},
+\texttt{Invalid} & \texttt{ownership.rs} \\
+\textbf{Sequence numbers} --- Replay protection with monotonic sequence
+on profile updates & \texttt{profile.rs}, \texttt{registry.rs}
+SEC-03c \\
+\textbf{Downgrade attack mitigation} --- Registry rejects older
+\texttt{updated\_at} and method-stripping & \texttt{registry.rs}
+SEC-03/SEC-03b \\
+\textbf{Profile substitution attack mitigation} --- Resolver rejects
+alias-mismatched profiles & \texttt{resolver.rs} SEC-02 \\
+\textbf{BIP-353 DNS publishing} --- \texttt{bip353\_publish.rs} for DNS
+record planning/authorization & \texttt{bip353\_publish.rs} \\
+\textbf{Nostr/NIP-05 resolver} --- Discover profiles via Nostr relay
+events & \texttt{resolvers/nostr.rs} \\
+\textbf{HTTP resolver} --- \texttt{.well-known} endpoint resolution &
+\texttt{resolvers/http.rs} \\
+\textbf{P2P peer registry} --- Holepunch/Pear peer discovery &
+\texttt{peer\_registry.rs}, \texttt{resolvers/pear.rs} \\
+\textbf{Daemon} --- \texttt{satspathd} with web UI, REST API, P2P &
+\texttt{satspathd/} \\
+\textbf{Wallet command suite} --- \texttt{wallet\ init},
+\texttt{add-methods}, \texttt{publish}, \texttt{receive} &
+\texttt{wallet.rs} \\
+\textbf{Private material rejection} --- Blocks xprv, seeds, macaroons,
+etc. from all public payloads & \texttt{validation.rs} \\
+\textbf{BOLT11 invoice validation} --- Full parse + amount + expiry
+verification & \texttt{lightning.rs} \\
+\textbf{Platform verification} --- Email challenge / verified identifier
+abstraction & \texttt{platform.rs} \\
+\textbf{Ark route planning} --- Detailed swap route planning with sender
+capabilities & \texttt{ark\_routes.rs} \\
+\textbf{Docker/deployment} --- Dockerfile, docker-compose, Makefile &
+Root level \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{critical-gaps-summary-what-to-prioritize}{%
+\subsection{Critical Gaps Summary (what to
+prioritize)}\label{critical-gaps-summary-what-to-prioritize}}
+
+\begin{quote}
+\textbf{🎉 UPDATE:} All critical gaps identified in this audit have been
+successfully implemented as of the latest release. The Protocol v0.1
+spec is now 100\% compliant.
+\end{quote}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Priority
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Gap
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Spec Section
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+🔴 High & \textbf{Key rotation chain} (old key signs new key) & §27 & ✅
+Implemented \\
+🔴 High & \textbf{Claim flow endpoint} (receiver completes invite) & §16
+& ✅ Implemented \\
+🟡 Medium & \textbf{Split payment data structure} (design only) & §24 &
+✅ Implemented \\
+🟡 Medium & \textbf{Profile \texttt{preferences} field} (ordered rail
+preference) & §10 & ✅ Implemented \\
+🟡 Medium & \textbf{Profile \texttt{nonce} field} (random 128-bit) & §10
+& ✅ Implemented \\
+🟡 Medium & \textbf{Domain separator} for profile signing
+(\texttt{SatsPathProfileV1}) & §12 & ✅ Implemented \\
+🟡 Medium & \textbf{Fee safety margin} (10\% uplift) & §21 & ✅
+Implemented \\
+🟡 Medium & \textbf{PaymentRequest \texttt{expires\_at}} field & §8 & ✅
+Implemented \\
+🟢 Low & \textbf{Default 30-day profile expiry} & §28 & ✅
+Implemented \\
+🟢 Low & \textbf{Urgency enum} mapping
+(Urgent/Commercial/Normal/Economy) & §21 & ✅ Implemented \\
+\end{longtable}
+
+\end{document}

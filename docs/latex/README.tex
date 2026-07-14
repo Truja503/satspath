@@ -1,0 +1,860 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath}{%
+\section{SatsPath}\label{satspath}}
+
+\textbf{A transport-neutral Bitcoin payment discovery and routing
+protocol.}
+
+\begin{quote}
+DISCLAIMER: This is hackathon software. Do not use with real funds.
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{problem}{%
+\subsection{Problem}\label{problem}}
+
+Bitcoin has multiple payment rails --- Lightning, on-chain, Ark, LNURL,
+BOLT12, Silent Payments --- each with different trade-offs on speed,
+cost, and privacy. Users and apps must manually decide which rail to
+use, and there is no universal way to discover payment methods from a
+human-readable identifier.
+
+\hypertarget{solution}{%
+\subsection{Solution}\label{solution}}
+
+SatsPath maps human-readable identifiers
+(e.g.~\texttt{alice@example.com}) to \textbf{signed payment profiles}
+containing all available payment methods. A routing engine selects the
+best rail automatically based on amount, on-chain fees, and available
+methods.
+
+Identity keys generated by SatsPath are used exclusively for signing
+profiles and proving ownership. \textbf{SatsPath does NOT generate
+wallet private keys, seeds, or custody keys for funds.} SatsPath is a
+resolution and routing layer --- not a wallet, not a custodian.
+
+SatsPath is specified as a transport-neutral protocol. Pear/Holepunch
+P2P is one optional transport for signed profiles, not the protocol
+itself. Start with \url{docs/protocol.md}, \url{docs/resolvers.md},
+\url{docs/wire_p2p.md}, and \url{docs/implementations.md}.
+
+The core flow is:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{identifier {-}\textgreater{} resolver chain {-}\textgreater{} signed profile {-}\textgreater{} signature check {-}\textgreater{} route decision {-}\textgreater{} QR / wallet handoff}
+\end{Highlighting}
+\end{Shaded}
+
+Resolvers can use local files, HTTPS well-known endpoints, BIP-353 DNS,
+Nostr/NIP-05, or optional P2P. A receiver publishes the same signed
+SatsPath profile over any of those transports. A sender only trusts it
+after SatsPath verifies the profile signature.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{current-functional-surface}{%
+\subsection{Current Functional
+Surface}\label{current-functional-surface}}
+
+\begin{itemize}
+\tightlist
+\item
+  Resolve \texttt{alice@example.com} to a signed payment profile through
+  the resolver chain.
+\item
+  Encode/decode universal payment URIs
+  (\texttt{satspath:v1:\textless{}base64url\_json\textgreater{}}).
+\item
+  Sign profiles with secp256k1 identity keys.
+\item
+  Verify profile signatures before routing.
+\item
+  Resolve LNURL-pay endpoints and fetch BOLT11 invoices securely.
+\item
+  Select the best payment rail (Lightning → On-chain → Ark
+  preview/intents).
+\item
+  Return a stable \texttt{QuoteResponse} with \texttt{ok},
+  \texttt{not\_registered}, \texttt{no\_route}, or
+  \texttt{invalid\_signature}.
+\item
+  Produce a public payment payload / QR via CLI preview or
+  \texttt{satspathd} wallet handoff.
+\item
+  Fetch real-time on-chain fee estimates from mempool.space.
+\item
+  Generate safe payment previews and Ark route intents; Ark swaps are
+  not claimed as complete unless explicitly testnet-executed and
+  supported by the bridge.
+\item
+  Resolve DNSSEC-backed \textbf{BIP-353} payment instructions
+  (\texttt{₿user@domain}) for domains the receiver controls --- see
+  \url{docs/bip353_dns_resolution.md}.
+\item
+  Resolve SatsPath profiles over \textbf{Nostr/NIP-05} without P2P:
+  NIP-05 discovers a Nostr pubkey and relays, then relays are queried
+  for a signed SatsPath profile event.
+\item
+  Generate invite links for unregistered users (receiver generates their
+  own keys).
+\item
+  Run a local daemon (\texttt{satspathd}) that exposes
+  \texttt{/v1/node}, \texttt{/v1/quote}, \texttt{/v1/pay},
+  \texttt{/v1/dns/resolve}, \texttt{/v1/peers}, and
+  \texttt{/v1/connections}.
+\item
+  Full CLI: \texttt{init}, \texttt{register}, \texttt{show},
+  \texttt{encode}, \texttt{decode}, \texttt{quote}, \texttt{pay},
+  \texttt{invite}, \texttt{dns\ resolve}, \texttt{demo}.
+\end{itemize}
+
+\begin{quote}
+SatsPath can resolve DNSSEC-backed BIP-353 payment instructions for
+domains the receiver controls. For consumer email addresses like
+\texttt{gmail.com}, SatsPath uses platform verification / the invite
+flow instead, because the user cannot publish DNS records under
+\texttt{gmail.com}. BIP-353 resolution is \textbf{mainnet preview only}:
+SatsPath resolves and displays instructions but never pays, signs, or
+broadcasts.
+\end{quote}
+
+\hypertarget{resolver-chain}{%
+\subsubsection{Resolver Chain}\label{resolver-chain}}
+
+The default resolver chain is:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{local registry {-}\textgreater{} BIP{-}353 {-}\textgreater{} HTTPS well{-}known {-}\textgreater{} Nostr/NIP{-}05}
+\end{Highlighting}
+\end{Shaded}
+
+Optional Pear/Holepunch P2P can be used as another transport, but the
+protocol does not depend on it.
+
+For Nostr, publish:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  A NIP-05 record at
+  \texttt{https://\textless{}domain\textgreater{}/.well-known/nostr.json?name=\textless{}user\textgreater{}}
+  that maps \texttt{user} to a Nostr pubkey and relay list.
+\item
+  A Nostr kind \texttt{30078} event by that pubkey with tag:
+\end{enumerate}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{d = satspath{-}profile:\textless{}user@domain\textgreater{}}
+\end{Highlighting}
+\end{Shaded}
+
+The event \texttt{content} is the JSON \texttt{SignedPaymentProfile}.
+Senders then resolve the identifier, verify the SatsPath profile
+signature, route, and get the QR/payment payload.
+
+Consumer email domains such as \texttt{gmail.com} cannot be used for DNS
+or NIP-05 publication unless the user controls the domain endpoint. For
+those identifiers, the current behavior is invite flow or a future
+platform-verification resolver.
+
+\hypertarget{email-identifiers-vs-verified-identifiers}{%
+\subsubsection{Email identifiers vs verified
+identifiers}\label{email-identifiers-vs-verified-identifiers}}
+
+SatsPath can use an email-shaped value as the human-readable identifier.
+That does not automatically verify the inbox.
+
+\begin{itemize}
+\tightlist
+\item
+  A signed profile proves control of the SatsPath protocol identity key.
+\item
+  DNSSEC/BIP-353 or Nostr/NIP-05 can prove domain-controlled
+  publication.
+\item
+  A consumer email address such as \texttt{user@gmail.com} needs a
+  platform challenge flow before it can be marked as an
+  identifier-verified profile.
+\item
+  Until that exists, consumer email addresses are treated as identifiers
+  for lookup and invite delivery, not as verified payment identities.
+\end{itemize}
+
+\hypertarget{mainnet-preview}{%
+\subsubsection{Mainnet Preview}\label{mainnet-preview}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ preview rodrigo@satspath.dev 1000 }\AttributeTok{{-}{-}mainnet}
+\ExtensionTok{satspath}\NormalTok{ preview rodrigo@satspath.dev 1000 }\AttributeTok{{-}{-}mainnet} \AttributeTok{{-}{-}json}
+\ExtensionTok{satspath}\NormalTok{ quote rodrigo@satspath.dev 1000 }\AttributeTok{{-}{-}mainnet{-}preview} \AttributeTok{{-}{-}json}
+\end{Highlighting}
+\end{Shaded}
+
+Lightning Address / LNURL preview does not fetch a real BOLT11 invoice
+by default. To fetch one explicitly:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ preview rodrigo@getalby.com 1000 }\AttributeTok{{-}{-}mainnet} \AttributeTok{{-}{-}fetch{-}lnurl{-}invoice}
+\end{Highlighting}
+\end{Shaded}
+
+Fetched invoices are displayed only as data. SatsPath never pays them.
+
+\hypertarget{nostr-profile-discovery}{%
+\subsubsection{Nostr profile discovery}\label{nostr-profile-discovery}}
+
+SatsPath can resolve a signed profile through Nostr without using the
+P2P SDK. This requires an identifier whose domain can publish NIP-05
+metadata.
+
+Receiver side:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Publish NIP-05 metadata:
+\end{enumerate}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{https://example.com/.well{-}known/nostr.json?name=alice}
+\end{Highlighting}
+\end{Shaded}
+
+with:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\{}
+  \DataTypeTok{"names"}\FunctionTok{:} \FunctionTok{\{}
+    \DataTypeTok{"alice"}\FunctionTok{:} \StringTok{"\textless{}64{-}char nostr pubkey hex\textgreater{}"}
+  \FunctionTok{\},}
+  \DataTypeTok{"relays"}\FunctionTok{:} \FunctionTok{\{}
+    \DataTypeTok{"\textless{}64{-}char nostr pubkey hex\textgreater{}"}\FunctionTok{:} \OtherTok{[}\StringTok{"wss://relay.example.com"}\OtherTok{]}
+  \FunctionTok{\}}
+\FunctionTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Publish a Nostr event authored by that pubkey:
+\end{enumerate}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\{}
+  \DataTypeTok{"kind"}\FunctionTok{:} \DecValTok{30078}\FunctionTok{,}
+  \DataTypeTok{"tags"}\FunctionTok{:} \OtherTok{[[}\StringTok{"d"}\OtherTok{,} \StringTok{"satspath{-}profile:alice@example.com"}\OtherTok{]]}\FunctionTok{,}
+  \DataTypeTok{"content"}\FunctionTok{:} \StringTok{"\{}\CharTok{\textbackslash{}"}\StringTok{profile}\CharTok{\textbackslash{}"}\StringTok{:\{...\},}\CharTok{\textbackslash{}"}\StringTok{signature}\CharTok{\textbackslash{}"}\StringTok{:}\CharTok{\textbackslash{}"}\StringTok{3044...}\CharTok{\textbackslash{}"}\StringTok{\}"}
+\FunctionTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\texttt{content} is the exact JSON \texttt{SignedPaymentProfile}
+exported by SatsPath.
+
+Sender side:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ quote alice@example.com 250 }\AttributeTok{{-}{-}mainnet{-}preview} \AttributeTok{{-}{-}json}
+\end{Highlighting}
+\end{Shaded}
+
+The resolver chain discovers the Nostr pubkey/relays through NIP-05,
+fetches the SatsPath profile event, verifies the SatsPath signature, and
+returns the normal \texttt{QuoteResponse} with a QR/payment payload.
+
+For \texttt{rodrigodiazgt7@gmail.com}, neither DNS nor NIP-05 can be
+published by the user under \texttt{gmail.com}. That identifier
+currently resolves through invite flow unless a future platform resolver
+verifies Gmail ownership and publishes a signed profile through a
+supported transport.
+
+\hypertarget{what-this-prototype-does-not-do-yet}{%
+\subsection{What this prototype does NOT do
+yet}\label{what-this-prototype-does-not-do-yet}}
+
+\begin{itemize}
+\tightlist
+\item
+  Execute real Lightning, on-chain, or Ark payments. The experimental
+  swap engine is \textbf{testnet-only scaffolding that previews swap
+  intent}; it does not complete, direct, claim, or refund swaps, and
+  must never be used on mainnet.
+\item
+  Enable mainnet Ark execution.
+\item
+  Verify email or domain ownership during registration.
+\item
+  Publish profiles to Nostr from the Rust CLI. The resolver can read
+  Nostr events, but publishing still needs a Nostr client or a future
+  CLI command.
+\item
+  Provide a decentralized global registry. SatsPath uses resolver
+  transports; it does not have a single canonical registry.
+\item
+  Support key rotation or profile revocation.
+\item
+  Implement BOLT12 invoice fetching.
+\item
+  Support Silent Payments or Split Payments.
+\item
+  Provide a production wallet UI.
+\end{itemize}
+
+\hypertarget{safe-path-mainnet-preview-vs-experimental-execution}{%
+\subsection{Safe Path (Mainnet Preview) vs Experimental
+Execution}\label{safe-path-mainnet-preview-vs-experimental-execution}}
+
+The \textbf{Safe Path} (Mainnet Preview) is active by default and
+allowed:
+
+\begin{itemize}
+\tightlist
+\item
+  Resolving public data only.
+\item
+  Fetching and resolving LNURL-pay metadata.
+\item
+  Requesting BOLT11 invoices from LNURL callbacks securely.
+\item
+  Presenting the invoice as a QR code or payment pointer for the user to
+  pay with their own wallet.
+\item
+  Profile signature and expiry checks.
+\item
+  Public ownership proof checks where available.
+\item
+  BIP21 on-chain URI generation.
+\item
+  Ark public pointer / intent URI generation.
+\end{itemize}
+
+The \textbf{Experimental Path} (Automatic Execution via Swaps/Ark) is
+isolated and restricted:
+
+\begin{itemize}
+\tightlist
+\item
+  Requires explicit \texttt{-\/-experimental-swaps} and
+  \texttt{-\/-testnet} flags.
+\item
+  Mainnet execution is strictly disabled (no
+  \texttt{-\/-execute-mainnet} flag exists).
+\item
+  No automatic payment execution exists on mainnet.
+\item
+  No transaction signing or broadcasting path is exposed.
+\item
+  No seed phrases, xprv/tprv, macaroons, certs, API secrets, claim keys,
+  or refund keys are accepted into mainnet preview output.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{architecture}{%
+\subsection{Architecture}\label{architecture}}
+
+\begin{verbatim}
+Human-readable identifier
+  (e.g. rodrigo@satspath.dev)
+          |
+          v
+  ┌───────────────────┐
+  │  Resolver /       │   <-- local .satspath/registry.json (prototype)
+  │  Transport chain  │   <-- BIP-353 / HTTPS / Nostr / optional P2P
+  └────────┬──────────┘
+           |
+           v
+  ┌───────────────────┐
+  │  Signed Payment   │
+  │  Profile          │
+  │  (secp256k1 sig)  │
+  └────────┬──────────┘
+           |
+           v
+  ┌───────────────────┐
+  │  Route Engine     │
+  └──────┬────┬───────┘
+         |    |    \
+         v    v     v
+    ┌────┐ ┌──────┐ ┌─────┐
+    │ LN │ │ BTC  │ │ Ark │
+    └────┘ └──────┘ └─────┘
+\end{verbatim}
+
+\hypertarget{crate-layout}{%
+\subsubsection{Crate layout}\label{crate-layout}}
+
+\begin{verbatim}
+satspath/
+├── crates/
+│   ├── satspath-core/     # Types, crypto, codec, registry
+│   ├── satspath-router/   # Route selection engine + fee API
+│   └── satspath-cli/      # CLI binary
+├── examples/
+│   ├── rodrigo_profile.json
+│   └── demo_flow.md
+└── docs/
+    ├── architecture.md
+    ├── implementations.md
+    ├── resolvers.md
+    ├── threat_model.md
+    ├── protocol.md
+    └── wire_p2p.md
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{installation}{%
+\subsection{Installation}\label{installation}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{git}\NormalTok{ clone https://github.com/}\OperatorTok{\textless{}}\NormalTok{your{-}org}\OperatorTok{\textgreater{}}\NormalTok{/satspath}
+\BuiltInTok{cd}\NormalTok{ satspath}
+\ExtensionTok{cargo}\NormalTok{ build }\AttributeTok{{-}{-}release}
+\CommentTok{\# Binary at: target/release/satspath}
+\end{Highlighting}
+\end{Shaded}
+
+Or run directly:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{cargo}\NormalTok{ run }\AttributeTok{{-}p}\NormalTok{ satspath{-}cli }\AttributeTok{{-}{-}} \OperatorTok{\textless{}}\NormalTok{command}\OperatorTok{\textgreater{}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{cli-usage}{%
+\subsection{CLI Usage}\label{cli-usage}}
+
+\hypertarget{initialize}{%
+\subsubsection{Initialize}\label{initialize}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ init}
+\end{Highlighting}
+\end{Shaded}
+
+Creates \texttt{.satspath/registry.json} and
+\texttt{.satspath/keys.json} locally. These directories are git-ignored.
+
+\hypertarget{register}{%
+\subsubsection{Register}\label{register}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ register rodrigo@satspath.dev}
+\end{Highlighting}
+\end{Shaded}
+
+Generates a fresh secp256k1 identity keypair, builds a demo payment
+profile with Lightning, on-chain (×2 for privacy), and Ark methods,
+signs the profile, and stores it in the local registry.
+
+\hypertarget{show}{%
+\subsubsection{Show}\label{show}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ show rodrigo@satspath.dev}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+Alias:          rodrigo@satspath.dev
+Identity pubkey:02a1b2c3...
+Fingerprint:    a1b2c3d4
+Signature valid: yes
+Updated at:     1735000000
+
+Methods:
+  - Lightning Address [Lightning]
+      Lightning Address: rodrigo@satspath.dev
+  - Bitcoin (primary) [On-chain]
+      Address: bc1q...
+  - Bitcoin (secondary) [On-chain]
+      Address: bc1q...
+  - Ark [Ark]
+      Server: ark.satspath.dev
+\end{verbatim}
+
+\hypertarget{encode-a-payment-uri}{%
+\subsubsection{Encode a payment URI}\label{encode-a-payment-uri}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ encode rodrigo@satspath.dev 21000 }\AttributeTok{{-}{-}memo} \StringTok{"coffee"}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+satspath:v1:eyJ2ZXJzaW9uIjox...
+\end{verbatim}
+
+\hypertarget{decode-a-payment-uri}{%
+\subsubsection{Decode a payment URI}\label{decode-a-payment-uri}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ decode }\StringTok{"satspath:v1:eyJ2ZXJzaW9uIjox..."}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+Decoded payment request:
+  Version:     1
+  Alias:       rodrigo@satspath.dev
+  Amount:      21000 sats
+  Memo:        coffee
+  Profile hint:(none)
+\end{verbatim}
+
+\hypertarget{quote-route-selection}{%
+\subsubsection{Quote (route selection)}\label{quote-route-selection}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ quote rodrigo@satspath.dev 21000}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+Resolving alias...
+Verifying signature...
+Checking payment rails for 21000 sats...
+
+Route Quote:
+  Selected rail:   Lightning
+  Label:           Lightning Address
+  Reason:          Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
+  Estimated fee:   2 sats
+  Confirmation:    instant
+\end{verbatim}
+
+\hypertarget{pay-simulated}{%
+\subsubsection{Pay (simulated)}\label{pay-simulated}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ pay rodrigo@satspath.dev 21000 }\AttributeTok{{-}{-}experimental{-}swaps} \AttributeTok{{-}{-}testnet}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+Resolving alias 'rodrigo@satspath.dev'...
+Verifying signed profile...
+Checking available payment rails...
+Selected route: Lightning
+Reason:         Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
+
+Payment status: simulated_success (or real execution if experimental engine is enabled)
+\end{verbatim}
+
+\hypertarget{invite-unregistered-user}{%
+\subsubsection{Invite (unregistered
+user)}\label{invite-unregistered-user}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ invite julian@example.com 21000}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+'julian@example.com' is not registered on SatsPath.
+
+Invite link:
+https://satspath.local/claim?alias_hash=a1b2c3d4...&amount=21000
+
+WARNING: The receiver must claim this payment by generating their own keys locally.
+\end{verbatim}
+
+\hypertarget{full-demo}{%
+\subsubsection{Full demo}\label{full-demo}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ demo}
+\end{Highlighting}
+\end{Shaded}
+
+Runs all steps above automatically.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{example-demo-flow}{%
+\subsection{Example demo flow}\label{example-demo-flow}}
+
+See \url{examples/demo_flow.md} for a full annotated walkthrough.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{security-model}{%
+\subsection{Security model}\label{security-model}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Keys are local.} The only private keys SatsPath generates are
+  \textbf{identity keys used to sign public payment profiles} --- they
+  are not wallet spending keys, seeds, or custody keys, and they do not
+  control funds. They are stored only on the user's machine in
+  \texttt{.satspath/keys.json}, which is git-ignored and never
+  transmitted.
+\item
+  \textbf{Signatures are mandatory.} Every payment profile is signed
+  with the owner's identity key. Signature verification happens before
+  routing.
+\item
+  \textbf{Public profiles only.} The registry stores only public data:
+  pubkeys, addresses, and signatures.
+\item
+  \textbf{Invite, don't proxy.} For unknown users, SatsPath creates an
+  invite. The receiver generates their own keys.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{threat-model-summary}{%
+\subsection{Threat model summary}\label{threat-model-summary}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3478}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6522}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Threat
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+MVP Mitigation
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Fake alias registration & Signature-bound profiles;
+first-come-first-served \\
+Server tampering & secp256k1 signature verification on every resolve \\
+Key replacement attack & Signature covers identity\_pubkey; swap breaks
+sig \\
+Profile replay & \texttt{expires\_at} enforced locally and remotely \\
+Email takeover & Not mitigated at MVP (future: DKIM challenge) \\
+LNURL spoofing & Amount and expiry verification before routing \\
+On-chain privacy leaks & Multiple on-chain addresses per profile \\
+Lost keys & Local backup only (future: BIP-39 seed phrase) \\
+Malicious invite links & Alias hash + amount in invite; receiver
+verifies \\
+Ark server trust & Mock client only (future: covenant-based Ark) \\
+\end{longtable}
+
+Full threat model: \url{docs/threat_model.md}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{future-integrations}{%
+\subsection{Future integrations}\label{future-integrations}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5909}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.4091}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Integration
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Purpose
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{BIP-353} & Replace local registry with DNS TXT record
+resolution \\
+\textbf{Nostr} & Decentralized identity and profile discovery (NIP-05,
+NIP-57) \\
+\textbf{Lightning Address} & Auto-discover LNURL-pay endpoint from
+\texttt{user@domain} \\
+\textbf{BOLT12} & Async invoices and reusable payment offers \\
+\textbf{Ark} & Non-custodial off-chain payments via virtual UTXOs \\
+\textbf{Silent Payments} & Privacy-preserving on-chain payments
+(BIP-352) \\
+\textbf{Split Payments} & Route a single payment across multiple
+rails \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{running-tests}{%
+\subsection{Running tests}\label{running-tests}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{cargo}\NormalTok{ test}
+\end{Highlighting}
+\end{Shaded}
+
+Test coverage includes: - Profile serialization - Profile signing and
+verification - Invalid signature rejection - Tampered profile rejection
+- Encode/decode payment URIs - Registry register/resolve - Router:
+Lightning for small amounts - Router: On-chain for low fees - Router:
+Ark fallback for high fees - Ark route planning and testnet-gated intent
+safety - Router: Error when no methods available - Registry persistence
+across opens
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{hackathon-scope}{%
+\subsection{Hackathon scope}\label{hackathon-scope}}
+
+This prototype was built during a hackathon to demonstrate:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  A working secp256k1-signed payment profile format with expiration.
+\item
+  A universal URI encoding scheme for payment requests.
+\item
+  An automatic payment rail selector using real mempool.space fee data.
+\item
+  A privacy-aware profile with multiple on-chain addresses.
+\item
+  An invite flow that preserves receiver key sovereignty.
+\item
+  A fail-closed, encrypted swap storage engine (behind
+  \texttt{-\/-experimental-swaps}).
+\end{enumerate}
+
+It is \textbf{not production-ready}. The registry is local, payments are
+simulated (unless experimental flags are used), and domain verification
+is not implemented.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{disclaimer}{%
+\subsection{DISCLAIMER}\label{disclaimer}}
+
+This is hackathon software. Do not use with real funds.
+
+\end{document}

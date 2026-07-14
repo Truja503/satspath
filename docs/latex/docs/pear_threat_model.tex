@@ -1,0 +1,164 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{pear-holepunch-p2p-resolver-threat-model}{%
+\section{Pear / Holepunch P2P Resolver Threat
+Model}\label{pear-holepunch-p2p-resolver-threat-model}}
+
+This document outlines the security assumptions, privacy rules, and
+threat vectors for the SatsPath PearResolver integration.
+
+\hypertarget{overview}{%
+\subsection{1. Overview}\label{overview}}
+
+The PearResolver allows SatsPath to resolve aliases (e.g.,
+\texttt{alice@example.com}) to \texttt{SignedPaymentProfile}s over the
+Holepunch/Hyperswarm peer-to-peer network. This bypasses centralized
+servers and DNS, relying on distributed hash tables (DHT) to locate
+peers announcing a specific topic.
+
+\hypertarget{privacy-rules-p2p-03}{%
+\subsection{2. Privacy Rules (P2P-03)}\label{privacy-rules-p2p-03}}
+
+To prevent passive scraping of the Hyperswarm DHT, the following privacy
+rules are strictly enforced:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{No Plaintext Aliases in Topics}: The Hyperswarm topic used for
+  discovery MUST NOT be the plaintext alias. It must be a cryptographic
+  hash of the alias (e.g., \texttt{SHA256(alias)}).
+\item
+  \textbf{No Private Keys in Pear Node}: The \texttt{satspath-pear}
+  daemon or script only handles public \texttt{SignedPaymentProfile}
+  JSON objects. It never loads, generates, or transmits the user's
+  \texttt{identity\_secret\_key} or any wallet secrets.
+\item
+  \textbf{Fail-Closed Resolution}: If a peer returns malformed data or a
+  profile belonging to a different alias, it is dropped silently.
+\end{enumerate}
+
+\hypertarget{threat-vectors-and-mitigations}{%
+\subsection{3. Threat Vectors and
+Mitigations}\label{threat-vectors-and-mitigations}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2963}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.4444}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2593}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Threat
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mitigation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Layer
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Passive DHT Scraping} & Topics are \texttt{SHA256(alias)},
+making it impossible to harvest a list of registered emails/aliases by
+simply listening to the DHT. & Pear / JS \\
+\textbf{Profile Spoofing / Man-in-the-Middle} & The Rust resolver
+verifies the \texttt{secp256k1} signature of every profile returned by a
+peer against the declared \texttt{identity\_pubkey}. A malicious peer
+cannot forge a signature for an identity they do not control. & Rust
+Core \\
+\textbf{Replay Attacks} & The \texttt{SignedPaymentProfile} includes an
+\texttt{expires\_at} timestamp. The Rust resolver rejects expired
+profiles. & Rust Core \\
+\textbf{Denial of Service (DHT Spam)} & An attacker could spam the topic
+with junk data. The \texttt{satspath-pear} resolver will disconnect from
+peers sending non-JSON or invalid schema data. The Rust resolver handles
+validation quickly and drops invalid signatures. & Pear + Rust \\
+\textbf{Alias Collision (Intentional)} & Two users cannot easily claim
+the same alias because the sender verifies the profile signature against
+the expected identity, or trust is established via out-of-band exchange
+(TOFU or verified channels). & Rust Core \\
+\end{longtable}
+
+\hypertarget{trust-model}{%
+\subsection{4. Trust Model}\label{trust-model}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Hyperswarm Network}: Untrusted. Any node can join and announce
+  any topic.
+\item
+  \textbf{satspath-pear Process}: Trusted (runs locally on the user's
+  machine).
+\item
+  \textbf{Profile Data}: Untrusted until the Rust Core validates the
+  \texttt{secp256k1} signature and expiration.
+\end{itemize}
+
+\end{document}

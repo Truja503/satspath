@@ -1,0 +1,204 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-architecture}{%
+\section{SatsPath Architecture}\label{satspath-architecture}}
+
+\hypertarget{overview}{%
+\subsection{Overview}\label{overview}}
+
+SatsPath is a routing and resolution layer that sits above existing
+Bitcoin payment protocols. It does not replace Lightning, Ark, or
+on-chain payments --- it resolves human-readable identifiers to signed
+payment profiles and selects the best available rail.
+
+\hypertarget{system-diagram}{%
+\subsection{System Diagram}\label{system-diagram}}
+
+\begin{verbatim}
+Human-readable identifier
+  (e.g. rodrigo@satspath.dev)
+          |
+          v
+  ┌───────────────────┐
+  │  Resolver /       │
+  │  Registry         │  <── local .satspath/registry.json (prototype)
+  │                   │  <── BIP-353 / HTTPS / Nostr / optional P2P
+  └────────┬──────────┘
+           |
+           v
+  ┌───────────────────┐
+  │  Signed Payment   │
+  │  Profile          │
+  │                   │
+  │  - alias          │
+  │  - identity_pubkey│
+  │  - methods[]      │
+  │  - signature      │
+  └────────┬──────────┘
+           |
+           v
+  ┌───────────────────┐
+  │  Route Engine     │
+  └──────┬────┬───────┘
+         |    |    \
+         v    v     v
+    ┌────┐ ┌──────┐ ┌─────┐
+    │ LN │ │ BTC  │ │ Ark │
+    └────┘ └──────┘ └─────┘
+       |       |        |
+       v       v        v
+  Invoice   PSBT    Ark Intent
+\end{verbatim}
+
+\hypertarget{crate-structure}{%
+\subsection{Crate Structure}\label{crate-structure}}
+
+\begin{verbatim}
+satspath/
+├── crates/
+│   ├── satspath-core/          # Types, crypto, codec, registry
+│   │   ├── profile.rs          # PaymentProfile, PaymentMethod, SignedPaymentProfile
+│   │   ├── crypto.rs           # secp256k1 keypair, sign, verify, fingerprint
+│   │   ├── codec.rs            # encode/decode satspath: URIs
+│   │   ├── registry.rs         # local file registry
+│   │   └── errors.rs           # SatsPathError enum
+│   │
+│   ├── satspath-router/        # Route selection engine
+│   │   ├── router.rs           # select_route() — priority logic
+│   │   ├── fees.rs             # mempool.space fee API client
+│   │   ├── lightning.rs        # Lightning availability + fee helpers
+│   │   ├── onchain.rs          # On-chain fee math + availability
+│   │   └── ark.rs              # ArkClient trait + MockArkClient
+│   │
+│   └── satspath-cli/           # User-facing binary
+│       └── commands/           # One module per CLI subcommand
+\end{verbatim}
+
+\hypertarget{data-flow}{%
+\subsection{Data Flow}\label{data-flow}}
+
+\hypertarget{payment-request-lifecycle}{%
+\subsubsection{Payment request
+lifecycle}\label{payment-request-lifecycle}}
+
+\begin{verbatim}
+1. Sender knows: rodrigo@satspath.dev + 21000 sats
+
+2. Encode (optional):
+   satspath:v1:<base64url({"version":1,"alias":"rodrigo@satspath.dev","amount_sats":21000,...})>
+
+3. Decode:
+   PaymentRequest { alias, amount_sats, memo, ... }
+
+4. Resolve:
+   Registry::resolve_alias("rodrigo@satspath.dev") -> SignedPaymentProfile
+
+5. Verify:
+   verify_signed_profile(signed) -> bool
+
+6. Route:
+   select_route(RouteRequest { alias, amount_sats, signed_profile })
+   -> RouteQuote { selected_method, reason, fee, confirmation }
+
+7. Pay (simulated):
+   Execute against selected rail (Lightning invoice, on-chain tx, Ark intent)
+\end{verbatim}
+
+\hypertarget{invite-lifecycle-unregistered-receiver}{%
+\subsubsection{Invite lifecycle (unregistered
+receiver)}\label{invite-lifecycle-unregistered-receiver}}
+
+\begin{verbatim}
+1. Sender tries to pay julian@example.com
+2. Registry returns AliasNotFound
+3. create_invite("julian@example.com", amount_sats) -> Invite
+4. Invite contains alias_hash, claim_url, warning
+5. Sender shares claim_url with receiver out-of-band
+6. Receiver generates their own keys locally and registers
+7. Sender retries payment
+\end{verbatim}
+
+\hypertarget{security-boundaries}{%
+\subsection{Security Boundaries}\label{security-boundaries}}
+
+\begin{itemize}
+\tightlist
+\item
+  Private keys never leave the user's machine.
+\item
+  The registry stores only public data (pubkeys, addresses, signatures).
+\item
+  Signature verification happens on the receiver side before any
+  payment.
+\item
+  The \texttt{.satspath/} directory is git-ignored.
+\end{itemize}
+
+\hypertarget{pluggability}{%
+\subsection{Pluggability}\label{pluggability}}
+
+The registry is an abstraction --- in production,
+\texttt{Registry::open()} can be swapped for: - BIP-353 DNS TXT record
+lookup - Nostr NIP-05 / NIP-57 resolution - Lightning Address
+\texttt{.well-known/lnurlp} discovery - A decentralized DHT
+
+The router is similarly pluggable: new payment rails are added by
+implementing the routing priority logic and returning a
+\texttt{RouteQuote}.
+
+\end{document}
