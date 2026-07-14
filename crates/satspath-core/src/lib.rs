@@ -76,8 +76,7 @@ pub fn create_invite(
     ttl_seconds: i64,
 ) -> Invite {
     let now = chrono::Utc::now().timestamp();
-    let digest = Sha256::digest(privacy::canonical_identifier(alias).as_bytes());
-    let alias_hash = hex::encode(digest);
+    let alias_hash = crate::privacy::identifier_hash(alias);
     let claim_url = format!(
         "https://satspath.local/claim?alias_hash={}&amount={}",
         &alias_hash[..16],

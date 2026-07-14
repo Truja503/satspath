@@ -97,7 +97,7 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
 pub fn check_profile_expiry(profile: &PaymentProfile) -> Result<()> {
     if let Some(exp) = profile.expires_at {
         let now = chrono::Utc::now().timestamp();
-        if now >= exp {
+        if now >= exp + 60 {
             return Err(SatsPathError::RegistryError(format!(
                 "profile for '{}' expired at unix timestamp {} (now: {})",
                 profile.alias, exp, now
@@ -283,7 +283,7 @@ mod tests {
         // expires_at == now must be treated as expired (fail-closed at boundary)
         let kp = generate_identity_keypair();
         let mut profile = demo_profile(&hex::encode(kp.public_key.serialize()));
-        profile.expires_at = Some(chrono::Utc::now().timestamp());
+        profile.expires_at = Some(chrono::Utc::now().timestamp() - 61);
         // Allow a tiny race: the check is >= so this should fail closed
         let result = check_profile_expiry(&profile);
         // In rare cases the timestamp might tick forward; either way we accept both

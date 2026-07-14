@@ -301,7 +301,9 @@ pub async fn publish_profile(
     let keypair = Keypair::from_secret_key(&secp, secret_key);
     let pubkey_hex = hex::encode(keypair.x_only_public_key().0.serialize());
     let created_at = chrono::Utc::now().timestamp();
-    let content = serde_json::to_string(signed)
+    let content_value = serde_json::to_value(signed)
+        .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
+    let content = canonical_json::to_string(&content_value)
         .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
     let canonical_alias = canonicalize_identifier(&signed.profile.alias);
     
@@ -348,8 +350,18 @@ pub async fn publish_profile(
         };
         
         if ws.send(Message::Text(msg.clone())).await.is_ok() {
-            success_count += 1;
+            // Wait for the OK response from the relay
+            if let Ok(Some(Ok(Message::Text(resp)))) = tokio::time::timeout(std::time::Duration::from_secs(5), ws.next()).await {
+                if let Ok(Value::Array(arr)) = serde_json::from_str(&resp) {
+                    if let (Some(Value::String(msg_type)), Some(Value::Bool(accepted))) = (arr.first(), arr.get(2)) {
+                        if msg_type == "OK" && *accepted {
+                            success_count += 1;
+                        }
+                    }
+                }
+            }
         }
+        let _ = ws.close(None).await;
     }
     
     if success_count == 0 {

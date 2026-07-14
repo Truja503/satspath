@@ -586,6 +586,15 @@ fn verify_onchain_signature(
     }
     
     let target_pointer = silent_payment_pubkey.as_deref().or(address.as_deref()).unwrap_or("");
+    
+    // HIGH-01: Reject OnchainAddressSignature for silent payments since we don't
+    // fully derive/validate SP scan keys yet.
+    if target_pointer.starts_with("sp1") || target_pointer.starts_with("tsp1") {
+        return Err(SatsPathError::OwnershipProofInvalid(
+            "Cryptographic proof for silent payments is unsupported; use ManualAttestation".into(),
+        ));
+    }
+    
     if !pubkey_controls_address(pubkey, target_pointer, *network)? {
         return Err(SatsPathError::OwnershipProofInvalid(
             "signing key does not derive the claimed address or silent payment key".into(),

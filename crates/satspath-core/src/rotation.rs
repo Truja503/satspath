@@ -25,19 +25,20 @@ impl KeyRotation {
         old_secret_key: &secp256k1::SecretKey,
         new_pubkey_hex: String,
     ) -> Result<Self> {
-        let message = format!("RotateSatsPathKey:{}->{}", previous_pubkey_hex, new_pubkey_hex);
+        let rotated_at = chrono::Utc::now().timestamp();
+        let message = format!("RotateSatsPathKey:{}->{}@{}", previous_pubkey_hex, new_pubkey_hex, rotated_at);
         let signature = sign_message(&message, old_secret_key);
         Ok(Self {
             previous_pubkey: previous_pubkey_hex,
             new_pubkey: new_pubkey_hex,
             authorization_signature: signature,
-            rotated_at: chrono::Utc::now().timestamp(),
+            rotated_at,
         })
     }
 
     /// Verify the rotation authorization signature.
     pub fn verify(&self) -> Result<bool> {
-        let message = format!("RotateSatsPathKey:{}->{}", self.previous_pubkey, self.new_pubkey);
+        let message = format!("RotateSatsPathKey:{}->{}@{}", self.previous_pubkey, self.new_pubkey, self.rotated_at);
         verify_message_signature(&message, &self.authorization_signature, &self.previous_pubkey)
     }
 }
