@@ -333,7 +333,7 @@ async fn main() -> Result<()> {
             onchain_address.as_deref(),
             ark_server.as_deref(),
             ark_pubkey.as_deref(),
-        )?,
+        ).await?,
         Command::Show {
             alias,
             verify_online,

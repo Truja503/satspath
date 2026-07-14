@@ -23,7 +23,7 @@ pub async fn cmd_claim(
     
     // Claiming is essentially registering the profile for the first time, 
     // which allows the sender's router to finally resolve and pay it.
-    cmd_register(&alias, lightning_address, onchain_address, None, None)?;
+    cmd_register(&alias, lightning_address, onchain_address, None, None).await?;
     
     println!();
     println!("✅ Claim successful! You can now receive the pending payment.");

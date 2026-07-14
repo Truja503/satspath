@@ -282,6 +282,83 @@ fn env_relays() -> Option<Vec<String>> {
         .filter(|relays| !relays.is_empty())
 }
 
+/// Publishes a SignedPaymentProfile to a set of Nostr relays as a NIP-01 kind 30078 event.
+/// Returns the number of relays the event was successfully sent to.
+pub async fn publish_profile(
+    signed: &SignedPaymentProfile,
+    secret_key: &secp256k1::SecretKey,
+    relays: Option<&[String]>,
+) -> Result<usize> {
+    use sha2::{Digest, Sha256};
+    use secp256k1::{Keypair, Secp256k1};
+
+    let default_relays = env_relays().unwrap_or_else(|| {
+        DEFAULT_RELAYS.iter().map(|s| s.to_string()).collect()
+    });
+    let relays_to_use = relays.unwrap_or(&default_relays);
+
+    let secp = Secp256k1::new();
+    let keypair = Keypair::from_secret_key(&secp, secret_key);
+    let pubkey_hex = hex::encode(keypair.x_only_public_key().0.serialize());
+    let created_at = chrono::Utc::now().timestamp();
+    let content = serde_json::to_string(signed)
+        .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
+    let canonical_alias = canonicalize_identifier(&signed.profile.alias);
+    
+    let tags = vec![
+        vec!["d".to_string(), format!("satspath-profile:{}", canonical_alias)]
+    ];
+    
+    // NIP-01 ID = SHA256 of [0, pubkey, created_at, kind, tags, content]
+    let id_payload = json!([
+        0,
+        pubkey_hex,
+        created_at,
+        SATSPATH_PROFILE_KIND,
+        tags,
+        content
+    ]);
+    
+    // Serialize with zero whitespace as required by NIP-01
+    // serde_json::to_string produces compact JSON without spaces
+    let id_json = id_payload.to_string();
+    let digest = Sha256::digest(id_json.as_bytes());
+    let id_hex = hex::encode(digest);
+    
+    let message = secp256k1::Message::from_digest(digest.into());
+    let sig = secp.sign_schnorr(&message, &keypair);
+    let sig_hex = hex::encode(sig.serialize());
+    
+    let event = json!({
+        "id": id_hex,
+        "pubkey": pubkey_hex,
+        "created_at": created_at,
+        "kind": SATSPATH_PROFILE_KIND,
+        "tags": tags,
+        "content": content,
+        "sig": sig_hex
+    });
+    
+    let msg = json!(["EVENT", event]).to_string();
+    let mut success_count = 0;
+    
+    for relay in relays_to_use {
+        let Ok((mut ws, _)) = connect_async(relay).await else {
+            continue;
+        };
+        
+        if ws.send(Message::Text(msg.clone())).await.is_ok() {
+            success_count += 1;
+        }
+    }
+    
+    if success_count == 0 {
+        return Err(SatsPathError::NetworkError("Failed to publish profile to any Nostr relay".into()));
+    }
+    
+    Ok(success_count)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

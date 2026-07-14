@@ -12,7 +12,7 @@ use satspath_core::{
 
 use super::{keystore, open_registry, satspath_dir};
 
-pub fn cmd_register(
+pub async fn cmd_register(
     alias: &str,
     lightning_address: Option<&str>,
     onchain_address: Option<&str>,
@@ -91,7 +91,7 @@ pub fn cmd_register(
 
     let signed = sign_profile(profile, &kp.secret_key)?;
     let fp = fingerprint_pubkey(&pubkey_hex)?;
-    registry.register_profile(signed)?;
+    registry.register_profile(signed.clone())?;
 
     // Persist the protocol identity key locally so the owner can attach ownership
     // proofs to (and otherwise update) this profile later. This is NOT a wallet
@@ -125,5 +125,17 @@ pub fn cmd_register(
         "Prove ownership of a method:  satspath prove {} --method-index 0",
         alias
     );
+    
+    println!("Broadcasting to Nostr relays...");
+    match satspath_core::resolvers::nostr::publish_profile(&signed, &kp.secret_key, None).await {
+        Ok(count) => {
+            println!("✅ Successfully broadcasted profile to {} Nostr relays", count);
+        }
+        Err(e) => {
+            println!("⚠  Warning: Failed to broadcast to Nostr: {}", e);
+            println!("   Your profile is saved locally but may not be reachable by other peers.");
+        }
+    }
+    
     Ok(())
 }
