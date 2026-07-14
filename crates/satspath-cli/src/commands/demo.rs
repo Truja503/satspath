@@ -75,7 +75,7 @@ pub async fn cmd_demo() -> Result<()> {
         println!();
 
         step(9, "Generate invite link for j***@example.com");
-        cmd_invite("julian@example.com", 21_000, false).await?;
+        cmd_invite("julian@example.com", 21_000).await?;
     }
 
     println!();

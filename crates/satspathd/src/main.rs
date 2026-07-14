@@ -102,7 +102,7 @@ struct AppState {
     network: String,
     open_ui: bool,
     p2p: Arc<Mutex<P2pBridge>>,
-    escrows: Arc<Mutex<std::collections::HashMap<String, satspath_core::escrow::EscrowRecord>>>,
+    // Removed escrow state to enforce non-custodial rule
 }
 
 struct P2pBridge {
@@ -344,7 +344,7 @@ async fn main() -> Result<()> {
         network,
         open_ui: !cli.no_open,
         p2p: Arc::new(Mutex::new(bridge)),
-        escrows: Arc::new(Mutex::new(std::collections::HashMap::new())),
+        // Removed escrow init
     };
 
     print_startup_status(&state)?;
@@ -459,20 +459,6 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
                     },
                 )
             }
-            Err(e) => json_error(StatusCode(400), e),
-        },
-        (Method::Post, "/v1/escrow/deposit") => match read_json::<satspath_core::escrow::DepositRequest>(&mut request) {
-            Ok(body) => match escrow_deposit(state, body) {
-                Ok(resp) => json_response(StatusCode(200), &resp),
-                Err(e) => json_error(StatusCode(500), e),
-            },
-            Err(e) => json_error(StatusCode(400), e),
-        },
-        (Method::Post, "/v1/escrow/claim") => match read_json::<satspath_core::escrow::ClaimRequest>(&mut request) {
-            Ok(body) => match escrow_claim(state, body).await {
-                Ok(resp) => json_response(StatusCode(200), &resp),
-                Err(e) => json_error(StatusCode(500), e),
-            },
             Err(e) => json_error(StatusCode(400), e),
         },
         _ => json_error(StatusCode(404), anyhow::anyhow!("endpoint not found")),
@@ -1728,68 +1714,4 @@ fn pct(s: &str) -> String {
         }
     }
     out
-}
-
-fn escrow_deposit(state: &AppState, body: satspath_core::escrow::DepositRequest) -> Result<satspath_core::escrow::DepositResponse, anyhow::Error> {
-    use sha2::{Sha256, Digest};
-    let escrow_id = satspath_core::crypto::generate_nonce();
-    let claim_secret = satspath_core::crypto::generate_nonce();
-    let claim_secret_hash = hex::encode(Sha256::digest(claim_secret.as_bytes()));
-    let created_at = now();
-
-    let record = satspath_core::escrow::EscrowRecord {
-        escrow_id: escrow_id.clone(),
-        receiver_alias_hash: body.receiver_alias_hash,
-        amount_sats: body.amount_sats,
-        status: satspath_core::escrow::EscrowStatus::Funded, // Auto-funded for mock
-        claim_secret_hash,
-        deposit_invoice: format!("lnbc{}mockinvoice...", body.amount_sats),
-        created_at,
-        expires_at: created_at + 86400,
-    };
-
-    let mut escrows = state.escrows.lock().unwrap();
-    escrows.insert(escrow_id.clone(), record.clone());
-
-    Ok(satspath_core::escrow::DepositResponse {
-        escrow_id,
-        claim_secret,
-        deposit_invoice: record.deposit_invoice,
-        status: record.status,
-    })
-}
-
-async fn escrow_claim(state: &AppState, body: satspath_core::escrow::ClaimRequest) -> Result<satspath_core::escrow::ClaimResponse, anyhow::Error> {
-    use sha2::{Sha256, Digest};
-    let mut escrows = state.escrows.lock().unwrap();
-    let record = escrows.get_mut(&body.escrow_id).ok_or_else(|| anyhow::anyhow!("Escrow not found"))?;
-
-    if record.status != satspath_core::escrow::EscrowStatus::Funded {
-        anyhow::bail!("Escrow is not funded or already claimed");
-    }
-
-    if record.expires_at < now() {
-        anyhow::bail!("Escrow has expired");
-    }
-
-    let claim_secret_hash = hex::encode(Sha256::digest(body.claim_secret.as_bytes()));
-    if record.claim_secret_hash != claim_secret_hash {
-        anyhow::bail!("Invalid claim secret");
-    }
-
-    // Verify alias hash matches
-    let alias_hash = satspath_core::privacy::identifier_hash(&body.receiver_alias);
-    if record.receiver_alias_hash != alias_hash {
-        anyhow::bail!("Receiver alias does not match escrow destination");
-    }
-
-    // Simulate route and payment
-    record.status = satspath_core::escrow::EscrowStatus::Claimed;
-    let amount_sats = record.amount_sats;
-
-    Ok(satspath_core::escrow::ClaimResponse {
-        status: "success".into(),
-        message: format!("Escrow claimed successfully. {} sats routed to {}", amount_sats, body.receiver_alias),
-        amount_sats,
-    })
 }

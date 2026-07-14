@@ -147,9 +147,6 @@ enum Command {
     Invite { 
         alias: String, 
         amount_sats: u64,
-        /// Use custodial escrow to lock funds until claimed.
-        #[arg(long)]
-        escrow: bool,
     },
 
     /// Claim an invite using a claim URL or an alias (generates local keys)
@@ -422,7 +419,7 @@ async fn main() -> Result<()> {
             )
             .await?
         }
-        Command::Invite { alias, amount_sats, escrow } => commands::cmd_invite(&alias, amount_sats, escrow).await?,
+        Command::Invite { alias, amount_sats } => commands::cmd_invite(&alias, amount_sats).await?,
         Command::Claim {
             claim_url_or_alias,
             lightning_address,
