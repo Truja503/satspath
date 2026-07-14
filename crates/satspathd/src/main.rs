@@ -1033,9 +1033,11 @@ fn build_methods(wallet: &WalletState, network: &str) -> Vec<PaymentMethod> {
         methods.push(PaymentMethod::Onchain {
             label: format!("Bitcoin ({})", network),
             network: bitcoin_network(network),
-            address: addr.clone(),
+            address: Some(addr.clone()),
+            silent_payment_pubkey: None,
             pubkey_hint: wallet.onchain_pubkey.clone(),
             descriptor_hint: None,
+            address_list: vec![],
         });
     }
     if let (Some(server), Some(pubkey)) = (&wallet.ark_server, &wallet.ark_pubkey) {
@@ -1265,7 +1267,10 @@ fn receive_payload_for(method: &PaymentMethod) -> Result<String> {
         PaymentMethod::Lightning {
             lnurl: Some(url), ..
         } => url.clone(),
-        PaymentMethod::Onchain { address, .. } => format!("bitcoin:{address}"),
+        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
+            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            format!("bitcoin:{target}")
+        },
         PaymentMethod::Ark { server, pubkey, .. } => {
             format!("satspath:ark?server={server}&pubkey={pubkey}")
         }
@@ -1654,8 +1659,9 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
             ..
         } => a.clone(),
         PaymentMethod::Lightning { lnurl: Some(u), .. } => u.clone(),
-        PaymentMethod::Onchain { address, .. } => {
-            format!("bitcoin:{address}?amount={}", fmt_btc(amount_sats))
+        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
+            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            format!("bitcoin:{target}?amount={}", fmt_btc(amount_sats))
         }
         PaymentMethod::Ark { server, pubkey, .. } => {
             format!("satspath:ark?server={server}&pubkey={pubkey}&amount={amount_sats}")

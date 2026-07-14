@@ -168,9 +168,11 @@ mod tests {
         PaymentMethod::Onchain {
             label: "BTC".into(),
             network: satspath_core::BitcoinNetwork::Mainnet,
-            address: "1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into(),
+            address: Some("1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         }
     }
 

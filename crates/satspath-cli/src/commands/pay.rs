@@ -247,19 +247,21 @@ async fn exec_experimental(
             );
             println!("  Amount  : {} sats", amount_sats);
         }
-        SwapDirective::ChainSwap { target_address } => {
+        SwapDirective::ChainSwap { target_address, silent_payment_pubkey } => {
             println!("  [Chain Swap] Ark/L1 -> L1");
+            let target = silent_payment_pubkey.as_deref().unwrap_or_else(|| target_address.as_deref().unwrap_or(""));
             println!(
                 "  Destination : {}",
-                display_value(target_address, mask_address, debug)
+                display_value(target, mask_address, debug)
             );
             println!("  Amount      : {} sats", amount_sats);
         }
-        SwapDirective::ReverseSwap { target_address } => {
+        SwapDirective::ReverseSwap { target_address, silent_payment_pubkey } => {
             println!("  [Reverse Swap] Lightning -> L1");
+            let target = silent_payment_pubkey.as_deref().unwrap_or_else(|| target_address.as_deref().unwrap_or(""));
             println!(
                 "  Destination : {}",
-                display_value(target_address, mask_address, debug)
+                display_value(target, mask_address, debug)
             );
         }
         SwapDirective::ArkTransfer { server, pubkey } => {
@@ -312,12 +314,15 @@ fn payment_method_to_pointer(method: &PaymentMethod) -> Result<PaymentPointer> {
             }
         }
         PaymentMethod::Onchain {
-            address, network, ..
-        } => Ok(PaymentPointer::OnchainAddress {
-            network: *network,
-            address: address.clone(),
-            claim_policy: None,
-        }),
+            address, silent_payment_pubkey, network, ..
+        } => {
+            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            Ok(PaymentPointer::OnchainAddress {
+                network: *network,
+                address: target,
+                claim_policy: None,
+            })
+        },
         PaymentMethod::Ark { server, pubkey, .. } => Ok(PaymentPointer::Ark {
             server: server.clone(),
             receiver_pubkey: pubkey.clone(),

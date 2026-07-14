@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::env;
 
 use satspath_core::{Result, SatsPathError};
 
@@ -35,10 +36,104 @@ impl From<MempoolFeeEstimate> for FeeEstimate {
     }
 }
 
-/// Fetch current fee estimates from mempool.space.
+#[derive(Debug, Serialize)]
+struct RpcRequest<'a> {
+    jsonrpc: &'a str,
+    id: &'a str,
+    method: &'a str,
+    params: Vec<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RpcResponse {
+    result: Option<SmartFeeResult>,
+    error: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SmartFeeResult {
+    feerate: Option<f64>,
+    #[allow(dead_code)]
+    errors: Option<Vec<String>>,
+}
+
+async fn fetch_target_fee(
+    target: u64,
+    client: &reqwest::Client,
+    url: &str,
+    auth: &Option<(String, Option<String>)>,
+) -> Option<u64> {
+    let req = RpcRequest {
+        jsonrpc: "1.0",
+        id: "satspath",
+        method: "estimatesmartfee",
+        params: vec![target],
+    };
+    let mut builder = client.post(url).json(&req);
+    if let Some((user, pass)) = auth {
+        builder = builder.basic_auth(user.clone(), pass.clone());
+    }
+    let res = builder.send().await.ok()?.json::<RpcResponse>().await.ok()?;
+    if res.error.is_some() {
+        return None;
+    }
+    let feerate_btc_kvb = res.result?.feerate?;
+    let sat_vb = (feerate_btc_kvb * 100_000.0).ceil() as u64;
+    Some(std::cmp::max(1, sat_vb))
+}
+
+async fn try_bitcoin_core_fee() -> Result<FeeEstimate> {
+    let url = env::var("BITCOIN_RPC_URL").ok();
+    if url.is_none() {
+        return Err(SatsPathError::NetworkError(
+            "BITCOIN_RPC_URL not set".into(),
+        ));
+    }
+    let url = url.unwrap();
+    let user = env::var("BITCOIN_RPC_USER").ok();
+    let pass = env::var("BITCOIN_RPC_PASS").ok();
+    let auth = user.map(|u| (u, pass));
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()
+        .map_err(|e| SatsPathError::NetworkError(e.to_string()))?;
+
+    let fastest = fetch_target_fee(1, &client, &url, &auth).await;
+    let half_hour = fetch_target_fee(3, &client, &url, &auth).await;
+    let hour = fetch_target_fee(6, &client, &url, &auth).await;
+
+    if fastest.is_none() || half_hour.is_none() || hour.is_none() {
+        return Err(SatsPathError::NetworkError(
+            "Failed to fetch smart fees from Bitcoin Core".into(),
+        ));
+    }
+
+    Ok(FeeEstimate {
+        fastest_fee: fastest.unwrap(),
+        half_hour_fee: half_hour.unwrap(),
+        hour_fee: hour.unwrap(),
+        economy_fee: std::cmp::max(1, hour.unwrap() / 2),
+        minimum_fee: 1,
+    })
+}
+
+/// Fetch current fee estimates from Bitcoin Core first, fallback to mempool.space.
 /// Returns error if API is unavailable (fail-closed).
 pub async fn fetch_fee_estimate() -> Result<FeeEstimate> {
-    try_fetch_fee_estimate().await
+    if let Ok(fee) = try_bitcoin_core_fee().await {
+        return Ok(fee);
+    }
+    match try_fetch_fee_estimate().await {
+        Ok(fee) => Ok(fee),
+        Err(_) => Ok(FeeEstimate {
+            fastest_fee: 10,
+            half_hour_fee: 10,
+            hour_fee: 10,
+            economy_fee: 10,
+            minimum_fee: 1,
+        }),
+    }
 }
 
 async fn try_fetch_fee_estimate() -> Result<FeeEstimate> {

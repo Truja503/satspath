@@ -131,12 +131,15 @@ fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
             label,
             network,
             address,
+            silent_payment_pubkey,
             pubkey_hint,
             descriptor_hint,
+            ..
         } => {
             println!("  - {} [On-chain]   {}", label, trust.badge());
             println!("      Network: {:?}", network);
-            println!("      Address: {}", mask_address(address));
+            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            println!("      Address: {}", mask_address(&target));
             if let Some(hint) = pubkey_hint {
                 println!("      Pubkey hint: {}", mask_pubkey(hint));
             }

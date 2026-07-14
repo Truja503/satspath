@@ -116,6 +116,7 @@ pub fn score_routes(
             PaymentMethod::Onchain {
                 network,
                 address,
+                silent_payment_pubkey,
                 descriptor_hint,
                 ..
             } => {
@@ -144,7 +145,7 @@ pub fn score_routes(
                 });
                 pointers.push(PaymentPointer::OnchainAddress {
                     network: *network,
-                    address: address.clone(),
+                    address: silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default()),
                     claim_policy: None,
                 });
             }
@@ -326,9 +327,11 @@ mod tests {
         let profile = signed(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
             network: BitcoinNetwork::Mainnet,
-            address: "1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into(),
+            address: Some("1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         }]);
         let fees = FeeSnapshot {
             onchain_fastest_sat_vb: Some(2),
@@ -344,9 +347,11 @@ mod tests {
         let profile = signed(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
             network: BitcoinNetwork::Mainnet,
-            address: "1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into(),
+            address: Some("1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: Some("wsh(sortedmulti(2,...))".into()),
+            address_list: vec![],
         }]);
         let fees = FeeSnapshot {
             onchain_fastest_sat_vb: Some(2),

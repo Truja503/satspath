@@ -53,9 +53,11 @@ pub fn quote_from_bip353_resolution(
             PaymentMethod::Onchain {
                 label: "BIP-353 on-chain".into(),
                 network: BitcoinNetwork::Mainnet,
-                address: addr.clone(),
+                address: Some(addr.clone()),
+                silent_payment_pubkey: None,
                 pubkey_hint: None,
                 descriptor_hint: None,
+                address_list: vec![],
             },
             "on-chain",
         )

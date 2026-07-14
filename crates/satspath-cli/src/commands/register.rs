@@ -49,9 +49,11 @@ pub fn cmd_register(
         methods.push(PaymentMethod::Onchain {
             label: "Bitcoin mainnet".into(),
             network: BitcoinNetwork::Mainnet,
-            address: address.to_string(),
+            address: Some(address.to_string()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         });
     }
 

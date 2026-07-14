@@ -1,4 +1,5 @@
-use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
+use secp256k1::{Keypair, Message, PublicKey, Secp256k1, SecretKey, XOnlyPublicKey};
+use secp256k1::schnorr::Signature;
 use sha2::{Digest, Sha256};
 
 use crate::errors::{Result, SatsPathError};
@@ -50,10 +51,11 @@ pub fn sign_profile(
     hasher.update(&bytes);
     let digest = hasher.finalize();
     let message = Message::from_digest(digest.into());
-    let sig = secp.sign_ecdsa(&message, secret_key);
+    let keypair = Keypair::from_secret_key(&secp, secret_key);
+    let sig = secp.sign_schnorr(&message, &keypair);
     Ok(SignedPaymentProfile {
         profile,
-        signature: hex::encode(sig.serialize_der()),
+        signature: hex::encode(sig.serialize()),
     })
 }
 
@@ -67,10 +69,11 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
         .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
     let public_key = PublicKey::from_slice(&pubkey_bytes)
         .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+    let (x_only_public_key, _) = public_key.x_only_public_key();
 
     let sig_bytes =
         hex::decode(&signed.signature).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
-    let sig = secp256k1::ecdsa::Signature::from_der(&sig_bytes)
+    let sig = Signature::from_slice(&sig_bytes)
         .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
 
     let bytes = canonical_profile_bytes(&signed.profile)?;
@@ -80,7 +83,7 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
     let digest = hasher.finalize();
     let message = Message::from_digest(digest.into());
 
-    Ok(secp.verify_ecdsa(&message, &sig, &public_key).is_ok())
+    Ok(secp.verify_schnorr(&sig, &message, &x_only_public_key).is_ok())
 }
 
 /// Check whether a `PaymentProfile` is expired.
@@ -124,7 +127,7 @@ pub fn generate_nonce() -> String {
     hex::encode(buf)
 }
 
-/// Sign an arbitrary UTF-8 message with a secret key, returning a hex DER signature.
+/// Sign an arbitrary UTF-8 message with a secret key, returning a hex signature.
 ///
 /// The message is hashed with SHA-256 before signing, matching the profile-signing
 /// convention. Callers supply a domain-separated message (e.g. an ownership-proof
@@ -134,12 +137,13 @@ pub fn generate_nonce() -> String {
 pub fn sign_message(message: &str, secret_key: &SecretKey) -> String {
     let secp = Secp256k1::new();
     let digest = Sha256::digest(message.as_bytes());
-    let sig = secp.sign_ecdsa(&Message::from_digest(digest.into()), secret_key);
-    hex::encode(sig.serialize_der())
+    let keypair = Keypair::from_secret_key(&secp, secret_key);
+    let sig = secp.sign_schnorr(&Message::from_digest(digest.into()), &keypair);
+    hex::encode(sig.serialize())
 }
 
-/// Verify a hex DER ECDSA signature over an arbitrary UTF-8 message against a
-/// compressed secp256k1 public key (hex). Returns `Ok(true)` only if the
+/// Verify a hex Schnorr signature over an arbitrary UTF-8 message against a
+/// compressed secp256k1 public key (hex) or x-only public key. Returns `Ok(true)` only if the
 /// signature is structurally valid *and* verifies.
 pub fn verify_message_signature(
     message: &str,
@@ -150,18 +154,25 @@ pub fn verify_message_signature(
 
     let pubkey_bytes =
         hex::decode(pubkey_hex).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
-    let public_key = PublicKey::from_slice(&pubkey_bytes)
-        .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+    
+    let x_only_public_key = if pubkey_bytes.len() == 32 {
+        XOnlyPublicKey::from_slice(&pubkey_bytes)
+            .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?
+    } else {
+        let public_key = PublicKey::from_slice(&pubkey_bytes)
+            .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+        public_key.x_only_public_key().0
+    };
 
     let sig_bytes =
         hex::decode(signature_hex).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
-    let sig = secp256k1::ecdsa::Signature::from_der(&sig_bytes)
+    let sig = Signature::from_slice(&sig_bytes)
         .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
 
     let digest = Sha256::digest(message.as_bytes());
     let msg = Message::from_digest(digest.into());
 
-    Ok(secp.verify_ecdsa(&msg, &sig, &public_key).is_ok())
+    Ok(secp.verify_schnorr(&sig, &msg, &x_only_public_key).is_ok())
 }
 
 #[cfg(test)]

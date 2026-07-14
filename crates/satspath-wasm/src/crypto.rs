@@ -4,7 +4,7 @@
 //!   - `sdk/satspath-p2p/src/profile.js` (verifySignedProfile, canonicalProfileBytes)
 //!
 //! Uses the exact same algorithm as `satspath-core::crypto`:
-//!   sig = ECDSA(SHA-256("SatsPathProfileV1" || canonical_json(profile)))
+//!   sig = Schnorr(SHA-256("SatsPathProfileV1" || canonical_json(profile)))
 //!
 //! Note: we cannot depend on `satspath-core` directly from WASM because it pulls
 //! in `tokio`, `reqwest`, and `tokio-tungstenite` which don't compile to
@@ -41,12 +41,12 @@ fn canonical_json_bytes(value: &Value) -> Result<Vec<u8>, String> {
 
 /// Verify a SatsPath `SignedPaymentProfile` passed as a JSON string.
 ///
-/// Returns `true` only if the secp256k1 ECDSA signature is valid for the
+/// Returns `true` only if the secp256k1 Schnorr signature is valid for the
 /// profile's `identity_pubkey`. Returns `false` on any error — never throws.
 ///
 /// Algorithm (matches Protocol v0.1 §12 / satspath-core):
 ///   digest = SHA-256("SatsPathProfileV1" || canonical_json(profile))
-///   verify ECDSA(sig, digest, identity_pubkey)
+///   verify Schnorr(sig, digest, identity_pubkey)
 ///
 /// Also attempts the legacy fallback (JS insertion-order JSON) if canonical
 /// verification fails, so old profiles signed before key-sorting was enforced
@@ -73,16 +73,25 @@ pub fn verify_signed_profile(signed_json: &str) -> bool {
         Ok(b) => b,
         Err(_) => return false,
     };
-    let pubkey = match secp256k1::PublicKey::from_slice(&pubkey_bytes) {
-        Ok(k) => k,
-        Err(_) => return false,
+    
+    let x_only_public_key = if pubkey_bytes.len() == 32 {
+        match secp256k1::XOnlyPublicKey::from_slice(&pubkey_bytes) {
+            Ok(k) => k,
+            Err(_) => return false,
+        }
+    } else {
+        match secp256k1::PublicKey::from_slice(&pubkey_bytes) {
+            Ok(k) => k.x_only_public_key().0,
+            Err(_) => return false,
+        }
     };
 
     let sig_bytes = match hex::decode(&signed.signature) {
         Ok(b) => b,
         Err(_) => return false,
     };
-    let sig = match secp256k1::ecdsa::Signature::from_der(&sig_bytes) {
+    
+    let sig = match secp256k1::schnorr::Signature::from_slice(&sig_bytes) {
         Ok(s) => s,
         Err(_) => return false,
     };
@@ -96,22 +105,25 @@ pub fn verify_signed_profile(signed_json: &str) -> bool {
         hasher.update(&canonical_bytes);
         let digest = hasher.finalize();
         if let Ok(msg) = secp256k1::Message::from_digest_slice(&digest) {
-            if secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok() {
+            if secp.verify_schnorr(&sig, &msg, &x_only_public_key).is_ok() {
                 return true;
             }
         }
     }
 
     // ── Legacy fallback: insertion-order JSON (no domain separator) ───────
-    // Matches the JS fallback: sha256(JSON.stringify(profile)) without separator.
-    // This covers profiles signed by very early satspath-core versions.
-    let legacy_json = match serde_json::to_string(&signed.profile) {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
-    let legacy_digest = Sha256::digest(legacy_json.as_bytes());
-    if let Ok(msg) = secp256k1::Message::from_digest_slice(&legacy_digest) {
-        return secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok();
+    // This covers profiles signed by very early satspath-core versions using ECDSA.
+    if let Ok(ecdsa_sig) = secp256k1::ecdsa::Signature::from_der(&sig_bytes) {
+        if let Ok(pubkey) = secp256k1::PublicKey::from_slice(&pubkey_bytes) {
+            let legacy_json = match serde_json::to_string(&signed.profile) {
+                Ok(s) => s,
+                Err(_) => return false,
+            };
+            let legacy_digest = Sha256::digest(legacy_json.as_bytes());
+            if let Ok(msg) = secp256k1::Message::from_digest_slice(&legacy_digest) {
+                return secp.verify_ecdsa(&msg, &ecdsa_sig, &pubkey).is_ok();
+            }
+        }
     }
 
     false

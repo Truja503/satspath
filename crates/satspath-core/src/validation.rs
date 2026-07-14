@@ -269,11 +269,17 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
             PaymentMethod::Onchain {
                 network,
                 address,
+                silent_payment_pubkey,
                 pubkey_hint,
                 descriptor_hint,
                 ..
             } => {
-                validate_bitcoin_address(address, *network)?;
+                if let Some(addr) = address {
+                    validate_bitcoin_address(addr, *network)?;
+                }
+                if let Some(sp) = silent_payment_pubkey {
+                    assert_no_private_material(sp)?;
+                }
                 if let Some(pubkey) = pubkey_hint {
                     validate_compressed_pubkey(pubkey)?;
                 }

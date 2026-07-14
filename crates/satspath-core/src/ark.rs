@@ -1,4 +1,5 @@
-use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1};
+use secp256k1::{Message, PublicKey, Secp256k1, XOnlyPublicKey};
+use secp256k1::schnorr::Signature;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use url::Url;
@@ -271,47 +272,56 @@ pub fn verify_ark_ownership_proof(
 
     let pubkey_bytes =
         hex::decode(&proof.pubkey).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
-    let pubkey = PublicKey::from_slice(&pubkey_bytes)
-        .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+    
+    let x_only_public_key = if pubkey_bytes.len() == 32 {
+        XOnlyPublicKey::from_slice(&pubkey_bytes)
+            .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?
+    } else {
+        let public_key = PublicKey::from_slice(&pubkey_bytes)
+            .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
+        public_key.x_only_public_key().0
+    };
+
     let sig_bytes =
         hex::decode(&proof.signature).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
     let sig =
-        Signature::from_der(&sig_bytes).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+        Signature::from_slice(&sig_bytes).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
     let digest = Sha256::digest(proof.message.as_bytes());
     let message = Message::from_digest(digest.into());
     Ok(Secp256k1::verification_only()
-        .verify_ecdsa(&message, &sig, &pubkey)
+        .verify_schnorr(&sig, &message, &x_only_public_key)
         .is_ok())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use secp256k1::{Secp256k1, SecretKey};
+    use secp256k1::{Keypair, Secp256k1, SecretKey};
 
     fn signed_pointer(
         alias: &str,
         identity_pubkey: &str,
         server: &str,
-        nonce: &str,
+        _nonce: &str,
         expires_at: Option<i64>,
     ) -> ArkReceivePointer {
         let secp = Secp256k1::new();
         let secret = SecretKey::from_slice(&[1u8; 32]).unwrap();
+        let keypair = Keypair::from_secret_key(&secp, &secret);
         let pubkey = secret.public_key(&secp);
         let pubkey_hex = hex::encode(pubkey.serialize());
         // Use method descriptor as "nonce" for exact message matching
         let method_descriptor = format!("ark:{}", pubkey_hex);
         let message = ark_ownership_challenge(alias, identity_pubkey, server, &pubkey_hex, &method_descriptor);
         let digest = Sha256::digest(message.as_bytes());
-        let sig = secp.sign_ecdsa(&Message::from_digest(digest.into()), &secret);
+        let sig = secp.sign_schnorr(&Message::from_digest(digest.into()), &keypair);
         ArkReceivePointer {
             server: server.into(),
             receiver_pubkey: pubkey_hex.clone(),
             vtxo_pointer: None,
             proof: Some(ArkOwnershipProof {
                 message,
-                signature: hex::encode(sig.serialize_der()),
+                signature: hex::encode(sig.serialize()),
                 pubkey: pubkey_hex,
             }),
             expires_at,

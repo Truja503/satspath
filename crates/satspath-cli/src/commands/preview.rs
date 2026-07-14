@@ -290,19 +290,21 @@ async fn method_preview(
             label,
             network,
             address,
+            silent_payment_pubkey,
             ..
         } => {
             if *network != BitcoinNetwork::Mainnet {
                 anyhow::bail!("mainnet preview rejected non-mainnet on-chain address.");
             }
-            validate_bitcoin_address(address, BitcoinNetwork::Mainnet)
+            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            validate_bitcoin_address(&target, BitcoinNetwork::Mainnet)
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
-            let qr = bitcoin_uri(address, amount_sats);
+            let qr = bitcoin_uri(&target, amount_sats);
             Ok((
                 SelectedMethodResponse::Onchain {
                     label: label.clone(),
                     network: *network,
-                    address: address.clone(),
+                    address: target,
                 },
                 qr,
                 vec![
@@ -485,9 +487,11 @@ mod tests {
         let quote = quote_for(PaymentMethod::Onchain {
             label: "Savings".into(),
             network: BitcoinNetwork::Mainnet,
-            address: "1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into(),
+            address: Some("1BoatSLRHtKNngkdXEeobR76b53LETtpyT".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         });
         let (_, qr, _) = method_preview(&quote, 1_000, false, "unverified")
             .await
@@ -503,9 +507,11 @@ mod tests {
         let quote = quote_for(PaymentMethod::Onchain {
             label: "Testnet".into(),
             network: BitcoinNetwork::Testnet,
-            address: "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn".into(),
+            address: Some("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         });
         assert!(method_preview(&quote, 1_000, false, "unverified")
             .await

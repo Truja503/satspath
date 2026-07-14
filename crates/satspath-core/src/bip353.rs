@@ -282,7 +282,7 @@ pub fn verify_bip353_ownership(
     // Otherwise require the URI to reference a method the profile actually owns.
     let matches_method = signed.profile.methods.iter().any(|m| match m {
         PaymentMethod::Onchain { address, .. } => {
-            parsed.address.as_deref() == Some(address.as_str())
+            parsed.address.as_deref() == address.as_deref()
         }
         PaymentMethod::Lightning {
             bolt12: Some(offer),

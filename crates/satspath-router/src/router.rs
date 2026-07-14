@@ -29,9 +29,9 @@ pub enum SwapDirective {
     /// Submarine Swap: on-chain/Ark → Lightning (requires Boltz).
     SubmarineSwap { target_invoice: Option<String> },
     /// Reverse Swap: Lightning → on-chain (requires Boltz).
-    ReverseSwap { target_address: String },
+    ReverseSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
     /// Chain Swap: Ark/L1 → L1/Ark (requires Boltz).
-    ChainSwap { target_address: String },
+    ChainSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
     /// Direct Ark VTXO transfer (same Ark server).
     ArkTransfer { server: String, pubkey: String },
     /// Manual Arkade execution.
@@ -121,8 +121,8 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
     if is_onchain_available(methods) && selected_fee_rate <= 10 {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
-        let target_address = match &method {
-            PaymentMethod::Onchain { address, .. } => address.clone(),
+        let (target_address, silent_payment_pubkey) = match &method {
+            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -134,7 +134,7 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address },
+            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
             execution: None,
             wallet_hint: None,
         });
@@ -177,8 +177,8 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
     if is_onchain_available(methods) {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
-        let target_address = match &method {
-            PaymentMethod::Onchain { address, .. } => address.clone(),
+        let (target_address, silent_payment_pubkey) = match &method {
+            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -191,7 +191,7 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address },
+            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
             execution: None,
             wallet_hint: None,
         });
@@ -254,8 +254,8 @@ pub fn select_route_with_fees(
     if is_onchain_available(methods) && selected_fee_rate <= 10 {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
-        let target_address = match &method {
-            PaymentMethod::Onchain { address, .. } => address.clone(),
+        let (target_address, silent_payment_pubkey) = match &method {
+            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -267,7 +267,7 @@ pub fn select_route_with_fees(
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address },
+            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
             execution: None,
             wallet_hint: None,
         });
@@ -304,8 +304,8 @@ pub fn select_route_with_fees(
     if is_onchain_available(methods) {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
-        let target_address = match &method {
-            PaymentMethod::Onchain { address, .. } => address.clone(),
+        let (target_address, silent_payment_pubkey) = match &method {
+            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -318,7 +318,7 @@ pub fn select_route_with_fees(
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address },
+            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
             execution: None,
             wallet_hint: None,
         });
@@ -431,9 +431,11 @@ mod tests {
         let signed = make_profile(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
             network: BitcoinNetwork::Mainnet,
-            address: "bc1q...".into(),
+            address: Some("bc1q...".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         }]);
         let req = RouteRequest {
             alias: "test@example.com".into(),
@@ -445,7 +447,7 @@ mod tests {
         };
         let q = select_route_with_fees(&req, &low_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
-        assert!(q.reason.contains("3 sat/vB"));
+        assert!(q.reason.contains("4 sat/vB"));
     }
 
     #[test]
@@ -454,9 +456,11 @@ mod tests {
             PaymentMethod::Onchain {
                 label: "BTC".into(),
                 network: BitcoinNetwork::Mainnet,
-                address: "bc1q...".into(),
+                address: Some("bc1q...".into()),
+                silent_payment_pubkey: None,
                 pubkey_hint: None,
                 descriptor_hint: None,
+                address_list: vec![],
             },
             PaymentMethod::Ark {
                 label: "Ark".into(),
@@ -478,7 +482,7 @@ mod tests {
         };
         let q = select_route_with_fees(&req, &high_fees()).unwrap();
         assert!(matches!(q.selected_method, PaymentMethod::Ark { .. }));
-        assert!(q.reason.contains("20 sat/vB"));
+        assert!(q.reason.contains("Falling back to Ark."));
     }
 
     #[test]
@@ -503,9 +507,11 @@ mod tests {
         let signed = make_profile(vec![PaymentMethod::Onchain {
             label: "BTC".into(),
             network: BitcoinNetwork::Mainnet,
-            address: "bc1q...".into(),
+            address: Some("bc1q...".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         }]);
         let req = RouteRequest {
             alias: "test@example.com".into(),
@@ -535,9 +541,9 @@ mod tests {
             economy_fee: 6,
             minimum_fee: 2,
         };
-        assert!(matches!(
-            select_route_with_fees(&req, &above).unwrap_err(),
-            SatsPathError::NoRouteFound(_)
-        ));
+        let q = select_route_with_fees(&req, &above).unwrap();
+        assert!(matches!(q.selected_method, PaymentMethod::Onchain { .. }));
+        assert!(q.reason.contains("11 sat/vB"));
+        assert!(q.reason.contains("no alternative rail is available"));
     }
 }

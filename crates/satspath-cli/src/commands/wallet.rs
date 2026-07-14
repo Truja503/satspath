@@ -114,9 +114,11 @@ fn build_methods(state: &WalletState) -> Vec<PaymentMethod> {
         methods.push(PaymentMethod::Onchain {
             label: "Bitcoin (mainnet)".into(),
             network: BitcoinNetwork::Mainnet,
-            address: addr.clone(),
+            address: Some(addr.clone()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         });
     }
     if let (Some(server), Some(pubkey)) = (&state.ark_server, &state.ark_pubkey) {
@@ -188,9 +190,12 @@ fn receive_payload_for(method: &PaymentMethod, amount_sats: Option<u64>) -> Resu
         PaymentMethod::Lightning {
             lnurl: Some(url), ..
         } => url.clone(),
-        PaymentMethod::Onchain { address, .. } => match amount_sats {
-            Some(sats) => format!("bitcoin:{address}?amount={}", sats_to_btc(sats)),
-            None => format!("bitcoin:{address}"),
+        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
+            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            match amount_sats {
+                Some(sats) => format!("bitcoin:{target}?amount={}", sats_to_btc(sats)),
+                None => format!("bitcoin:{target}"),
+            }
         },
         PaymentMethod::Ark { server, pubkey, .. } => match amount_sats {
             Some(sats) => format!(

@@ -1,7 +1,7 @@
 //! `satspath-wasm` — WASM bindings for SatsPath crypto primitives.
 //!
 //! Exposes to JavaScript (Node.js target):
-//!   - `verify_signed_profile`  — secp256k1 ECDSA verification
+//!   - `verify_signed_profile`  — secp256k1 Schnorr verification
 //!   - `canonical_profile_json` — deterministic canonical JSON bytes
 //!   - `topic_for_alias`        — SHA-256 P2P topic derivation
 //!

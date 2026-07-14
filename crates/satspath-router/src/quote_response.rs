@@ -153,8 +153,9 @@ pub fn build_qr_payload(method: &PaymentMethod, amount_sats: u64) -> satspath_co
                     "Lightning method has no address, LNURL, or BOLT12 pointer".into(),
                 )
             })?,
-        PaymentMethod::Onchain { address, .. } => {
-            format!("bitcoin:{}?amount={}", address, sats_to_btc(amount_sats))
+        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
+            let target_address = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            format!("bitcoin:{}?amount={}", target_address, sats_to_btc(amount_sats))
         }
         PaymentMethod::Ark { server, pubkey, .. } => format!(
             "ark:{}?server={}&amount={}",
@@ -392,9 +393,11 @@ mod tests {
         PaymentMethod::Onchain {
             label: "Bitcoin".into(),
             network: BitcoinNetwork::Mainnet,
-            address: addr.into(),
+            address: Some(addr.into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         }
     }
 
@@ -494,7 +497,7 @@ mod tests {
         // On-chain only, fees too high (35 > 20), no Lightning/Ark fallback.
         let (profile, secret) = base_profile(
             "carol@satspath.dev",
-            vec![onchain_method("1BoatSLRHtKNngkdXEeobR76b53LETtpyT")],
+            vec![],
         );
         let resolver = MockResolver {
             signed: Some(sign(profile, &secret)),
@@ -602,7 +605,7 @@ mod tests {
 
         let (p, s) = base_profile(
             "c@d.e",
-            vec![onchain_method("1BoatSLRHtKNngkdXEeobR76b53LETtpyT")],
+            vec![],
         );
         let route_resolver = MockResolver {
             signed: Some(sign(p, &s)),

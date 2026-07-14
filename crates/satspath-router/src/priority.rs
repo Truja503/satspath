@@ -156,9 +156,11 @@ mod tests {
         PaymentMethod::Onchain {
             label: "btc".into(),
             network: BitcoinNetwork::Mainnet,
-            address: "bc1qx".into(),
+            address: Some("bc1qx".into()),
+            silent_payment_pubkey: None,
             pubkey_hint: None,
             descriptor_hint: None,
+            address_list: vec![],
         }
     }
     fn lightning() -> PaymentMethod {

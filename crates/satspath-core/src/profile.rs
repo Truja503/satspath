@@ -12,11 +12,20 @@ pub enum PaymentMethod {
         label: String,
         #[serde(default = "default_bitcoin_network")]
         network: BitcoinNetwork,
-        address: String,
+        /// Static address (legacy, discouraged by spec).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        address: Option<String>,
+        /// BIP-352 Silent Payment scan pubkey (sp1q...).
+        /// When present, the payer derives an ephemeral address per-payment.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        silent_payment_pubkey: Option<String>,
         #[serde(default)]
         pubkey_hint: Option<String>,
         #[serde(default)]
         descriptor_hint: Option<String>,
+        /// List of pre-derived addresses for wallets that don't support BIP-352.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        address_list: Vec<String>,
     },
     /// Lightning Network via LNURL, Lightning Address, or BOLT12.
     Lightning {
@@ -82,14 +91,23 @@ impl PaymentMethod {
     pub fn ownership_descriptor(&self) -> String {
         match self {
             PaymentMethod::Onchain {
-                network, address, ..
+                network,
+                silent_payment_pubkey,
+                address,
+                ..
             } => {
                 let net = match network {
                     BitcoinNetwork::Mainnet => "mainnet",
                     BitcoinNetwork::Testnet => "testnet",
                     BitcoinNetwork::Regtest => "regtest",
                 };
-                format!("onchain:{net}:{address}")
+                if let Some(sp) = silent_payment_pubkey {
+                    format!("onchain:{net}:sp:{sp}")
+                } else if let Some(addr) = address {
+                    format!("onchain:{net}:{addr}")
+                } else {
+                    format!("onchain:{net}:unknown")
+                }
             }
             PaymentMethod::Lightning {
                 lightning_address,
@@ -159,7 +177,7 @@ pub struct PaymentProfile {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedPaymentProfile {
     pub profile: PaymentProfile,
-    /// Hex-encoded DER-encoded secp256k1 ECDSA signature
+    /// Hex-encoded secp256k1 Schnorr signature (64 bytes)
     pub signature: String,
 }
 
@@ -188,7 +206,7 @@ pub struct Invite {
     pub expires_at: i64,
     pub claim_url: String,
     pub warning: String,
-    /// Hex-encoded DER ECDSA signature by the sender's identity key.
+    /// Hex-encoded Schnorr signature by the sender's identity key.
     /// Binds the invite to the sender's identity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sender_signature: Option<String>,
