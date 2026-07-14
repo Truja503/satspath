@@ -35,18 +35,26 @@ jobs:
             -not -path "*/pkg/*" \
             -not -path "*/.github/*" | while read -r md_file; do
             
-            base_name="${md_file%.md}"
-            echo "Processing: $md_file"
+            # Remove leading ./
+            rel_path="${md_file#./}"
+            dir_name=$(dirname "$rel_path")
+            base_name=$(basename "$md_file" .md)
+            
+            # Create target directories
+            mkdir -p "docs/latex/$dir_name"
+            mkdir -p "docs/pdf/$dir_name"
+            
+            echo "Processing: $md_file -> docs/latex/$dir_name/${base_name}.tex and docs/pdf/$dir_name/${base_name}.pdf"
             
             # Generate LaTeX
-            pandoc "$md_file" -o "${base_name}.tex" --standalone || echo "Warning: Failed to convert $md_file to .tex"
+            pandoc "$md_file" -o "docs/latex/$dir_name/${base_name}.tex" --standalone || echo "Warning: Failed to convert $md_file to .tex"
             
             # Generate PDF using XeLaTeX to better support Unicode and standard formatting
-            pandoc "$md_file" -o "${base_name}.pdf" --pdf-engine=xelatex -V geometry:margin=1in || echo "Warning: Failed to convert $md_file to .pdf"
+            pandoc "$md_file" -o "docs/pdf/$dir_name/${base_name}.pdf" --pdf-engine=xelatex -V geometry:margin=1in || echo "Warning: Failed to convert $md_file to .pdf"
           done
 
       - name: Commit and push generated files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "docs: Auto-generate LaTeX and PDF copies of Markdown files"
-          file_pattern: '**.tex **.pdf'
+          commit_message: "docs: Auto-generate LaTeX and PDF copies into docs/latex and docs/pdf"
+          file_pattern: 'docs/latex/** docs/pdf/**'
