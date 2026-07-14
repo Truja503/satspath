@@ -1,0 +1,52 @@
+name: Convert Markdown to LaTeX and PDF
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  convert_docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history to ensure committing works cleanly
+          fetch-depth: 0
+
+      - name: Install Pandoc and TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended texlive-plain-generic texlive-latex-extra texlive-fonts-extra
+
+      - name: Convert Markdown to LaTeX and PDF
+        run: |
+          # Find all markdown files, ignoring common build and dependency directories
+          find . -name "*.md" -type f \
+            -not -path "*/node_modules/*" \
+            -not -path "*/target/*" \
+            -not -path "*/.git/*" \
+            -not -path "*/pkg/*" \
+            -not -path "*/.github/*" | while read -r md_file; do
+            
+            base_name="${md_file%.md}"
+            echo "Processing: $md_file"
+            
+            # Generate LaTeX
+            pandoc "$md_file" -o "${base_name}.tex" --standalone || echo "Warning: Failed to convert $md_file to .tex"
+            
+            # Generate PDF using XeLaTeX to better support Unicode and standard formatting
+            pandoc "$md_file" -o "${base_name}.pdf" --pdf-engine=xelatex -V geometry:margin=1in || echo "Warning: Failed to convert $md_file to .pdf"
+          done
+
+      - name: Commit and push generated files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: Auto-generate LaTeX and PDF copies of Markdown files"
+          file_pattern: '**.tex **.pdf'
