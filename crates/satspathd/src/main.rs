@@ -381,7 +381,10 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let response = match (method, path.as_str()) {
         (Method::Options, _) => empty_response(StatusCode(204)),
         (Method::Get, "/") => html_response(INDEX_HTML),
-        (Method::Get, "/v1/receive") => json_result(StatusCode(200), receive_view(state)),
+        (Method::Post, "/v1/receive") => match read_json::<ReceiveRequest>(&mut request) {
+            Ok(body) => json_result(StatusCode(200), receive_view(state, body)),
+            Err(e) => json_error(StatusCode(400), e),
+        },
         (Method::Post, "/v1/send") => match read_json::<SendRequest>(&mut request) {
             Ok(body) => json_response(StatusCode(200), &send_response(state, body).await),
             Err(e) => json_error(StatusCode(400), e),
@@ -1209,32 +1212,59 @@ struct ReceiveView {
     qr_svg: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ReceiveRequest {
+    rail: Option<String>,
+    amount_sats: Option<u64>,
+}
 /// Compute the wallet owner's preferred receive QR, entirely locally. Prefers
 /// Lightning → on-chain → Ark. Returns a reusable (amount-less) receive pointer.
-fn receive_view(state: &AppState) -> Result<ReceiveView> {
+fn receive_view(state: &AppState, req: ReceiveRequest) -> Result<ReceiveView> {
     let wallet = load_wallet(&state.home)?;
     let alias = wallet
         .alias
         .clone()
         .ok_or_else(|| anyhow::anyhow!("no profile yet — set one via POST /v1/profile"))?;
     let methods = build_methods(&wallet, &state.network);
-    let method = methods
-        .iter()
-        .find(|m| matches!(m, PaymentMethod::Lightning { .. }))
-        .or_else(|| {
-            methods
-                .iter()
-                .find(|m| matches!(m, PaymentMethod::Onchain { .. }))
-        })
-        .or_else(|| {
-            methods
-                .iter()
-                .find(|m| matches!(m, PaymentMethod::Ark { .. }))
-        })
-        .ok_or_else(|| {
-            anyhow::anyhow!("no receive methods — add one via POST /v1/profile/methods")
-        })?;
-    let payload = receive_payload_for(method)?;
+    
+    let method = if let Some(req_rail) = req.rail {
+        let req_rail = req_rail.to_lowercase();
+        methods
+            .into_iter()
+            .find(|m| m.method_name().to_lowercase() == req_rail)
+            .ok_or_else(|| anyhow::anyhow!("requested rail '{}' is not configured in your profile", req_rail))?
+    } else {
+        methods
+            .iter()
+            .find(|m| matches!(m, PaymentMethod::Lightning { .. }))
+            .or_else(|| {
+                methods
+                    .iter()
+                    .find(|m| matches!(m, PaymentMethod::Onchain { .. }))
+            })
+            .or_else(|| {
+                methods
+                    .iter()
+                    .find(|m| matches!(m, PaymentMethod::Ark { .. }))
+            })
+            .ok_or_else(|| {
+                anyhow::anyhow!("no receive methods — add one via POST /v1/profile/methods")
+            })?
+            .clone()
+    };
+
+    let mut payload = receive_payload_for(&method)?;
+    
+    // Append amount if requested
+    if let Some(sats) = req.amount_sats {
+        if matches!(method, PaymentMethod::Onchain { .. }) {
+            payload = format!("{}?amount={}", payload, fmt_btc(sats));
+        } else if matches!(method, PaymentMethod::Ark { .. }) {
+            payload = format!("{}&amount={}", payload, sats);
+        }
+        // Note: Lightning Address/LNURL doesn't support amount in the static string.
+    }
+
     Ok(ReceiveView {
         alias: mask_identifier(&alias),
         rail: method.method_name().to_string(),

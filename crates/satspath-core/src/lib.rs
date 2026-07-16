@@ -61,7 +61,7 @@ pub use profile::{
 pub use rotation::KeyRotation;
 pub use split::{SplitPaymentRequest, SplitRecipient};
 
-use sha2::{Digest, Sha256};
+
 
 /// Validate that a string looks like a Lightning Address (user@domain).
 pub fn is_valid_lightning_address(s: &str) -> bool {
