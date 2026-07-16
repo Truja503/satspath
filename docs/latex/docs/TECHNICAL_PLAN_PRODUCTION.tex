@@ -1,0 +1,1114 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-arkade-technical-integration-plan-production-v2}{%
+\section{SatsPath × Arkade --- Technical Integration Plan (Production /
+v2)}\label{satspath-arkade-technical-integration-plan-production-v2}}
+
+\textbf{Goal}: Fully native, self-sovereign SatsPath stack in Arkade
+wallet (mobile + desktop) with zero trusted backend. UniFFI bindings for
+Kotlin (Android), Swift (iOS), TypeScript (React Native / Tauri / PWA).
+
+\textbf{Architecture}:
+
+\begin{verbatim}
+Arkade Wallet (Kotlin/Swift/TS)
+    ↓ UniFFI
+satspath-core + satspath-router (Rust cdylib)
+    ├── Resolver Chain (local → BIP353 → HTTPS → Nostr → P2P)
+    ├── Profile Crypto (secp256k1 sign/verify)
+    ├── Router (fee-aware rail selection)
+    └── QR/Payment Payload Builder
+    ↓ Execution Adapters (platform-specific)
+LDK (Lightning) / Arkade SDK (Ark) / BDK (On-chain)
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{production-requirements-vs-mvp}{%
+\subsection{1. Production Requirements (vs
+MVP)}\label{production-requirements-vs-mvp}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2609}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2174}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.5217}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Area
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+MVP
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Production
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Resolver} & TS fetch in PWA & Rust async in core (tokio) --- no
+JS fetch dependency \\
+\textbf{Crypto} & WASM (secp256k1 only) & Native Rust (secp256k1 +
+schnorrkel) via UniFFI \\
+\textbf{Router} & TS port (\textasciitilde300 LOC) & Native Rust (full
+scoring, urgency, split payments) \\
+\textbf{Identity} & LocalStorage profile & Encrypted
+SQLCipher/Keychain/Keystore + BIP-39 seed backup \\
+\textbf{P2P} & Optional satspathd sidecar & Embedded Hyperswarm via
+UniFFI (or libp2p) \\
+\textbf{Ark} & Testnet preview & Mainnet ready (covenant-based when
+available) \\
+\textbf{BOLT12} & ❌ & ✅ Offer-based async payments \\
+\textbf{Silent Payments} & ❌ & ✅ BIP-352 receive \\
+\textbf{Split Payments} & ❌ & ✅ Multi-rail single payment \\
+\textbf{Key Rotation} & ❌ & ✅ Spec §29 \\
+\textbf{Platform Verification} & Invite only & DKIM / OAuth / Nostr
+NIP-42 \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{rust-refactor-for-uniffi}{%
+\subsection{2. Rust Refactor for
+UniFFI}\label{rust-refactor-for-uniffi}}
+
+\hypertarget{crate-restructuring}{%
+\subsubsection{2.1 Crate Restructuring}\label{crate-restructuring}}
+
+\begin{verbatim}
+satspath/
+├── crates/
+│   ├── satspath-core/          # → Keep, make `cdylib` + `uniffi` feature
+│   ├── satspath-router/        # → Keep, make `cdylib` + `uniffi` feature  
+│   ├── satspath-ffi/           # NEW: UniFFI definitions (UDL) + glue
+│   │   ├── satspath.udl
+│   │   ├── build.rs
+│   │   └── src/
+│   │       ├── resolver.rs     # ResolverChain implementation
+│   │       ├── router.rs       # Router FFI wrapper
+│   │       ├── profile.rs      # Profile management FFI
+│   │       └── crypto.rs       # Crypto FFI wrapper
+│   └── satspath-wasm/          # Keep for web-only fallback
+\end{verbatim}
+
+\hypertarget{satspath-core-changes}{%
+\subsubsection{\texorpdfstring{2.2 \texttt{satspath-core}
+Changes}{2.2 satspath-core Changes}}\label{satspath-core-changes}}
+
+\textbf{Cargo.toml}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{[lib]}
+\DataTypeTok{crate{-}type} \OperatorTok{=} \OperatorTok{[}\StringTok{"rlib"}\OperatorTok{,} \StringTok{"cdylib"}\OperatorTok{]}  \CommentTok{\# cdylib for UniFFI}
+
+\KeywordTok{[features]}
+\DataTypeTok{default} \OperatorTok{=} \OperatorTok{[]}
+\DataTypeTok{uniffi} \OperatorTok{=} \OperatorTok{[}\StringTok{"uniffi"}\OperatorTok{,} \StringTok{"tokio/rt{-}multi{-}thread"}\OperatorTok{,} \StringTok{"reqwest/native{-}tls"}\OperatorTok{]}
+
+\KeywordTok{[dependencies]}
+\DataTypeTok{uniffi} \OperatorTok{=} \OperatorTok{\{ }\DataTypeTok{version}\OperatorTok{ =} \StringTok{"0.28"}\OperatorTok{, }\DataTypeTok{optional}\OperatorTok{ =} \ConstantTok{true}\OperatorTok{ \}}
+\DataTypeTok{tokio} \OperatorTok{=} \OperatorTok{\{ }\DataTypeTok{version}\OperatorTok{ =} \StringTok{"1"}\OperatorTok{, }\DataTypeTok{features}\OperatorTok{ =} \OperatorTok{[}\StringTok{"rt{-}multi{-}thread"}\OperatorTok{,} \StringTok{"macros"}\OperatorTok{], }\DataTypeTok{optional}\OperatorTok{ =} \ConstantTok{true}\OperatorTok{ \}}
+\DataTypeTok{reqwest} \OperatorTok{=} \OperatorTok{\{ }\DataTypeTok{version}\OperatorTok{ =} \StringTok{"0.12"}\OperatorTok{, }\DataTypeTok{features}\OperatorTok{ =} \OperatorTok{[}\StringTok{"json"}\OperatorTok{,} \StringTok{"native{-}tls"}\OperatorTok{], }\DataTypeTok{optional}\OperatorTok{ =} \ConstantTok{true}\OperatorTok{ \}}
+\CommentTok{\# ... existing deps}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Expose async trait for UniFFI} (\texttt{src/resolver.rs}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{use} \PreprocessorTok{uniffi::}\NormalTok{async\_trait}\OperatorTok{;}
+
+\AttributeTok{\#[}\NormalTok{async\_trait}\AttributeTok{]}
+\KeywordTok{pub} \KeywordTok{trait}\NormalTok{ ProfileResolver}\OperatorTok{:} \BuiltInTok{Send} \OperatorTok{+} \BuiltInTok{Sync} \OperatorTok{\{}
+    \KeywordTok{async} \KeywordTok{fn}\NormalTok{ resolve\_alias(}\OperatorTok{\&}\KeywordTok{self}\OperatorTok{,}\NormalTok{ alias}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\NormalTok{SignedPaymentProfile}\OperatorTok{,}\NormalTok{ SatsPathError}\OperatorTok{\textgreater{};}
+\OperatorTok{\}}
+
+\CommentTok{// Implement for each resolver: LocalRegistry, Bip353, HttpWellKnown, NostrNip05, P2P}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{udl-definitions-satspath-ffisatspath.udl}{%
+\subsubsection{\texorpdfstring{2.3 UDL Definitions
+(\texttt{satspath-ffi/satspath.udl})}{2.3 UDL Definitions (satspath-ffi/satspath.udl)}}\label{udl-definitions-satspath-ffisatspath.udl}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{namespace satspath;}
+
+\NormalTok{interface ProfileResolver \{}
+\NormalTok{    Promise\textless{}SignedPaymentProfile\textgreater{} resolveAlias(string alias);}
+\NormalTok{\}}
+
+\NormalTok{enum PaymentMethodType \{ Onchain, Lightning, Ark \};}
+
+\NormalTok{record OnchainMethod \{}
+\NormalTok{    string label;}
+\NormalTok{    string network;  // "mainnet" | "testnet" | "regtest"}
+\NormalTok{    string? address;}
+\NormalTok{    string? silentPaymentPubkey;}
+\NormalTok{    string? pubkeyHint;}
+\NormalTok{    string? descriptorHint;}
+\NormalTok{    sequence\textless{}string\textgreater{} addressList;}
+\NormalTok{\};}
+
+\NormalTok{record LightningMethod \{}
+\NormalTok{    string label;}
+\NormalTok{    string? lightningAddress;}
+\NormalTok{    string? lnurl;}
+\NormalTok{    string? bolt12;}
+\NormalTok{    string? receiverPubkey;}
+\NormalTok{\};}
+
+\NormalTok{record ArkMethod \{}
+\NormalTok{    string label;}
+\NormalTok{    string server;}
+\NormalTok{    string pubkey;}
+\NormalTok{    string? vtxoPointer;}
+\NormalTok{    string? opaqueUri;}
+\NormalTok{    ArkOwnershipProof? proof;}
+\NormalTok{    i64? expiresAt;}
+\NormalTok{\};}
+
+\NormalTok{union PaymentMethod \{ OnchainMethod | LightningMethod | ArkMethod \};}
+
+\NormalTok{record PaymentProfile \{}
+\NormalTok{    string alias;}
+\NormalTok{    string identityPubkey;}
+\NormalTok{    sequence\textless{}PaymentMethod\textgreater{} methods;}
+\NormalTok{    i64 updatedAt;}
+\NormalTok{    i64? expiresAt;}
+\NormalTok{    u64? sequence;}
+\NormalTok{    sequence\textless{}string\textgreater{} preferences;}
+\NormalTok{    string? nonce;}
+\NormalTok{    KeyRotation? rotation;}
+\NormalTok{    sequence\textless{}MethodVerification\textgreater{} methodVerifications;}
+\NormalTok{\};}
+
+\NormalTok{record SignedPaymentProfile \{}
+\NormalTok{    PaymentProfile profile;}
+\NormalTok{    string signature;  // hex schnorr}
+\NormalTok{\};}
+
+\NormalTok{record QuoteRequest \{}
+\NormalTok{    string recipient;}
+\NormalTok{    u64 amountSats;}
+\NormalTok{    SignedPaymentProfile signedProfile;}
+\NormalTok{    string urgency;  // "low" | "normal" | "high"}
+\NormalTok{    u64? maxFeeSats;}
+\NormalTok{    f64? maxFeePercent;}
+\NormalTok{\};}
+
+\NormalTok{enum ExecutionMode \{ Preview, MainnetPreview, TestnetExperimental, ManualWallet \};}
+
+\NormalTok{record RouteQuote \{}
+\NormalTok{    PaymentMethod selectedMethod;}
+\NormalTok{    u64 estimatedFeeSats;}
+\NormalTok{    string estimatedConfirmation;}
+\NormalTok{    string reason;}
+\NormalTok{    ExecutionMode execution;}
+\NormalTok{    string walletHint;}
+\NormalTok{\};}
+
+\NormalTok{record FeeEstimate \{}
+\NormalTok{    u64 fastestFee;}
+\NormalTok{    u64 halfHourFee;}
+\NormalTok{    u64 hourFee;}
+\NormalTok{    u64 economyFee;}
+\NormalTok{    u64 minimumFee;}
+\NormalTok{\};}
+
+\NormalTok{interface Router \{}
+\NormalTok{    Promise\textless{}RouteQuote\textgreater{} selectRoute(QuoteRequest request, FeeEstimate fees);}
+\NormalTok{    Promise\textless{}FeeEstimate\textgreater{} fetchFeeEstimate();}
+\NormalTok{    string buildQrPayload(PaymentMethod method, u64 amountSats);}
+\NormalTok{\};}
+
+\NormalTok{enum QuoteStatus \{ Ok, NotRegistered, NoRoute, InvalidSignature \};}
+
+\NormalTok{record QuoteRecipient \{}
+\NormalTok{    string alias;}
+\NormalTok{    boolean verified;}
+\NormalTok{    boolean profileSignatureVerified;}
+\NormalTok{    boolean identifierVerified;}
+\NormalTok{    string identifierVerification;}
+\NormalTok{    string fingerprint;}
+\NormalTok{\};}
+
+\NormalTok{record Invite \{}
+\NormalTok{    string aliasHash;}
+\NormalTok{    u64 amountSats;}
+\NormalTok{    i64 createdAt;}
+\NormalTok{    i64 expiresAt;}
+\NormalTok{    string claimUrl;}
+\NormalTok{    string warning;}
+\NormalTok{    string? senderSignature;}
+\NormalTok{    string? senderPubkey;}
+\NormalTok{\};}
+
+\NormalTok{union QuoteResponse \{ }
+\NormalTok{    record \{ QuoteRecipient recipient; PaymentMethod selectedMethod; u64 feeSats; string eta; string reason; string qr; ExecutionMode execution; string walletHint; \},}
+\NormalTok{    record \{ Invite invite; \},}
+\NormalTok{    record \{ string reason; \},}
+\NormalTok{    record \{ QuoteRecipient recipient; \}}
+\NormalTok{\};}
+
+\NormalTok{interface Satspath \{}
+\NormalTok{    // High{-}level: resolve + verify + route + build payload}
+\NormalTok{    Promise\textless{}QuoteResponse\textgreater{} quote(string recipient, u64 amountSats);}
+    
+\NormalTok{    // Lower{-}level building blocks}
+\NormalTok{    Promise\textless{}SignedPaymentProfile\textgreater{} resolve(string alias);}
+\NormalTok{    boolean verifyProfile(SignedPaymentProfile profile);}
+\NormalTok{    Promise\textless{}RouteQuote\textgreater{} route(QuoteRequest request);}
+    
+\NormalTok{    // Identity management}
+\NormalTok{    Promise\textless{}Identity\textgreater{} createIdentity();}
+\NormalTok{    Promise\textless{}void\textgreater{} saveProfile(SignedPaymentProfile profile);}
+\NormalTok{    Promise\textless{}SignedPaymentProfile?\textgreater{} loadProfile(string alias);}
+    
+\NormalTok{    // P2P (optional)}
+\NormalTok{    Promise\textless{}void\textgreater{} startP2pBridge(string profilePath);}
+\NormalTok{    void stopP2pBridge();}
+\NormalTok{\};}
+
+\NormalTok{record Identity \{}
+\NormalTok{    string pubkeyHex;}
+\NormalTok{    string secretKeyPath;  // encrypted, platform keystore}
+\NormalTok{    string fingerprint;}
+\NormalTok{\};}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{ffi-implementation-satspath-ffisrc}{%
+\subsubsection{\texorpdfstring{2.4 FFI Implementation
+(\texttt{satspath-ffi/src/})}{2.4 FFI Implementation (satspath-ffi/src/)}}\label{ffi-implementation-satspath-ffisrc}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// satspath{-}ffi/src/resolver.rs}
+\KeywordTok{use} \PreprocessorTok{uniffi::}\NormalTok{async\_trait}\OperatorTok{;}
+\KeywordTok{use} \PreprocessorTok{satspath\_core::resolver::}\OperatorTok{\{}\NormalTok{ChainResolver}\OperatorTok{,}\NormalTok{ ProfileResolver }\KeywordTok{as}\NormalTok{ CoreResolver}\OperatorTok{\};}
+\KeywordTok{use} \PreprocessorTok{satspath\_core::resolvers::}\OperatorTok{\{}\PreprocessorTok{bip353::}\NormalTok{Bip353Resolver}\OperatorTok{,} \PreprocessorTok{http::}\NormalTok{HttpResolver}\OperatorTok{,} \PreprocessorTok{nostr::}\NormalTok{NostrResolver}\OperatorTok{\};}
+
+\KeywordTok{pub} \KeywordTok{struct}\NormalTok{ ResolverChain }\OperatorTok{\{}
+\NormalTok{    inner}\OperatorTok{:}\NormalTok{ ChainResolver}\OperatorTok{,}
+\OperatorTok{\}}
+
+\AttributeTok{\#[}\PreprocessorTok{uniffi::}\NormalTok{export}\AttributeTok{(}\NormalTok{async\_runtime }\OperatorTok{=} \StringTok{"tokio"}\AttributeTok{)]}
+\KeywordTok{impl}\NormalTok{ ResolverChain }\OperatorTok{\{}
+    \AttributeTok{\#[}\PreprocessorTok{uniffi::}\NormalTok{constructor}\AttributeTok{]}
+    \KeywordTok{pub} \KeywordTok{fn}\NormalTok{ new() }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Self} \OperatorTok{\{}
+        \KeywordTok{let} \KeywordTok{mut}\NormalTok{ chain }\OperatorTok{=} \PreprocessorTok{ChainResolver::}\NormalTok{new()}\OperatorTok{;}
+\NormalTok{        chain }\OperatorTok{=}\NormalTok{ chain}\OperatorTok{.}\NormalTok{push(}\PreprocessorTok{LocalRegistryResolver::}\NormalTok{new())}\OperatorTok{;} \CommentTok{// impl CoreResolver}
+\NormalTok{        chain }\OperatorTok{=}\NormalTok{ chain}\OperatorTok{.}\NormalTok{push(}\PreprocessorTok{Bip353Resolver::}\NormalTok{new())}\OperatorTok{;}
+\NormalTok{        chain }\OperatorTok{=}\NormalTok{ chain}\OperatorTok{.}\NormalTok{push(}\PreprocessorTok{HttpResolver::}\NormalTok{new())}\OperatorTok{;}
+\NormalTok{        chain }\OperatorTok{=}\NormalTok{ chain}\OperatorTok{.}\NormalTok{push(}\PreprocessorTok{NostrResolver::}\NormalTok{new())}\OperatorTok{;}
+        \CommentTok{// P2P optional}
+        \DataTypeTok{Self} \OperatorTok{\{}\NormalTok{ inner}\OperatorTok{:}\NormalTok{ chain }\OperatorTok{\}}
+    \OperatorTok{\}}
+
+    \KeywordTok{pub} \KeywordTok{async} \KeywordTok{fn}\NormalTok{ resolve\_alias(}\OperatorTok{\&}\KeywordTok{self}\OperatorTok{,}\NormalTok{ alias}\OperatorTok{:} \DataTypeTok{String}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\NormalTok{SignedPaymentProfile}\OperatorTok{,}\NormalTok{ SatsPathError}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+        \KeywordTok{self}\OperatorTok{.}\NormalTok{inner}\OperatorTok{.}\NormalTok{resolve\_alias(}\OperatorTok{\&}\NormalTok{alias)}\OperatorTok{.}\KeywordTok{await}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+
+\CommentTok{// satspath{-}ffi/src/router.rs}
+\KeywordTok{use} \PreprocessorTok{satspath\_router::}\OperatorTok{\{}\NormalTok{select\_route}\OperatorTok{,}\NormalTok{ select\_route\_with\_fees}\OperatorTok{,}\NormalTok{ FeeEstimate}\OperatorTok{,}\NormalTok{ RouteRequest}\OperatorTok{,}\NormalTok{ build\_qr\_payload}\OperatorTok{\};}
+
+\AttributeTok{\#[}\PreprocessorTok{uniffi::}\NormalTok{export}\AttributeTok{(}\NormalTok{async\_runtime }\OperatorTok{=} \StringTok{"tokio"}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{async} \KeywordTok{fn}\NormalTok{ select\_route\_ffi(request}\OperatorTok{:}\NormalTok{ QuoteRequest}\OperatorTok{,}\NormalTok{ fees}\OperatorTok{:}\NormalTok{ FeeEstimate) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\NormalTok{RouteQuote}\OperatorTok{,}\NormalTok{ SatsPathError}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ req }\OperatorTok{=}\NormalTok{ RouteRequest }\OperatorTok{\{}
+\NormalTok{        alias}\OperatorTok{:}\NormalTok{ request}\OperatorTok{.}\NormalTok{recipient}\OperatorTok{,}
+\NormalTok{        amount\_sats}\OperatorTok{:}\NormalTok{ request}\OperatorTok{.}\NormalTok{amount\_sats}\OperatorTok{,}
+\NormalTok{        signed\_profile}\OperatorTok{:}\NormalTok{ request}\OperatorTok{.}\NormalTok{signed\_profile}\OperatorTok{.}\NormalTok{into()}\OperatorTok{,}
+\NormalTok{        urgency}\OperatorTok{:}\NormalTok{ parse\_urgency(request}\OperatorTok{.}\NormalTok{urgency)}\OperatorTok{,}
+\NormalTok{        max\_fee\_sats}\OperatorTok{:}\NormalTok{ request}\OperatorTok{.}\NormalTok{max\_fee\_sats}\OperatorTok{,}
+\NormalTok{        max\_fee\_percent}\OperatorTok{:}\NormalTok{ request}\OperatorTok{.}\NormalTok{max\_fee\_percent}\OperatorTok{,}
+    \OperatorTok{\};}
+    \KeywordTok{let}\NormalTok{ quote }\OperatorTok{=}\NormalTok{ select\_route\_with\_fees(}\OperatorTok{\&}\NormalTok{req}\OperatorTok{,} \OperatorTok{\&}\NormalTok{fees)}\OperatorTok{?;}
+    \ConstantTok{Ok}\NormalTok{(quote}\OperatorTok{.}\NormalTok{into())}
+\OperatorTok{\}}
+
+\AttributeTok{\#[}\PreprocessorTok{uniffi::}\NormalTok{export}\AttributeTok{(}\NormalTok{async\_runtime }\OperatorTok{=} \StringTok{"tokio"}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{async} \KeywordTok{fn}\NormalTok{ fetch\_fee\_estimate\_ffi() }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\NormalTok{FeeEstimate}\OperatorTok{,}\NormalTok{ SatsPathError}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+    \PreprocessorTok{satspath\_router::fees::}\NormalTok{fetch\_fee\_estimate()}\OperatorTok{.}\KeywordTok{await}\OperatorTok{.}\NormalTok{map\_err(}\BuiltInTok{Into}\PreprocessorTok{::}\NormalTok{into)}
+\OperatorTok{\}}
+
+\CommentTok{// satspath{-}ffi/src/profile.rs}
+\AttributeTok{\#[}\PreprocessorTok{uniffi::}\NormalTok{export}\AttributeTok{]}
+\KeywordTok{pub} \KeywordTok{fn}\NormalTok{ verify\_profile(profile}\OperatorTok{:}\NormalTok{ SignedPaymentProfile) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{bool} \OperatorTok{\{}
+    \PreprocessorTok{satspath\_core::crypto::}\NormalTok{verify\_signed\_profile(}\OperatorTok{\&}\NormalTok{profile}\OperatorTok{.}\NormalTok{into())}\OperatorTok{.}\NormalTok{unwrap\_or(}\ConstantTok{false}\NormalTok{)}
+\OperatorTok{\}}
+
+\AttributeTok{\#[}\PreprocessorTok{uniffi::}\NormalTok{export}\AttributeTok{(}\NormalTok{async\_runtime }\OperatorTok{=} \StringTok{"tokio"}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{async} \KeywordTok{fn}\NormalTok{ quote(recipient}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}\NormalTok{ amount\_sats}\OperatorTok{:} \DataTypeTok{u64}\NormalTok{) }\OperatorTok{{-}\textgreater{}}\NormalTok{ QuoteResponse }\OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ resolver }\OperatorTok{=} \PreprocessorTok{ResolverChain::}\NormalTok{new()}\OperatorTok{;}
+    \PreprocessorTok{satspath\_router::}\NormalTok{quote\_with\_resolver(}\OperatorTok{\&}\NormalTok{resolver}\OperatorTok{,} \OperatorTok{\&}\NormalTok{recipient}\OperatorTok{,}\NormalTok{ amount\_sats)}\OperatorTok{.}\KeywordTok{await}\OperatorTok{.}\NormalTok{into()}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{build-pipeline}{%
+\subsubsection{2.5 Build Pipeline}\label{build-pipeline}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# 1. Generate bindings}
+\BuiltInTok{cd}\NormalTok{ satspath{-}ffi}
+\ExtensionTok{cargo}\NormalTok{ build }\AttributeTok{{-}{-}release} \AttributeTok{{-}{-}features}\NormalTok{ uniffi}
+\ExtensionTok{cargo}\NormalTok{ run }\AttributeTok{{-}{-}features}\NormalTok{ uniffi }\AttributeTok{{-}{-}bin}\NormalTok{ uniffi{-}bindgen generate }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}library}\NormalTok{ target/release/libsatspath\_ffi.so }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}language}\NormalTok{ kotlin }\AttributeTok{{-}{-}out{-}dir}\NormalTok{ ../../arkade{-}wallet/android/satspath/src/main/java}
+\ExtensionTok{cargo}\NormalTok{ run }\AttributeTok{{-}{-}features}\NormalTok{ uniffi }\AttributeTok{{-}{-}bin}\NormalTok{ uniffi{-}bindgen generate }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}library}\NormalTok{ target/release/libsatspath\_ffi.so }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}language}\NormalTok{ swift }\AttributeTok{{-}{-}out{-}dir}\NormalTok{ ../../arkade{-}wallet/ios/Satspath}
+\ExtensionTok{cargo}\NormalTok{ run }\AttributeTok{{-}{-}features}\NormalTok{ uniffi }\AttributeTok{{-}{-}bin}\NormalTok{ uniffi{-}bindgen generate }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}library}\NormalTok{ target/release/libsatspath\_ffi.so }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}language}\NormalTok{ typescript }\AttributeTok{{-}{-}out{-}dir}\NormalTok{ ../../arkade{-}wallet/src/satspath}
+
+\CommentTok{\# 2. Android: copy .so to jniLibs}
+\CommentTok{\# 3. iOS: embed .framework in Xcode}
+\CommentTok{\# 4. TS: npm install @satspath/core (or file:../satspath)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{platform-specific-integration}{%
+\subsection{3. Platform-Specific
+Integration}\label{platform-specific-integration}}
+
+\hypertarget{android-kotlin-ldk-arkade-sdk-bdk}{%
+\subsubsection{3.1 Android (Kotlin + LDK + Arkade SDK +
+BDK)}\label{android-kotlin-ldk-arkade-sdk-bdk}}
+
+\textbf{Gradle} (\texttt{android/app/build.gradle.kts}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dependencies }\OperatorTok{\{}
+\NormalTok{    implementation}\OperatorTok{(}\StringTok{"org.ldk:ldk{-}android:0.0.120"}\OperatorTok{)}  \CommentTok{// or Breez SDK}
+\NormalTok{    implementation}\OperatorTok{(}\StringTok{"org.bitcoindevkit:bdk{-}android:1.0.0"}\OperatorTok{)}
+\NormalTok{    implementation}\OperatorTok{(}\NormalTok{project}\OperatorTok{(}\StringTok{":satspath"}\OperatorTok{))}  \CommentTok{// UniFFI generated module}
+    \CommentTok{// Arkade SDK as local module or maven}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Identity Storage}
+(\texttt{android/satspath/src/main/java/com/satspath/IdentityManager.kt}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{class}\NormalTok{ IdentityManager @Inject }\KeywordTok{constructor}\OperatorTok{(}
+\NormalTok{    @}\VariableTok{Assisted} \KeywordTok{private} \KeywordTok{val} \VariableTok{context}\OperatorTok{:} \DataTypeTok{Context}
+\OperatorTok{)} \OperatorTok{\{}
+    \KeywordTok{private} \KeywordTok{val} \VariableTok{keystore} \OperatorTok{=}\NormalTok{ KeyStore}\OperatorTok{.}\NormalTok{getInstance}\OperatorTok{(}\StringTok{"AndroidKeyStore"}\OperatorTok{)}
+    \KeywordTok{private} \KeywordTok{val} \VariableTok{prefs} \OperatorTok{=}\NormalTok{ context}\OperatorTok{.}\NormalTok{getSharedPreferences}\OperatorTok{(}\StringTok{"satspath"}\OperatorTok{,}\NormalTok{ Context}\OperatorTok{.}\NormalTok{MODE\_PRIVATE}\OperatorTok{)}
+
+    \KeywordTok{fun} \FunctionTok{createIdentity}\OperatorTok{():} \DataTypeTok{Identity} \OperatorTok{\{}
+        \KeywordTok{val} \VariableTok{kp} \OperatorTok{=}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{createIdentity}\OperatorTok{()}  \CommentTok{// UniFFI call}
+        \CommentTok{// Store secret in Keystore, pubkey in SharedPreferences}
+\NormalTok{        storeSecret}\OperatorTok{(}\NormalTok{kp}\OperatorTok{.}\NormalTok{secretKeyPath}\OperatorTok{)}
+\NormalTok{        prefs}\OperatorTok{.}\NormalTok{edit}\OperatorTok{().}\NormalTok{putString}\OperatorTok{(}\StringTok{"pubkey"}\OperatorTok{,}\NormalTok{ kp}\OperatorTok{.}\NormalTok{pubkeyHex}\OperatorTok{).}\NormalTok{apply}\OperatorTok{()}
+        \KeywordTok{return}\NormalTok{ kp}
+    \OperatorTok{\}}
+
+    \KeywordTok{fun} \FunctionTok{signProfile}\OperatorTok{(}\VariableTok{profile}\OperatorTok{:} \DataTypeTok{PaymentProfile}\OperatorTok{):} \DataTypeTok{SignedPaymentProfile} \OperatorTok{\{}
+        \KeywordTok{val} \VariableTok{secret} \OperatorTok{=}\NormalTok{ loadSecret}\OperatorTok{()}  \CommentTok{// from Keystore}
+        \KeywordTok{return}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{signProfile}\OperatorTok{(}\NormalTok{profile}\OperatorTok{,}\NormalTok{ secret}\OperatorTok{)}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Send Flow} (\texttt{android/ui/send/SendViewModel.kt}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{class}\NormalTok{ SendViewModel @ViewModelInject }\KeywordTok{constructor}\OperatorTok{(}
+    \KeywordTok{private} \KeywordTok{val} \VariableTok{satspath}\OperatorTok{:} \DataTypeTok{Satspath}\OperatorTok{,}
+    \KeywordTok{private} \KeywordTok{val} \VariableTok{ldk}\OperatorTok{:} \DataTypeTok{LdkManager}\OperatorTok{,}
+    \KeywordTok{private} \KeywordTok{val} \VariableTok{arkade}\OperatorTok{:} \DataTypeTok{ArkadeSdk}\OperatorTok{,}
+    \KeywordTok{private} \KeywordTok{val} \VariableTok{bdk}\OperatorTok{:} \DataTypeTok{BdkManager}
+\OperatorTok{)} \OperatorTok{:} \DataTypeTok{ViewModel}\OperatorTok{()} \OperatorTok{\{}
+
+    \KeywordTok{fun} \FunctionTok{getQuote}\OperatorTok{(}\VariableTok{alias}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,} \VariableTok{amountSats}\OperatorTok{:} \DataTypeTok{Long}\OperatorTok{)} \OperatorTok{=}\NormalTok{ viewModelScope}\OperatorTok{.}\NormalTok{launch }\OperatorTok{\{}
+        \KeywordTok{val} \VariableTok{response} \OperatorTok{=}\NormalTok{ satspath}\OperatorTok{.}\NormalTok{quote}\OperatorTok{(}\NormalTok{alias}\OperatorTok{,}\NormalTok{ amountSats}\OperatorTok{)}
+\NormalTok{        \_quoteState}\OperatorTok{.}\NormalTok{value }\OperatorTok{=}\NormalTok{ response}
+    \OperatorTok{\}}
+
+    \KeywordTok{fun} \FunctionTok{executePayment}\OperatorTok{(}\VariableTok{response}\OperatorTok{:} \DataTypeTok{QuoteResponse}\OperatorTok{)} \OperatorTok{=}\NormalTok{ viewModelScope}\OperatorTok{.}\NormalTok{launch }\OperatorTok{\{}
+        \ControlFlowTok{when} \OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{status}\OperatorTok{)} \OperatorTok{\{}
+\NormalTok{            QuoteStatus}\OperatorTok{.}\NormalTok{Ok }\OperatorTok{{-}\textgreater{}} \OperatorTok{\{}
+                \KeywordTok{val} \VariableTok{method} \OperatorTok{=}\NormalTok{ response}\OperatorTok{.}\NormalTok{selectedMethod}
+                \ControlFlowTok{when} \OperatorTok{(}\NormalTok{method}\OperatorTok{)} \OperatorTok{\{}
+                    \KeywordTok{is}\NormalTok{ PaymentMethod}\OperatorTok{.}\NormalTok{LightningMethod }\OperatorTok{{-}\textgreater{}} \OperatorTok{\{}
+                        \KeywordTok{val} \VariableTok{invoice} \OperatorTok{=} \ControlFlowTok{if} \OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{.}\NormalTok{startsWith}\OperatorTok{(}\StringTok{"lnbc"}\OperatorTok{))}\NormalTok{ response}\OperatorTok{.}\NormalTok{qr }
+                            \ControlFlowTok{else}\NormalTok{ ldk}\OperatorTok{.}\NormalTok{fetchInvoice}\OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{,}\NormalTok{ response}\OperatorTok{.}\NormalTok{feeSats}\OperatorTok{)}
+\NormalTok{                        ldk}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{invoice}\OperatorTok{)}
+                    \OperatorTok{\}}
+                    \KeywordTok{is}\NormalTok{ PaymentMethod}\OperatorTok{.}\NormalTok{OnchainMethod }\OperatorTok{{-}\textgreater{}} \OperatorTok{\{}
+\NormalTok{                        bdk}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{)}  \CommentTok{// BIP{-}21 URI}
+                    \OperatorTok{\}}
+                    \KeywordTok{is}\NormalTok{ PaymentMethod}\OperatorTok{.}\NormalTok{ArkMethod }\OperatorTok{{-}\textgreater{}} \OperatorTok{\{}
+\NormalTok{                        arkade}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{)}  \CommentTok{// ark: URI}
+                    \OperatorTok{\}}
+                \OperatorTok{\}}
+            \OperatorTok{\}}
+\NormalTok{            QuoteStatus}\OperatorTok{.}\NormalTok{NotRegistered }\OperatorTok{{-}\textgreater{}}\NormalTok{ showInviteFlow}\OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{invite}\OperatorTok{)}
+        \OperatorTok{\}}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{ios-swift-ldk-arkade-sdk-bdk}{%
+\subsubsection{3.2 iOS (Swift + LDK + Arkade SDK +
+BDK)}\label{ios-swift-ldk-arkade-sdk-bdk}}
+
+\textbf{Package.swift}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dependencies}\OperatorTok{:} \OperatorTok{[}
+    \OperatorTok{.}\NormalTok{package}\OperatorTok{(}\NormalTok{url}\OperatorTok{:} \StringTok{"https://github.com/lightningdevkit/ldk{-}swift"}\OperatorTok{,}\NormalTok{ from}\OperatorTok{:} \StringTok{"0.1.0"}\OperatorTok{),}
+    \OperatorTok{.}\NormalTok{package}\OperatorTok{(}\NormalTok{url}\OperatorTok{:} \StringTok{"https://github.com/bitcoindevkit/bdk{-}swift"}\OperatorTok{,}\NormalTok{ from}\OperatorTok{:} \StringTok{"1.0.0"}\OperatorTok{),}
+    \CommentTok{// Satspath framework embedded in Xcode}
+\OperatorTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Identity} (\texttt{SatspathIdentityManager.swift}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{class}\NormalTok{ SatspathIdentityManager }\OperatorTok{\{}
+    \KeywordTok{let} \VariableTok{keychain} \OperatorTok{=}\NormalTok{ Keychain}\OperatorTok{(}\NormalTok{service}\OperatorTok{:} \StringTok{"com.arkade.satspath"}\OperatorTok{)}
+    
+    \KeywordTok{func} \FunctionTok{createIdentity}\OperatorTok{()} \KeywordTok{throws}\NormalTok{ {-}\textgreater{} }\FunctionTok{Identity} \OperatorTok{\{}
+        \KeywordTok{let} \VariableTok{identity} \OperatorTok{=} \ControlFlowTok{try}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{createIdentity}\OperatorTok{()}  \CommentTok{// UniFFI}
+        \ControlFlowTok{try}\NormalTok{ keychain}\OperatorTok{.}\KeywordTok{set}\OperatorTok{(}\NormalTok{identity}\OperatorTok{.}\NormalTok{secretKeyPath}\OperatorTok{,}\NormalTok{ key}\OperatorTok{:} \StringTok{"satspath\_secret\_}\ErrorTok{\textbackslash{}(}\StringTok{identity.fingerprint)"}\OperatorTok{)}
+        \KeywordTok{return}\NormalTok{ identity}
+    \OperatorTok{\}}
+    
+    \KeywordTok{func} \FunctionTok{signProfile}\OperatorTok{(}\VariableTok{\_} \VariableTok{profile}\OperatorTok{:} \DataTypeTok{PaymentProfile}\OperatorTok{)} \KeywordTok{throws}\NormalTok{ {-}\textgreater{} }\FunctionTok{SignedPaymentProfile} \OperatorTok{\{}
+        \KeywordTok{let} \VariableTok{secret} \OperatorTok{=} \ControlFlowTok{try}\NormalTok{ keychain}\OperatorTok{.}\KeywordTok{get}\OperatorTok{(}\StringTok{"satspath\_secret\_}\ErrorTok{\textbackslash{}(}\StringTok{currentFingerprint)"}\OperatorTok{)}
+        \KeywordTok{return} \ControlFlowTok{try}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{signProfile}\OperatorTok{(}\NormalTok{profile}\OperatorTok{,}\NormalTok{ secret}\OperatorTok{)}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Send Flow} (\texttt{SendViewModel.swift}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{@MainActor}
+\KeywordTok{class}\NormalTok{ SendViewModel}\OperatorTok{:} \DataTypeTok{ObservableObject} \OperatorTok{\{}
+    \AttributeTok{@Published} \KeywordTok{var} \VariableTok{quote}\OperatorTok{:}\NormalTok{ QuoteResponse}\OperatorTok{?}
+    
+    \KeywordTok{func} \FunctionTok{getQuote}\OperatorTok{(}\VariableTok{alias}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,} \VariableTok{amount}\OperatorTok{:} \DataTypeTok{UInt64}\OperatorTok{)} \FunctionTok{async} \OperatorTok{\{}
+\NormalTok{        quote }\OperatorTok{=} \ControlFlowTok{try} \ControlFlowTok{await}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{shared}\OperatorTok{.}\NormalTok{quote}\OperatorTok{(}\NormalTok{alias}\OperatorTok{,}\NormalTok{ amount}\OperatorTok{)}
+    \OperatorTok{\}}
+    
+    \KeywordTok{func} \FunctionTok{pay}\OperatorTok{()} \FunctionTok{async} \KeywordTok{throws} \OperatorTok{\{}
+        \ControlFlowTok{guard} \ControlFlowTok{case} \OperatorTok{.}\NormalTok{ok}\OperatorTok{(}\KeywordTok{let} \VariableTok{data}\OperatorTok{)} \OperatorTok{=}\NormalTok{ quote}\OperatorTok{?.}\NormalTok{status }\ControlFlowTok{else} \OperatorTok{\{} \KeywordTok{return} \OperatorTok{\}}
+        \ControlFlowTok{switch}\NormalTok{ data}\OperatorTok{.}\NormalTok{selectedMethod }\OperatorTok{\{}
+        \ControlFlowTok{case} \OperatorTok{.}\NormalTok{lightning}\OperatorTok{(}\KeywordTok{let} \VariableTok{method}\OperatorTok{):}
+            \KeywordTok{let} \VariableTok{invoice} \OperatorTok{=}\NormalTok{ data}\OperatorTok{.}\NormalTok{qr}\OperatorTok{.}\NormalTok{hasPrefix}\OperatorTok{(}\StringTok{"lnbc"}\OperatorTok{)} \OperatorTok{?}\NormalTok{ data}\OperatorTok{.}\NormalTok{qr }\OperatorTok{:} \ControlFlowTok{try} \ControlFlowTok{await}\NormalTok{ LDKManager}\OperatorTok{.}\NormalTok{shared}\OperatorTok{.}\NormalTok{fetchInvoice}\OperatorTok{(}\NormalTok{data}\OperatorTok{.}\NormalTok{qr}\OperatorTok{)}
+            \ControlFlowTok{try} \ControlFlowTok{await}\NormalTok{ LDKManager}\OperatorTok{.}\NormalTok{shared}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{invoice}\OperatorTok{)}
+        \ControlFlowTok{case} \OperatorTok{.}\NormalTok{onchain}\OperatorTok{(}\KeywordTok{let} \VariableTok{method}\OperatorTok{):}
+            \ControlFlowTok{try} \ControlFlowTok{await}\NormalTok{ BDKManager}\OperatorTok{.}\NormalTok{shared}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{data}\OperatorTok{.}\NormalTok{qr}\OperatorTok{)}
+        \ControlFlowTok{case} \OperatorTok{.}\NormalTok{ark}\OperatorTok{(}\KeywordTok{let} \VariableTok{method}\OperatorTok{):}
+            \ControlFlowTok{try} \ControlFlowTok{await}\NormalTok{ ArkadeSDK}\OperatorTok{.}\NormalTok{shared}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{data}\OperatorTok{.}\NormalTok{qr}\OperatorTok{)}
+        \OperatorTok{\}}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{react-native-tauri-pwa-typescript}{%
+\subsubsection{3.3 React Native / Tauri / PWA
+(TypeScript)}\label{react-native-tauri-pwa-typescript}}
+
+\textbf{npm dependency}: \texttt{@satspath/core} (generated from UniFFI
+TS bindings)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// packages/satspath{-}core/src/index.ts (generated)}
+\ImportTok{export} \KeywordTok{interface}\NormalTok{ Satspath \{}
+  \FunctionTok{quote}\NormalTok{(recipient}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{,}\NormalTok{ amountSats}\OperatorTok{:} \DataTypeTok{bigint}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{QuoteResponse}\OperatorTok{\textgreater{};}
+  \FunctionTok{resolve}\NormalTok{(alias}\OperatorTok{:} \DataTypeTok{string}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{SignedPaymentProfile}\OperatorTok{\textgreater{};}
+  \FunctionTok{verifyProfile}\NormalTok{(profile}\OperatorTok{:}\NormalTok{ SignedPaymentProfile)}\OperatorTok{:} \DataTypeTok{boolean}\OperatorTok{;}
+  \FunctionTok{createIdentity}\NormalTok{()}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{Identity}\OperatorTok{\textgreater{};}
+  \CommentTok{// ...}
+\NormalTok{\}}
+
+\ImportTok{export} \KeywordTok{const}\NormalTok{ satspath}\OperatorTok{:}\NormalTok{ Satspath}\OperatorTok{;} \CommentTok{// WASM fallback if native not available}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Usage} (same as MVP but native):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{import}\NormalTok{ \{ satspath \} }\ImportTok{from} \StringTok{"@satspath/core"}\OperatorTok{;}
+
+\KeywordTok{const}\NormalTok{ response }\OperatorTok{=} \ControlFlowTok{await}\NormalTok{ satspath}\OperatorTok{.}\FunctionTok{quote}\NormalTok{(}\StringTok{"alice@example.com"}\OperatorTok{,} \DecValTok{21000}\NormalTok{n)}\OperatorTok{;}
+\ControlFlowTok{if}\NormalTok{ (response}\OperatorTok{.}\AttributeTok{status} \OperatorTok{===} \StringTok{"ok"}\NormalTok{) \{}
+  \ControlFlowTok{switch}\NormalTok{ (response}\OperatorTok{.}\AttributeTok{selected\_method}\OperatorTok{.}\AttributeTok{type}\NormalTok{) \{}
+    \ControlFlowTok{case} \StringTok{"Lightning"}\OperatorTok{:}
+      \ControlFlowTok{await} \FunctionTok{ldkSend}\NormalTok{(response}\OperatorTok{.}\AttributeTok{qr}\NormalTok{)}\OperatorTok{;}
+      \ControlFlowTok{break}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{"Onchain"}\OperatorTok{:}
+      \ControlFlowTok{await} \FunctionTok{bdkSend}\NormalTok{(response}\OperatorTok{.}\AttributeTok{qr}\NormalTok{)}\OperatorTok{;}
+      \ControlFlowTok{break}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{"Ark"}\OperatorTok{:}
+      \ControlFlowTok{await} \FunctionTok{arkadeSend}\NormalTok{(response}\OperatorTok{.}\AttributeTok{qr}\NormalTok{)}\OperatorTok{;}
+      \ControlFlowTok{break}\OperatorTok{;}
+\NormalTok{  \}}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{ark-mainnet-readiness-production-blockers}{%
+\subsection{4. Ark Mainnet Readiness (Production
+Blockers)}\label{ark-mainnet-readiness-production-blockers}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2963}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3704}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Blocker
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Solution
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Covenant opcodes (CTV/CSFS)} & Not on mainnet & Use connector
+outputs + pre-signed txs (current Ark design) \\
+\textbf{Ark server trust} & ASP can steal if malicious & Client-side
+VTXO verification (Arkade SDK Tier 1-3) --- already done \\
+\textbf{Unilateral exit UX} & Complex & Arkade SDK
+\texttt{sovereignStorage} + auto-broadcast on expiry \\
+\textbf{Liquidity} & Limited & Boltz submarine swaps for
+on-ramp/off-ramp \\
+\textbf{Fee estimation} & Ark server sets & Router queries ASP
+\texttt{/fee} endpoint, falls back to mempool \\
+\end{longtable}
+
+\textbf{Router Ark Logic} (enhance \texttt{ark\_routes.rs}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{pub} \KeywordTok{async} \KeywordTok{fn}\NormalTok{ plan\_ark\_route\_mainnet(}
+\NormalTok{    sender}\OperatorTok{:} \OperatorTok{\&}\NormalTok{SenderCapabilities}\OperatorTok{,}
+\NormalTok{    receiver}\OperatorTok{:} \OperatorTok{\&}\NormalTok{SignedPaymentProfile}\OperatorTok{,}
+\NormalTok{    asp\_fees}\OperatorTok{:} \OperatorTok{\&}\NormalTok{AspFeeInfo}\OperatorTok{,}
+\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Option}\OperatorTok{\textless{}}\NormalTok{ArkRoutePlan}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+    \CommentTok{// Verify ASP fee policy is reasonable}
+    \CommentTok{// Check receiver VTXO expiry \textgreater{} 144 blocks (safety margin)}
+    \CommentTok{// Ensure sender has VTXOs on same ASP or can swap via Boltz}
+    \CommentTok{// Return ArkToArk / ArkToLightning / ArkToOnchain with real fee estimates}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{bolt12-silent-payments-split-payments-v2.1}{%
+\subsection{5. BOLT12 / Silent Payments / Split Payments
+(v2.1+)}\label{bolt12-silent-payments-split-payments-v2.1}}
+
+\hypertarget{bolt12-offers}{%
+\subsubsection{5.1 BOLT12 Offers}\label{bolt12-offers}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// satspath{-}core/src/profile.rs {-} extend PaymentMethod::Lightning}
+\NormalTok{Lightning }\OperatorTok{\{}
+    \CommentTok{// ... existing}
+\NormalTok{    bolt12}\OperatorTok{:} \DataTypeTok{Option}\OperatorTok{\textless{}}\DataTypeTok{String}\OperatorTok{\textgreater{},}  \CommentTok{// offer: lno1...}
+    \CommentTok{// Add: offer fetching + invoice\_request flow}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Router: if \texttt{bolt12} present → fetch offer → send
+\texttt{invoice\_request} → pay invoice.
+
+\hypertarget{silent-payments-bip-352}{%
+\subsubsection{5.2 Silent Payments
+(BIP-352)}\label{silent-payments-bip-352}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Onchain }\OperatorTok{\{}
+\NormalTok{    silent\_payment\_pubkey}\OperatorTok{:} \DataTypeTok{Option}\OperatorTok{\textless{}}\DataTypeTok{String}\OperatorTok{\textgreater{},}  \CommentTok{// sp1q...}
+    \CommentTok{// Payer derives: address = hash(sp\_pubkey + shared\_secret) }
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Router: if \texttt{silent\_payment\_pubkey} present → derive unique
+address per payment.
+
+\hypertarget{split-payments}{%
+\subsubsection{5.3 Split Payments}\label{split-payments}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// New route type}
+\KeywordTok{enum}\NormalTok{ RouteQuote }\OperatorTok{\{}
+\NormalTok{    Single(RouteQuote)}\OperatorTok{,}
+\NormalTok{    Split(}\DataTypeTok{Vec}\OperatorTok{\textless{}}\NormalTok{SplitRoute}\OperatorTok{\textgreater{}}\NormalTok{)}\OperatorTok{,}  \CommentTok{// \{ method, amount\_sats, fee\_sats \} summing to total}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Scoring: minimize total fee, respect per-rail limits.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{key-rotation-profile-revocation-spec-29}{%
+\subsection{6. Key Rotation \& Profile Revocation (Spec
+§29)}\label{key-rotation-profile-revocation-spec-29}}
+
+\textbf{UDL Addition}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{record KeyRotation \{}
+\NormalTok{    string newIdentityPubkey;}
+\NormalTok{    i64 rotationTime;}
+\NormalTok{    string previousSignature;  // sig by old key over new key}
+\NormalTok{\};}
+
+\NormalTok{interface Satspath \{}
+\NormalTok{    Promise\textless{}SignedPaymentProfile\textgreater{} rotateKey(string alias, string newPubkeyHex);}
+\NormalTok{    boolean verifyRotation(SignedPaymentProfile oldProfile, SignedPaymentProfile newProfile);}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Flow}: 1. User generates new identity key (in Secure
+Enclave/Keystore) 2. Sign \texttt{rotation} object with old key 3.
+Publish new profile with \texttt{rotation} field + both signatures 4.
+Resolvers verify chain: \texttt{old\_sig\ verifies\ rotation} +
+\texttt{new\_sig\ verifies\ profile}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{platform-verification-emaildomain-ownership}{%
+\subsection{7. Platform Verification (Email/Domain
+Ownership)}\label{platform-verification-emaildomain-ownership}}
+
+\textbf{Current}: Invite flow only (no proof)
+
+\textbf{Production}: \textbar{} Method \textbar{} Verification
+\textbar{} UDL \textbar{}
+\textbar--------\textbar--------------\textbar-----\textbar{} \textbar{}
+\textbf{DKIM} \textbar{} User forwards verification email → wallet
+verifies DKIM sig \textbar{} \texttt{EmailVerifier} interface \textbar{}
+\textbar{} \textbf{Nostr NIP-42} \textbar{} Relay challenges user to
+sign event \textbar{} \texttt{NostrVerifier} \textbar{} \textbar{}
+\textbf{DNS} \textbar{} User adds TXT record → resolver checks
+\textbar{} \texttt{DnsVerifier} (BIP-353) \textbar{} \textbar{}
+\textbf{OAuth} \textbar{} Wallet opens auth flow → gets signed
+attestation \textbar{} \texttt{OAuthVerifier} \textbar{}
+
+\textbf{Profile Field}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{record MethodVerification }\OperatorTok{\{}
+\NormalTok{    string methodDescriptor}\OperatorTok{;}  \CommentTok{// PaymentMethod::ownership\_descriptor()}
+\NormalTok{    string proofType}\OperatorTok{;}         \CommentTok{// "dkim" | "nostr" | "dns" | "oauth"}
+\NormalTok{    string proofData}\OperatorTok{;}         \CommentTok{// JSON attestation}
+    \DataTypeTok{i64}\NormalTok{ verifiedAt}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{p2p-transport-optional-but-sovereign}{%
+\subsection{8. P2P Transport (Optional but
+Sovereign)}\label{p2p-transport-optional-but-sovereign}}
+
+\textbf{Current}: \texttt{satspathd} spawns Node.js Holepunch bridge
+
+\textbf{Production}: Embed Hyperswarm in Rust via \texttt{hyperdriver}
+(or \texttt{libp2p})
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// satspath{-}core/src/p2p.rs}
+\KeywordTok{pub} \KeywordTok{struct}\NormalTok{ P2pResolver }\OperatorTok{\{}
+\NormalTok{    swarm}\OperatorTok{:}\NormalTok{ HyperSwarm}\OperatorTok{,}
+\NormalTok{    topic}\OperatorTok{:}\NormalTok{ Topic}\OperatorTok{,}
+\OperatorTok{\}}
+
+\AttributeTok{\#[}\NormalTok{async\_trait}\AttributeTok{]}
+\KeywordTok{impl}\NormalTok{ ProfileResolver }\ControlFlowTok{for}\NormalTok{ P2pResolver }\OperatorTok{\{}
+    \KeywordTok{async} \KeywordTok{fn}\NormalTok{ resolve\_alias(}\OperatorTok{\&}\KeywordTok{self}\OperatorTok{,}\NormalTok{ alias}\OperatorTok{:} \OperatorTok{\&}\DataTypeTok{str}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \DataTypeTok{Result}\OperatorTok{\textless{}}\NormalTok{SignedPaymentProfile}\OperatorTok{,}\NormalTok{ SatsPathError}\OperatorTok{\textgreater{}} \OperatorTok{\{}
+        \KeywordTok{let}\NormalTok{ topic }\OperatorTok{=}\NormalTok{ derive\_topic(alias)}\OperatorTok{;}  \CommentTok{// SHA256("satspath{-}profile:" + alias)}
+        \KeywordTok{let} \KeywordTok{mut}\NormalTok{ stream }\OperatorTok{=} \KeywordTok{self}\OperatorTok{.}\NormalTok{swarm}\OperatorTok{.}\NormalTok{join(topic)}\OperatorTok{.}\KeywordTok{await}\OperatorTok{?;}
+        \CommentTok{// Request profile via DHT}
+        \KeywordTok{let}\NormalTok{ profile }\OperatorTok{=}\NormalTok{ stream}\OperatorTok{.}\NormalTok{request(alias)}\OperatorTok{.}\KeywordTok{await}\OperatorTok{?;}
+\NormalTok{        verify\_signed\_profile(}\OperatorTok{\&}\NormalTok{profile)}\OperatorTok{?;}
+        \ConstantTok{Ok}\NormalTok{(profile)}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{UniFFI}: Expose \texttt{startP2p()} / \texttt{stopP2p()} ---
+mobile runs swarm in background.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{testing-cicd-production}{%
+\subsection{9. Testing \& CI/CD
+(Production)}\label{testing-cicd-production}}
+
+\hypertarget{rust-layer}{%
+\subsubsection{9.1 Rust Layer}\label{rust-layer}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# .github/workflows/rust.yml}
+\KeywordTok{{-}}\AttributeTok{ cargo test {-}{-}workspace {-}{-}features uniffi}
+\KeywordTok{{-}}\AttributeTok{ cargo clippy {-}{-}workspace {-}{-}features uniffi {-}{-} {-}D warnings}
+\KeywordTok{{-}}\AttributeTok{ cargo fmt {-}{-}check}
+\KeywordTok{{-}}\AttributeTok{ cargo audit}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{uniffi-bindings-tests}{%
+\subsubsection{9.2 UniFFI Bindings Tests}\label{uniffi-bindings-tests}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Kotlin}
+\BuiltInTok{cd}\NormalTok{ android }\KeywordTok{\&\&} \ExtensionTok{./gradlew}\NormalTok{ test}
+
+\CommentTok{\# Swift  }
+\BuiltInTok{cd}\NormalTok{ ios }\KeywordTok{\&\&} \ExtensionTok{xcodebuild}\NormalTok{ test }\AttributeTok{{-}scheme}\NormalTok{ SatspathTests}
+
+\CommentTok{\# TypeScript}
+\BuiltInTok{cd}\NormalTok{ sdk/ts }\KeywordTok{\&\&} \ExtensionTok{npm}\NormalTok{ test}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{integration-tests-testnet}{%
+\subsubsection{9.3 Integration Tests
+(Testnet)}\label{integration-tests-testnet}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// tests/integration/mainnet\_preview.rs}
+\AttributeTok{\#[}\PreprocessorTok{tokio::}\NormalTok{test}\AttributeTok{]}
+\KeywordTok{async} \KeywordTok{fn}\NormalTok{ mainnet\_preview\_quote() }\OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ satspath }\OperatorTok{=} \PreprocessorTok{Satspath::}\NormalTok{new()}\OperatorTok{;}
+    \KeywordTok{let}\NormalTok{ quote }\OperatorTok{=}\NormalTok{ satspath}\OperatorTok{.}\NormalTok{quote(}\StringTok{"rodrigo@satspath.dev"}\OperatorTok{,} \DecValTok{100\_000}\NormalTok{)}\OperatorTok{.}\KeywordTok{await}\OperatorTok{;}
+    \PreprocessorTok{assert!}\NormalTok{(}\PreprocessorTok{matches!}\NormalTok{(quote}\OperatorTok{.}\NormalTok{status}\OperatorTok{,} \PreprocessorTok{QuoteStatus::}\ConstantTok{Ok}\NormalTok{))}\OperatorTok{;}
+    \PreprocessorTok{assert!}\NormalTok{(quote}\OperatorTok{.}\NormalTok{qr}\OperatorTok{.}\NormalTok{starts\_with(}\StringTok{"bitcoin:"}\NormalTok{) }\OperatorTok{||}\NormalTok{ quote}\OperatorTok{.}\NormalTok{qr}\OperatorTok{.}\NormalTok{starts\_with(}\StringTok{"lnbc"}\NormalTok{))}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{fuzz-testing}{%
+\subsubsection{9.4 Fuzz Testing}\label{fuzz-testing}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{cargo}\NormalTok{ fuzz run profile\_parsing}
+\ExtensionTok{cargo}\NormalTok{ fuzz run router\_scoring}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{file-tree-production-additions}{%
+\subsection{10. File Tree (Production
+Additions)}\label{file-tree-production-additions}}
+
+\begin{verbatim}
+satspath/
+├── crates/
+│   ├── satspath-core/
+│   │   ├── Cargo.toml          # +uniffi feature, cdylib
+│   │   └── src/
+│   │       ├── p2p.rs          # NEW: embedded Hyperswarm
+│   │       ├── rotation.rs     # ENHANCE: key rotation logic
+│   │       └── verification.rs # NEW: DKIM/Nostr/DNS/OAuth verifiers
+│   ├── satspath-router/
+│   │   └── src/
+│   │       ├── bolt12.rs       # NEW: offer → invoice_request flow
+│   │       ├── silent.rs       ├── silent_payments.rs   # NEW: BIP-352 address derivation
+│   │   └── split.rs           # ENHANCE: multi-rail routing
+│   ├── satspath-ffi/          # NEW: UniFFI layer
+│   │   ├── Cargo.toml
+│   │   ├── build.rs
+│   │   ├── satspath.udl
+│   │   └── src/
+│   │       ├── lib.rs
+│   │       ├── resolver.rs
+│   │       ├── router.rs
+│   │       ├── profile.rs
+│   │       ├── identity.rs
+│   │       └── p2p.rs
+│   └── satspath-wasm/         # Keep for web fallback
+├── sdk/
+│   ├── kotlin/                # Generated by UniFFI
+│   ├── swift/                 # Generated by UniFFI
+│   └── typescript/            # Generated by UniFFI
+├── arkade-wallet/
+│   ├── android/
+│   │   └── satspath/          # UniFFI Kotlin module
+│   ├── ios/
+│   │   └── Satspath/          # UniFFI Swift module
+│   └── src/
+│       └── satspath/          # UniFFI TS module
+└── docs/
+    ├── TECHNICAL_PLAN_MVP.md
+    └── TECHNICAL_PLAN_PRODUCTION.md
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{timeline-production}{%
+\subsection{11. Timeline (Production)}\label{timeline-production}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2593}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2593}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.4815}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Phase
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Weeks
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Deliverable
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{0. Prep} & 1 & Enable \texttt{uniffi} feature, \texttt{cdylib},
+fix WASM-incompatible deps \\
+\textbf{1. FFI Layer} & 3 & \texttt{satspath-ffi} crate + UDL + all
+bindings (Kotlin/Swift/TS) \\
+\textbf{2. Resolver Chain} & 2 & Port all resolvers to async Rust trait,
+remove TS resolvers \\
+\textbf{3. Router Native} & 2 & Full router in Rust (scoring, urgency,
+split, BOLT12, silent) \\
+\textbf{4. Identity \& Storage} & 2 & Encrypted keystore
+(Keystore/Keychain/SQLCipher) + BIP-39 backup \\
+\textbf{5. P2P Embedded} & 3 & \texttt{hyperdriver} integration,
+background swarm on mobile \\
+\textbf{6. Platform Verification} & 2 & DKIM + NIP-42 + DNS verifiers \\
+\textbf{7. Ark Mainnet} & 3 & Covenant-ready ASP integration, fee
+estimation, liquidity \\
+\textbf{8. Mobile Integration} & 4 & Arkade Android/iOS wiring (LDK,
+BDK, Arkade SDK) \\
+\textbf{9. Auditing \& Hardening} & 3 & Security audit, fuzzing, testnet
+soak, mainnet preview \\
+\textbf{Total} & \textasciitilde25 weeks & \textbf{Production-ready
+Arkade + SatsPath} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{definition-of-done-production}{%
+\subsection{12. Definition of Done
+(Production)}\label{definition-of-done-production}}
+
+\begin{itemize}
+\tightlist
+\item[$\square$]
+  \texttt{cargo\ build\ -\/-release\ -\/-features\ uniffi} produces
+  \texttt{.so}/\texttt{.dylib}/\texttt{.dll} + bindings for 3 targets
+\item[$\square$]
+  Android app: \texttt{satspath.quote("alice@example.com",\ 100\_000)}
+  returns in \textless500ms (no network on cached profile)
+\item[$\square$]
+  iOS app: same, using Swift UniFFI module
+\item[$\square$]
+  React Native/Tauri: same, using TS bindings
+\item[$\square$]
+  Key rotation: user rotates key → new profile verifies on all resolvers
+\item[$\square$]
+  P2P: profile resolves via Hyperswarm without HTTPS/DNS
+\item[$\square$]
+  Ark mainnet: send/receive VTXO on mainnet ASP, sovereign exit tested
+\item[$\square$]
+  BOLT12: pay offer → invoice\_request → invoice → pay
+\item[$\square$]
+  Silent Payments: derive unique address per payment from
+  \texttt{sp1q...}
+\item[$\square$]
+  Split Payments: single 500k sat payment splits 300k LN + 200k on-chain
+\item[$\square$]
+  DKIM verification: user proves \texttt{alice@gmail.com} ownership
+\item[$\square$]
+  All integration tests pass on testnet (signet + mutinynet)
+\item[$\square$]
+  Security audit completed (crypto, memory safety, supply chain)
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{risk-register-production}{%
+\subsection{13. Risk Register
+(Production)}\label{risk-register-production}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1579}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3158}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2105}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3158}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Risk
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Likelihood
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Impact
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mitigation
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+UniFFI async trait limitations & Medium & High & Use
+\texttt{uniffi::async\_trait} + \texttt{tokio} runtime; test early \\
+Mobile binary size (Rust + deps) & High & Medium & \texttt{strip},
+\texttt{lto}, feature-gate optional modules (P2P, Ark) \\
+Ark mainnet covenant delay & High & High & Ship with connector-output
+design; upgrade when CTV activates \\
+Platform keystore differences & Medium & Medium & Abstract
+\texttt{SecureStorage} trait per platform \\
+Nostr relay censorship & Low & Medium & Multi-relay fallback; P2P as
+ultimate fallback \\
+Regulatory (KYC/AML on identity) & Low & High & SatsPath = identity
+only, no custody; wallet handles compliance \\
+\end{longtable}
+
+\end{document}
