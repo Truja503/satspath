@@ -13,11 +13,14 @@ pub mod pointer;
 pub mod privacy;
 pub mod profile;
 pub mod registry;
-pub mod resolver;
-pub mod resolvers;
 pub mod rotation;
 pub mod split;
 pub mod validation;
+
+#[cfg(feature = "std")]
+pub mod resolver;
+#[cfg(feature = "std")]
+pub mod resolvers;
 
 pub use ark::{
     ark_ownership_challenge, validate_ark_receive_pointer, validate_ark_server_url,
@@ -60,6 +63,11 @@ pub use profile::{
 };
 pub use rotation::KeyRotation;
 pub use split::{SplitPaymentRequest, SplitRecipient};
+
+#[cfg(feature = "std")]
+pub use resolver::{ChainResolver, ProfileResolver};
+#[cfg(feature = "std")]
+pub use resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
 
 
 

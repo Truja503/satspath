@@ -23,7 +23,7 @@ pub use quote_response::{
 pub use router::{
     select_route, select_route_with_fees, FeeRateSnapshot, RouteQuote, RouteRequest, SwapDirective,
 };
-pub use fees::FeeEstimate;
+pub use fees::{FeeEstimate, fallback_fees, fetch_fee_estimate};
 pub use scoring::{
     score_routes, FeeSnapshot, PaymentRail, RouteCandidate, RouteDecision, RoutePreferences,
 };
