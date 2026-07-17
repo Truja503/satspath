@@ -452,7 +452,7 @@ impl BoltzClient {
             args: vec![swap_id.to_string()],
         };
         let sub_json = serde_json::to_string(&subscribe).map_err(SwapError::Json)?;
-        ws.send(Message::Text(sub_json))
+        ws.send(Message::Text(sub_json.into()))
             .await
             .map_err(|e| SwapError::WebSocket(e.to_string()))?;
 

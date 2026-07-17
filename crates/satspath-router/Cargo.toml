@@ -20,6 +20,12 @@ tokio = { workspace = true, optional = true }
 hex = { workspace = true }
 urlencoding = "2"
 lightning-invoice = { workspace = true }
+secp256k1 = { workspace = true, features = ["global-context"] }
+chrono = { workspace = true }
+bitcoin = { workspace = true }
+bech32 = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
 
 # WASM-only dependencies
 getrandom = { version = "0.2", features = ["js"], optional = true }

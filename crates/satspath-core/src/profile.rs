@@ -4,7 +4,7 @@ use crate::ark::ArkOwnershipProof;
 use crate::pointer::BitcoinNetwork;
 
 /// A single payment method supported by the profile owner.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum PaymentMethod {
     /// On-chain Bitcoin. Multiple entries are encouraged for privacy.

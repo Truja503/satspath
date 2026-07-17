@@ -147,7 +147,7 @@ impl NostrResolver {
             let (mut ws, _) = connect_async(relay)
                 .await
                 .map_err(|e| SatsPathError::NetworkError(format!("Nostr relay connect: {e}")))?;
-            ws.send(Message::Text(req.to_string()))
+            ws.send(Message::Text(req.to_string().into()))
                 .await
                 .map_err(|e| SatsPathError::NetworkError(format!("Nostr relay send: {e}")))?;
 
@@ -349,7 +349,7 @@ pub async fn publish_profile(
             continue;
         };
         
-        if ws.send(Message::Text(msg.clone())).await.is_ok() {
+        if ws.send(Message::Text(msg.clone().into())).await.is_ok() {
             // Wait for the OK response from the relay
             if let Ok(Some(Ok(Message::Text(resp)))) = tokio::time::timeout(std::time::Duration::from_secs(5), ws.next()).await {
                 if let Ok(Value::Array(arr)) = serde_json::from_str(&resp) {

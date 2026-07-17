@@ -1,4 +1,4 @@
-use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile};
+use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile, SplitPaymentRequest};
 
 use crate::ark::{first_ark_method, is_ark_available};
 use crate::fees::{fetch_fee_estimate, FeeEstimate};
@@ -6,6 +6,7 @@ use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available, is_l
 use crate::onchain::{
     estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
 };
+use crate::split_payments::{validate_split_request, SplitPaymentRoute};
 
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
 
@@ -22,7 +23,7 @@ pub struct RouteRequest {
 
 /// Describes the specific execution path needed for the selected route.
 /// Used by the experimental swap engine; safe path ignores this.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SwapDirective {
     /// Direct Lightning payment via LNURL/Lightning Address.
     LightningPayment { target_ln_address: Option<String> },
@@ -39,7 +40,7 @@ pub enum SwapDirective {
 }
 
 /// Snapshot of live mempool fee rates used in the routing decision.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeeRateSnapshot {
     pub fastest_sat_vb: u64,
     pub half_hour_sat_vb: u64,
@@ -47,7 +48,7 @@ pub struct FeeRateSnapshot {
 }
 
 /// The selected payment rail and all information needed to execute it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RouteQuote {
     pub selected_method: PaymentMethod,
     pub reason: String,
