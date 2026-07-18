@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "Core types, cryptography, codec, and registry for SatsPath"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [features]
 default = ["std"]
 std = [
@@ -23,6 +26,7 @@ wasm = [
     "web-sys/RequestInit",
     "web-sys/RequestMode",
 ]
+uniffi_feature = ["uniffi", "tokio/rt-multi-thread", "reqwest/native-tls"]
 
 [dependencies]
 serde = { workspace = true }
@@ -48,6 +52,9 @@ futures-util = { workspace = true, optional = true }
 async-trait = { version = "0.1", optional = true }
 rand = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
+
+# UniFFI
+uniffi = { workspace = true, optional = true }
 
 # WASM-only dependencies
 getrandom = { version = "0.2", features = ["js"], optional = true }

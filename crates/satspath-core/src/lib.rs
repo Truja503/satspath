@@ -61,14 +61,20 @@ pub use profile::{
     ClaimPolicy, Invite, InviteRecord, InviteStatus, PaymentMethod, PaymentProfile, PaymentRequest,
     SignedPaymentProfile,
 };
-pub use rotation::KeyRotation;
+pub use crypto::{
+    fingerprint_pubkey, generate_identity_keypair, generate_nonce, sign_message,
+    sign_profile, verify_message_signature, verify_signed_profile, IdentityKeypair,
+};
+pub use rotation::{
+    apply_key_rotation, get_effective_identity_pubkey, is_rotation_valid, rotate_identity_key,
+    verify_key_rotation, KeyRotation,
+};
 pub use split::{SplitPaymentRequest, SplitRecipient};
 
 #[cfg(feature = "std")]
 pub use resolver::{ChainResolver, ProfileResolver};
 #[cfg(feature = "std")]
 pub use resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
-
 
 
 /// Validate that a string looks like a Lightning Address (user@domain).
