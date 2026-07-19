@@ -5,7 +5,7 @@ edition = "2021"
 description = "UniFFI bindings for SatsPath"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [features]
 default = ["uniffi_bindings"]
@@ -19,19 +19,12 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 secp256k1 = { workspace = true, features = ["global-context"] }
-bitcoin = { workspace = true }
-chrono = { workspace = true }
 hex = { workspace = true }
-urlencoding = "2"
-uuid = { workspace = true, features = ["v4", "serde"] }
-url = { workspace = true }
-rand = { workspace = true, features = ["std"] }
 sha2 = "0.10"
-async-compat = "0.2"
+tokio = { workspace = true }
 
 # UniFFI
-uniffi = { workspace = true }
-uniffi_build = { workspace = true }
+uniffi = { workspace = true, features = ["bindgen"] }
 
 [build-dependencies]
-uniffi_build = { workspace = true }
+# No build deps needed — proc-macro UniFFI

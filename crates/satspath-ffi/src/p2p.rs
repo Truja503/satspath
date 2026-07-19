@@ -1,21 +1,21 @@
-//! P2P FFI implementation (placeholder for Hyperswarm integration)
+//! P2P FFI — Hyperswarm / libp2p bridge (placeholder).
 
-use satspath_core::SatsPathError;
-use uniffi::deps::anyhow::Result;
+use crate::types::*;
 
-/// Start the P2P bridge (Hyperswarm via hyperdriver)
+/// Start the P2P bridge for sovereign profile resolution.
+///
+/// In production: starts an embedded P2P swarm (libp2p or Hyperswarm via iroh)
+/// that listens for profile resolution requests over the DHT.
 #[uniffi::export(async_runtime = "tokio")]
-pub async fn start_p2p_bridge_ffi(profile_path: String) -> Result<(), crate::r#FfiError> {
-    // In production: start embedded Hyperswarm via hyperdriver
-    // The profile_path points to the encrypted profile storage
-    // This runs the swarm in background on mobile
-    eprintln!("Starting P2P bridge with profile: {}", profile_path);
-    Err(crate::r#FfiError::Other("P2P bridge not yet implemented - requires hyperdriver integration".into()))
+pub async fn start_p2p_bridge(_profile_path: String) -> Result<(), FfiError> {
+    // TODO(Phase 5): Implement via P2pTransport trait + libp2p/iroh
+    Err(FfiError::Other {
+        reason: "P2P bridge not yet implemented — requires libp2p/iroh integration".into(),
+    })
 }
 
-/// Stop the P2P bridge
+/// Stop the P2P bridge.
 #[uniffi::export]
-pub fn stop_p2p_bridge_ffi() {
-    // In production: stop the Hyperswarm swarm
-    eprintln!("Stopping P2P bridge");
+pub fn stop_p2p_bridge() {
+    // TODO(Phase 5): Stop the running swarm
 }

@@ -1,76 +1,35 @@
-//! Router FFI implementation
+//! Router FFI — exposes payment routing to foreign platforms.
 
-use satspath_router::{
-    select_route_with_fees, FeeEstimate, RouteRequest, build_qr_payload, fees::fetch_fee_estimate,
-    urgency::PaymentUrgency,
-};
-use satspath_core::{SignedPaymentProfile as CoreSignedPaymentProfile, SatsPathError, ExecutionMode};
-use uniffi::deps::anyhow::Result;
+use crate::types::*;
 
-// Use the generated FFI types from crate root
-use crate::{
-    RouteQuote,
-    FeeEstimate,
-    QuoteRequest,
-    PaymentMethod,
-    FfiError,
-};
-
-/// Convert FFI QuoteRequest to internal RouteRequest
-pub fn quote_request_to_route_request(request: crate::QuoteRequest) -> satspath_router::RouteRequest {
-    let urgency = match request.urgency.as_str() {
-        "urgent" => PaymentUrgency::Urgent,
-        "commercial" => PaymentUrgency::Commercial,
-        "economy" => PaymentUrgency::Economy,
-        _ => PaymentUrgency::Normal,
-    };
-
-    satspath_router::RouteRequest {
-        alias: request.recipient,
-        amount_sats: request.amount_sats,
-        signed_profile: request.signed_profile.into(),
-        urgency,
-        max_fee_sats: request.max_fee_sats,
-        max_fee_percent: request.max_fee_percent,
-    }
+/// Select the best route for a payment given a fee estimate.
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn select_route(
+    request: FfiQuoteRequest,
+    fees: FfiFeeEstimate,
+) -> Result<FfiRouteQuote, FfiError> {
+    let req: satspath_router::RouteRequest = request.into();
+    let fee_est: satspath_router::FeeEstimate = fees.into();
+    let quote = satspath_router::select_route_with_fees(&req, &fee_est)
+        .map_err(|e| FfiError::Other { reason: e.to_string() })?;
+    Ok(quote.into())
 }
 
-/// Convert internal RouteQuote to FFI RouteQuote
-pub fn route_quote_to_ffi(quote: satspath_router::RouteQuote) -> crate::RouteQuote {
-    crate::RouteQuote {
-        selected_method: quote.selected_method.into(),
-        estimated_fee_sats: quote.estimated_fee_sats.unwrap_or(0),
-        estimated_confirmation: quote.estimated_confirmation.unwrap_or_default(),
-        reason: quote.reason,
-        execution: match quote.execution {
-            Some(satspath_core::ExecutionMode::Preview) => crate::ExecutionMode::Preview,
-            Some(satspath_core::ExecutionMode::MainnetPreview) => crate::ExecutionMode::MainnetPreview,
-            Some(satspath_core::ExecutionMode::TestnetExperimental) => crate::ExecutionMode::TestnetExperimental,
-            Some(satspath_core::ExecutionMode::ManualWallet) => crate::ExecutionMode::ManualWallet,
-            None => crate::ExecutionMode::Preview,
-        },
-        wallet_hint: quote.wallet_hint.unwrap_or_default(),
-    }
+/// Fetch current fee estimates from mempool.space.
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn fetch_fee_estimate() -> Result<FfiFeeEstimate, FfiError> {
+    satspath_router::fees::fetch_fee_estimate()
+        .await
+        .map(Into::into)
+        .map_err(|e| FfiError::NetworkError { reason: e.to_string() })
 }
 
-/// Implement the generated Router trait
-pub struct RouterImpl;
-
-impl crate::Router for RouterImpl {
-    async fn selectRoute(&self, request: crate::QuoteRequest, fees: crate::FeeEstimate) -> crate::RouteQuote {
-        let req = quote_request_to_route_request(request);
-        let quote = satspath_router::select_route_with_fees(&req, &fees.into())
-            .unwrap_or_else(|e| panic!("Route error: {}", e));
-        route_quote_to_ffi(quote)
-    }
-
-    async fn fetchFeeEstimate(&self) -> crate::FeeEstimate {
-        satspath_router::fees::fetch_fee_estimate().await
-            .unwrap_or_else(|e| panic!("Fee estimate error: {}", e))
-            .into()
-    }
-
-    fn buildQrPayload(&self, method: crate::PaymentMethod, amount_sats: u64) -> String {
-        satspath_router::build_qr_payload(&method.into(), amount_sats).unwrap_or_else(|e| panic!("QR payload error: {}", e))
-    }
+/// Build a QR-scannable payment payload for a method.
+#[uniffi::export]
+pub fn build_qr_payload(
+    method: FfiPaymentMethod,
+    amount_sats: u64,
+) -> Result<String, FfiError> {
+    satspath_router::build_qr_payload(&method.into(), amount_sats)
+        .map_err(|e| FfiError::Other { reason: e.to_string() })
 }

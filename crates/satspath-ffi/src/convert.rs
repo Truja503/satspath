@@ -1,371 +1,368 @@
-//! Conversion between internal and FFI types
+//! Bidirectional conversions between satspath-core types and FFI types.
 
+use crate::types::*;
 use satspath_core::{
-    SignedPaymentProfile as CoreSignedPaymentProfile,
-    PaymentProfile as CorePaymentProfile,
     PaymentMethod as CorePaymentMethod,
+    PaymentProfile as CorePaymentProfile,
+    SignedPaymentProfile as CoreSignedPaymentProfile,
     Invite as CoreInvite,
     InviteRecord as CoreInviteRecord,
-    Identity as CoreIdentity,
-    FeeEstimate as CoreFeeEstimate,
+    InviteStatus as CoreInviteStatus,
+    ExecutionMode as CoreExecutionMode,
+    KeyRotation as CoreKeyRotation,
+    pointer::BitcoinNetwork,
 };
+use satspath_core::ark::ArkOwnershipProof as CoreArkOwnershipProof;
+use satspath_core::ownership::MethodVerification as CoreMethodVerification;
 use satspath_router::{
-    RouteQuote as CoreRouteQuote,
     FeeEstimate as RouterFeeEstimate,
+    RouteQuote as CoreRouteQuote,
     urgency::PaymentUrgency,
 };
 
-// Conversion from internal types to generated FFI types
-impl From<CoreIdentity> for crate::satspath::r#Identity {
-    fn from(internal: CoreIdentity) -> Self {
-        crate::satspath::r#Identity {
-            pubkeyHex: internal.pubkey_hex,
-            secretKeyPath: internal.secret_key_path,
-            fingerprint: internal.fingerprint,
-        }
-    }
-}
+// ── Core → FFI ────────────────────────────────────────────────────────────────
 
-impl From<CoreSignedPaymentProfile> for crate::satspath::r#SignedPaymentProfile {
-    fn from(internal: CoreSignedPaymentProfile) -> Self {
-        crate::satspath::r#SignedPaymentProfile {
-            profile: internal.profile.into(),
-            signature: internal.signature,
-        }
-    }
-}
-
-impl From<CorePaymentProfile> for crate::satspath::r#PaymentProfile {
-    fn from(internal: CorePaymentProfile) -> Self {
-        crate::satspath::r#PaymentProfile {
-            alias: internal.alias,
-            identityPubkey: internal.identity_pubkey,
-            methods: internal.methods.into_iter().map(Into::into).collect(),
-            updatedAt: internal.updated_at,
-            expiresAt: internal.expires_at,
-            sequence: internal.sequence,
-            preferences: internal.preferences,
-            nonce: internal.nonce,
-            rotation: internal.rotation.map(Into::into),
-            methodVerifications: internal.method_verifications.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<CorePaymentMethod> for crate::satspath::r#PaymentMethod {
-    fn from(internal: CorePaymentMethod) -> Self {
-        match internal {
-            CorePaymentMethod::Onchain { label, network, address, silent_payment_pubkey, pubkey_hint, descriptor_hint, address_list } => {
-                crate::satspath::r#PaymentMethod::OnchainMethod(crate::satspath::r#OnchainMethod {
+impl From<CorePaymentMethod> for FfiPaymentMethod {
+    fn from(m: CorePaymentMethod) -> Self {
+        match m {
+            CorePaymentMethod::Onchain {
+                label, network, address, silent_payment_pubkey,
+                pubkey_hint, descriptor_hint, address_list,
+            } => FfiPaymentMethod::Onchain {
+                method: FfiOnchainMethod {
                     label,
                     network: format!("{:?}", network).to_lowercase(),
                     address,
-                    silentPaymentPubkey: silent_payment_pubkey,
-                    pubkeyHint: pubkey_hint,
-                    descriptorHint: descriptor_hint,
-                    addressList: address_list,
-                })
-            }
-            CorePaymentMethod::Lightning { label, lightning_address, lnurl, bolt12, receiver_pubkey } => {
-                crate::satspath::r#PaymentMethod::LightningMethod(crate::satspath::r#LightningMethod {
+                    silent_payment_pubkey,
+                    pubkey_hint,
+                    descriptor_hint,
+                    address_list,
+                },
+            },
+            CorePaymentMethod::Lightning {
+                label, lightning_address, lnurl, bolt12, receiver_pubkey,
+            } => FfiPaymentMethod::Lightning {
+                method: FfiLightningMethod {
                     label,
-                    lightningAddress: lightning_address,
+                    lightning_address,
                     lnurl,
                     bolt12,
-                    receiverPubkey: receiver_pubkey,
-                })
-            }
-            CorePaymentMethod::Ark { label, server, pubkey, vtxo_pointer, proof, expires_at, opaque_uri } => {
-                crate::satspath::r#PaymentMethod::ArkMethod(crate::satspath::r#ArkMethod {
+                    receiver_pubkey,
+                },
+            },
+            CorePaymentMethod::Ark {
+                label, server, pubkey, vtxo_pointer, proof, expires_at, opaque_uri,
+            } => FfiPaymentMethod::Ark {
+                method: FfiArkMethod {
                     label,
                     server,
                     pubkey,
-                    vtxoPointer: vtxo_pointer,
+                    vtxo_pointer,
+                    opaque_uri,
                     proof: proof.map(Into::into),
-                    expiresAt: expires_at,
-                    opaqueUri: opaque_uri,
-                })
-            }
-        }
-    }
-}
-
-impl From<satspath_core::ark::ArkOwnershipProof> for crate::satspath::r#ArkOwnershipProof {
-    fn from(internal: satspath_core::ark::ArkOwnershipProof) -> Self {
-        crate::satspath::r#ArkOwnershipProof {
-            proofType: internal.proof_type,
-            proofData: internal.proof_data,
-            timestamp: internal.timestamp,
-        }
-    }
-}
-
-impl From<CoreInvite> for crate::satspath::r#Invite {
-    fn from(internal: CoreInvite) -> Self {
-        crate::satspath::r#Invite {
-            aliasHash: internal.alias_hash,
-            amountSats: internal.amount_sats,
-            createdAt: internal.created_at,
-            expiresAt: internal.expires_at,
-            claimUrl: internal.claim_url,
-            warning: internal.warning,
-            senderSignature: internal.sender_signature,
-            senderPubkey: internal.sender_pubkey,
-        }
-    }
-}
-
-impl From<CoreInviteRecord> for crate::satspath::r#InviteRecord {
-    fn from(internal: CoreInviteRecord) -> Self {
-        crate::satspath::r#InviteRecord {
-            inviteId: internal.invite_id,
-            identifierHash: internal.identifier_hash,
-            displayHint: internal.display_hint,
-            amountSats: internal.amount_sats,
-            memo: internal.memo,
-            senderFingerprint: internal.sender_fingerprint,
-            status: match internal.status {
-                satspath_core::InviteStatus::Created => crate::satspath::r#InviteStatus::Created,
-                satspath_core::InviteStatus::EmailSent => crate::satspath::r#InviteStatus::EmailSent,
-                satspath_core::InviteStatus::ClaimedWithPublicProfile => crate::satspath::r#InviteStatus::ClaimedWithPublicProfile,
-                satspath_core::InviteStatus::Expired => crate::satspath::r#InviteStatus::Expired,
-                satspath_core::InviteStatus::Cancelled => crate::satspath::r#InviteStatus::Cancelled,
+                    expires_at,
+                },
             },
-            createdAt: internal.created_at,
-            expiresAt: internal.expires_at,
         }
     }
 }
 
-impl From<satspath_core::FeeEstimate> for crate::satspath::r#FeeEstimate {
-    fn from(internal: satspath_core::FeeEstimate) -> Self {
-        crate::satspath::r#FeeEstimate {
-            fastestFee: internal.fastest_fee,
-            halfHourFee: internal.half_hour_fee,
-            hourFee: internal.hour_fee,
-            economyFee: internal.economy_fee,
-            minimumFee: internal.minimum_fee,
+impl From<CoreArkOwnershipProof> for FfiArkOwnershipProof {
+    fn from(p: CoreArkOwnershipProof) -> Self {
+        FfiArkOwnershipProof {
+            message: p.message,
+            signature: p.signature,
+            pubkey: p.pubkey,
         }
     }
 }
 
-impl From<satspath_router::FeeEstimate> for crate::satspath::r#FeeEstimate {
-    fn from(internal: satspath_router::FeeEstimate) -> Self {
-        crate::satspath::r#FeeEstimate {
-            fastestFee: internal.fastest_fee,
-            halfHourFee: internal.half_hour_fee,
-            hourFee: internal.hour_fee,
-            economyFee: internal.economy_fee,
-            minimumFee: internal.minimum_fee,
+impl From<CoreKeyRotation> for FfiKeyRotation {
+    fn from(r: CoreKeyRotation) -> Self {
+        FfiKeyRotation {
+            previous_pubkey: r.previous_pubkey,
+            new_pubkey: r.new_pubkey,
+            authorization_signature: r.authorization_signature,
+            rotated_at: r.rotated_at,
         }
     }
 }
 
-impl From<crate::satspath::r#FeeEstimate> for satspath_router::FeeEstimate {
-    fn from(external: crate::satspath::r#FeeEstimate) -> Self {
-        satspath_router::FeeEstimate {
-            fastest_fee: external.fastestFee,
-            half_hour_fee: external.halfHourFee,
-            hour_fee: external.hourFee,
-            economy_fee: external.economyFee,
-            minimum_fee: external.minimumFee,
-        }
-    }
-}
-
-impl From<satspath_router::RouteQuote> for crate::satspath::r#RouteQuote {
-    fn from(internal: satspath_router::RouteQuote) -> Self {
-        crate::satspath::r#RouteQuote {
-            selected_method: internal.selected_method.into(),
-            estimated_fee_sats: internal.estimated_fee_sats.unwrap_or(0),
-            estimated_confirmation: internal.estimated_confirmation.unwrap_or_default(),
-            reason: internal.reason,
-            execution: match internal.execution {
-                Some(satspath_core::ExecutionMode::Preview) => crate::satspath::r#ExecutionMode::Preview,
-                Some(satspath_core::ExecutionMode::MainnetPreview) => crate::satspath::r#ExecutionMode::MainnetPreview,
-                Some(satspath_core::ExecutionMode::TestnetExperimental) => crate::satspath::r#ExecutionMode::TestnetExperimental,
-                Some(satspath_core::ExecutionMode::ManualWallet) => crate::satspath::r#ExecutionMode::ManualWallet,
-                None => crate::satspath::r#ExecutionMode::Preview,
-            },
-            wallet_hint: internal.wallet_hint.unwrap_or_default(),
-        }
-    }
-}
-
-impl From<satspath_core::KeyRotation> for crate::satspath::r#KeyRotation {
-    fn from(internal: satspath_core::KeyRotation) -> Self {
-        crate::satspath::r#KeyRotation {
-            newIdentityPubkey: internal.new_identity_pubkey,
-            rotationTime: internal.rotation_time,
-            previousSignature: internal.previous_signature,
-        }
-    }
-}
-
-impl From<satspath_core::ownership::MethodVerification> for crate::satspath::r#MethodVerification {
-    fn from(internal: satspath_core::ownership::MethodVerification) -> Self {
-        crate::satspath::r#MethodVerification {
-            methodDescriptor: internal.method_descriptor,
-            proofType: internal.proof_type,
-            proofData: internal.proof_data,
-            verifiedAt: internal.verified_at,
-        }
-    }
-}
-
-impl From<satspath_router::urgency::PaymentUrgency> for crate::satspath::r#ExecutionMode {
-    fn from(internal: satspath_router::urgency::PaymentUrgency) -> Self {
-        match internal {
-            satspath_router::urgency::PaymentUrgency::Urgent => crate::satspath::r#ExecutionMode::Preview,
-            satspath_router::urgency::PaymentUrgency::Commercial => crate::satspath::r#ExecutionMode::MainnetPreview,
-            satspath_router::urgency::PaymentUrgency::Economy => crate::satspath::r#ExecutionMode::TestnetExperimental,
-            satspath_router::urgency::PaymentUrgency::Normal => crate::satspath::r#ExecutionMode::Preview,
-        }
-    }
-}
-
-impl From<crate::satspath::r#PaymentMethod> for satspath_core::PaymentMethod {
-    fn from(external: crate::satspath::r#PaymentMethod) -> Self {
-        match external {
-            crate::satspath::r#PaymentMethod::OnchainMethod(m) => {
-                satspath_core::PaymentMethod::Onchain {
-                    label: m.label,
-                    network: m.network.parse().unwrap_or(satspath_core::pointer::BitcoinNetwork::Mainnet),
-                    address: m.address,
-                    silent_payment_pubkey: m.silent_payment_pubkey,
-                    pubkey_hint: m.pubkey_hint,
-                    descriptor_hint: m.descriptor_hint,
-                    address_list: m.address_list,
-                }
+impl From<CoreMethodVerification> for FfiMethodVerification {
+    fn from(v: CoreMethodVerification) -> Self {
+        // Serialize the status to a simplified proof_type + proof_data for FFI
+        let (proof_type, proof_data, verified_at) = match &v.status {
+            satspath_core::ownership::VerificationStatus::Unverified => {
+                ("unverified".to_string(), String::new(), 0i64)
             }
-            crate::satspath::r#PaymentMethod::LightningMethod(m) => {
-                satspath_core::PaymentMethod::Lightning {
-                    label: m.label,
-                    lightning_address: m.lightning_address,
-                    lnurl: m.lnurl,
-                    bolt12: m.bolt12,
-                    receiver_pubkey: m.receiver_pubkey,
-                }
+            satspath_core::ownership::VerificationStatus::Verified {
+                proof_type, proof, verified_at, ..
+            } => {
+                let pt = format!("{:?}", proof_type);
+                let pd = serde_json::to_string(proof).unwrap_or_default();
+                (pt, pd, *verified_at)
             }
-            crate::satspath::r#PaymentMethod::ArkMethod(m) => {
-                satspath_core::PaymentMethod::Ark {
-                    label: m.label,
-                    server: m.server,
-                    pubkey: m.pubkey,
-                    vtxo_pointer: m.vtxo_pointer,
-                    proof: m.proof.map(Into::into),
-                    expires_at: m.expires_at,
-                    opaque_uri: m.opaque_uri,
-                }
-            }
-        }
-    }
-}
-
-impl From<crate::satspath::r#PaymentProfile> for satspath_core::PaymentProfile {
-    fn from(external: crate::satspath::r#PaymentProfile) -> Self {
-        satspath_core::PaymentProfile {
-            alias: external.alias,
-            identity_pubkey: external.identityPubkey,
-            methods: external.methods.into_iter().map(Into::into).collect(),
-            updated_at: external.updatedAt,
-            expires_at: external.expiresAt,
-            sequence: external.sequence,
-            preferences: external.preferences,
-            nonce: external.nonce,
-            rotation: external.rotation.map(Into::into),
-            method_verifications: external.methodVerifications.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<crate::satspath::r#PaymentMethod> for satspath_core::PaymentMethod {
-    fn from(external: crate::satspath::r#PaymentMethod) -> Self {
-        match external {
-            crate::satspath::r#PaymentMethod::OnchainMethod(m) => {
-                satspath_core::PaymentMethod::Onchain {
-                    label: m.label,
-                    network: m.network.parse().unwrap_or(satspath_core::pointer::BitcoinNetwork::Mainnet),
-                    address: m.address,
-                    silent_payment_pubkey: m.silent_payment_pubkey,
-                    pubkey_hint: m.pubkeyHint,
-                    descriptor_hint: m.descriptorHint,
-                    address_list: m.addressList,
-                }
-            }
-            crate::satspath::r#PaymentMethod::LightningMethod(m) => {
-                satspath_core::PaymentMethod::Lightning {
-                    label: m.label,
-                    lightning_address: m.lightningAddress,
-                    lnurl: m.lnurl,
-                    bolt12: m.bolt12,
-                    receiver_pubkey: m.receiverPubkey,
-                }
-            }
-            crate::satspath::r#PaymentMethod::ArkMethod(m) => {
-                satspath_core::PaymentMethod::Ark {
-                    label: m.label,
-                    server: m.server,
-                    pubkey: m.pubkey,
-                    vtxo_pointer: m.vtxoPointer,
-                    proof: m.proof.map(Into::into),
-                    expires_at: m.expiresAt,
-                    opaque_uri: m.opaqueUri,
-                }
-            }
-        }
-    }
-}
-
-impl From<crate::satspath::r#QuoteRequest> for satspath_router::RouteRequest {
-    fn from(external: crate::satspath::r#QuoteRequest) -> Self {
-        let urgency = match external.urgency.as_str() {
-            "urgent" => satspath_router::urgency::PaymentUrgency::Urgent,
-            "commercial" => satspath_router::urgency::PaymentUrgency::Commercial,
-            "economy" => satspath_router::urgency::PaymentUrgency::Economy,
-            _ => satspath_router::urgency::PaymentUrgency::Normal,
         };
+        FfiMethodVerification {
+            method_descriptor: v.method_descriptor,
+            proof_type,
+            proof_data,
+            verified_at,
+        }
+    }
+}
 
+impl From<CorePaymentProfile> for FfiPaymentProfile {
+    fn from(p: CorePaymentProfile) -> Self {
+        FfiPaymentProfile {
+            alias: p.alias,
+            identity_pubkey: p.identity_pubkey,
+            methods: p.methods.into_iter().map(Into::into).collect(),
+            updated_at: p.updated_at,
+            expires_at: p.expires_at,
+            sequence: p.sequence,
+            preferences: p.preferences,
+            nonce: p.nonce,
+            rotation: p.rotation.map(Into::into),
+            method_verifications: p.method_verifications.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<CoreSignedPaymentProfile> for FfiSignedPaymentProfile {
+    fn from(sp: CoreSignedPaymentProfile) -> Self {
+        FfiSignedPaymentProfile {
+            profile: sp.profile.into(),
+            signature: sp.signature,
+        }
+    }
+}
+
+impl From<CoreInvite> for FfiInvite {
+    fn from(i: CoreInvite) -> Self {
+        FfiInvite {
+            alias_hash: i.alias_hash,
+            amount_sats: i.amount_sats,
+            created_at: i.created_at,
+            expires_at: i.expires_at,
+            claim_url: i.claim_url,
+            warning: i.warning,
+            sender_signature: i.sender_signature,
+            sender_pubkey: i.sender_pubkey,
+        }
+    }
+}
+
+impl From<CoreInviteStatus> for FfiInviteStatus {
+    fn from(s: CoreInviteStatus) -> Self {
+        match s {
+            CoreInviteStatus::Created => FfiInviteStatus::Created,
+            CoreInviteStatus::EmailSent => FfiInviteStatus::EmailSent,
+            CoreInviteStatus::ClaimedWithPublicProfile => FfiInviteStatus::ClaimedWithPublicProfile,
+            CoreInviteStatus::Expired => FfiInviteStatus::Expired,
+            CoreInviteStatus::Cancelled => FfiInviteStatus::Cancelled,
+        }
+    }
+}
+
+impl From<CoreInviteRecord> for FfiInviteRecord {
+    fn from(r: CoreInviteRecord) -> Self {
+        FfiInviteRecord {
+            invite_id: r.invite_id,
+            identifier_hash: r.identifier_hash,
+            display_hint: r.display_hint,
+            amount_sats: r.amount_sats,
+            memo: r.memo,
+            sender_fingerprint: r.sender_fingerprint,
+            status: r.status.into(),
+            created_at: r.created_at,
+            expires_at: r.expires_at,
+        }
+    }
+}
+
+impl From<CoreExecutionMode> for FfiExecutionMode {
+    fn from(m: CoreExecutionMode) -> Self {
+        match m {
+            CoreExecutionMode::Preview => FfiExecutionMode::Preview,
+            CoreExecutionMode::MainnetPreview => FfiExecutionMode::MainnetPreview,
+            CoreExecutionMode::TestnetExperimental => FfiExecutionMode::TestnetExperimental,
+            CoreExecutionMode::ManualWallet => FfiExecutionMode::ManualWallet,
+        }
+    }
+}
+
+impl From<RouterFeeEstimate> for FfiFeeEstimate {
+    fn from(f: RouterFeeEstimate) -> Self {
+        FfiFeeEstimate {
+            fastest_fee: f.fastest_fee,
+            half_hour_fee: f.half_hour_fee,
+            hour_fee: f.hour_fee,
+            economy_fee: f.economy_fee,
+            minimum_fee: f.minimum_fee,
+        }
+    }
+}
+
+impl From<CoreRouteQuote> for FfiRouteQuote {
+    fn from(q: CoreRouteQuote) -> Self {
+        FfiRouteQuote {
+            selected_method: q.selected_method.into(),
+            estimated_fee_sats: q.estimated_fee_sats.unwrap_or(0),
+            estimated_confirmation: q.estimated_confirmation.unwrap_or_default(),
+            reason: q.reason,
+            execution: q.execution
+                .map(Into::into)
+                .unwrap_or(FfiExecutionMode::Preview),
+            wallet_hint: q.wallet_hint.unwrap_or_default(),
+        }
+    }
+}
+
+// ── FFI → Core ────────────────────────────────────────────────────────────────
+
+impl From<FfiPaymentMethod> for CorePaymentMethod {
+    fn from(m: FfiPaymentMethod) -> Self {
+        match m {
+            FfiPaymentMethod::Onchain { method: m } => CorePaymentMethod::Onchain {
+                label: m.label,
+                network: parse_network(&m.network),
+                address: m.address,
+                silent_payment_pubkey: m.silent_payment_pubkey,
+                pubkey_hint: m.pubkey_hint,
+                descriptor_hint: m.descriptor_hint,
+                address_list: m.address_list,
+            },
+            FfiPaymentMethod::Lightning { method: m } => CorePaymentMethod::Lightning {
+                label: m.label,
+                lightning_address: m.lightning_address,
+                lnurl: m.lnurl,
+                bolt12: m.bolt12,
+                receiver_pubkey: m.receiver_pubkey,
+            },
+            FfiPaymentMethod::Ark { method: m } => CorePaymentMethod::Ark {
+                label: m.label,
+                server: m.server,
+                pubkey: m.pubkey,
+                vtxo_pointer: m.vtxo_pointer,
+                opaque_uri: m.opaque_uri,
+                proof: m.proof.map(Into::into),
+                expires_at: m.expires_at,
+            },
+        }
+    }
+}
+
+impl From<FfiArkOwnershipProof> for CoreArkOwnershipProof {
+    fn from(p: FfiArkOwnershipProof) -> Self {
+        CoreArkOwnershipProof {
+            message: p.message,
+            signature: p.signature,
+            pubkey: p.pubkey,
+        }
+    }
+}
+
+impl From<FfiKeyRotation> for CoreKeyRotation {
+    fn from(r: FfiKeyRotation) -> Self {
+        CoreKeyRotation {
+            previous_pubkey: r.previous_pubkey,
+            new_pubkey: r.new_pubkey,
+            authorization_signature: r.authorization_signature,
+            rotated_at: r.rotated_at,
+        }
+    }
+}
+
+impl From<FfiPaymentProfile> for CorePaymentProfile {
+    fn from(p: FfiPaymentProfile) -> Self {
+        CorePaymentProfile {
+            alias: p.alias,
+            identity_pubkey: p.identity_pubkey,
+            methods: p.methods.into_iter().map(Into::into).collect(),
+            updated_at: p.updated_at,
+            expires_at: p.expires_at,
+            sequence: p.sequence,
+            preferences: p.preferences,
+            nonce: p.nonce,
+            rotation: p.rotation.map(Into::into),
+            method_verifications: p.method_verifications.into_iter().map(|v| {
+                // Reconstruct a minimal CoreMethodVerification from FFI
+                CoreMethodVerification {
+                    method_descriptor: v.method_descriptor,
+                    status: satspath_core::ownership::VerificationStatus::Unverified,
+                }
+            }).collect(),
+        }
+    }
+}
+
+impl From<FfiSignedPaymentProfile> for CoreSignedPaymentProfile {
+    fn from(sp: FfiSignedPaymentProfile) -> Self {
+        CoreSignedPaymentProfile {
+            profile: sp.profile.into(),
+            signature: sp.signature,
+        }
+    }
+}
+
+impl From<FfiFeeEstimate> for RouterFeeEstimate {
+    fn from(f: FfiFeeEstimate) -> Self {
+        RouterFeeEstimate {
+            fastest_fee: f.fastest_fee,
+            half_hour_fee: f.half_hour_fee,
+            hour_fee: f.hour_fee,
+            economy_fee: f.economy_fee,
+            minimum_fee: f.minimum_fee,
+        }
+    }
+}
+
+impl From<FfiQuoteRequest> for satspath_router::RouteRequest {
+    fn from(r: FfiQuoteRequest) -> Self {
+        let urgency = match r.urgency.as_str() {
+            "urgent" => PaymentUrgency::Urgent,
+            "commercial" => PaymentUrgency::Commercial,
+            "economy" => PaymentUrgency::Economy,
+            _ => PaymentUrgency::Normal,
+        };
         satspath_router::RouteRequest {
-            alias: external.recipient,
-            amount_sats: external.amountSats,
-            signed_profile: external.signedProfile.into(),
+            alias: r.recipient,
+            amount_sats: r.amount_sats,
+            signed_profile: r.signed_profile.into(),
             urgency,
-            max_fee_sats: external.maxFeeSats,
-            max_fee_percent: external.maxFeePercent,
+            max_fee_sats: r.max_fee_sats,
+            max_fee_percent: r.max_fee_percent,
         }
     }
 }
 
-impl From<satspath_core::ark::ArkOwnershipProof> for crate::satspath::r#ArkOwnershipProof {
-    fn from(internal: satspath_core::ark::ArkOwnershipProof) -> Self {
-        crate::satspath::r#ArkOwnershipProof {
-            proofType: internal.proof_type,
-            proofData: internal.proof_data,
-            timestamp: internal.timestamp,
+impl From<FfiSplitRecipient> for satspath_core::SplitRecipient {
+    fn from(r: FfiSplitRecipient) -> Self {
+        satspath_core::SplitRecipient {
+            alias: r.alias,
+            percent: r.percent,
         }
     }
 }
 
-impl From<satspath_core::InviteStatus> for crate::satspath::r#InviteStatus {
-    fn from(internal: satspath_core::InviteStatus) -> Self {
-        match internal {
-            satspath_core::InviteStatus::Created => crate::satspath::r#InviteStatus::Created,
-            satspath_core::InviteStatus::EmailSent => crate::satspath::r#InviteStatus::EmailSent,
-            satspath_core::InviteStatus::ClaimedWithPublicProfile => crate::satspath::r#InviteStatus::ClaimedWithPublicProfile,
-            satspath_core::InviteStatus::Expired => crate::satspath::r#InviteStatus::Expired,
-            satspath_core::InviteStatus::Cancelled => crate::satspath::r#InviteStatus::Cancelled,
+impl From<FfiSplitPaymentRequest> for satspath_core::SplitPaymentRequest {
+    fn from(r: FfiSplitPaymentRequest) -> Self {
+        satspath_core::SplitPaymentRequest {
+            version: r.version,
+            total_amount_sats: r.total_amount_sats,
+            splits: r.splits.into_iter().map(Into::into).collect(),
+            memo: r.memo,
         }
     }
 }
 
-impl From<satspath_core::ExecutionMode> for crate::satspath::r#ExecutionMode {
-    fn from(internal: satspath_core::ExecutionMode) -> Self {
-        match internal {
-            satspath_core::ExecutionMode::Preview => crate::satspath::r#ExecutionMode::Preview,
-            satspath_core::ExecutionMode::MainnetPreview => crate::satspath::r#ExecutionMode::MainnetPreview,
-            satspath_core::ExecutionMode::TestnetExperimental => crate::satspath::r#ExecutionMode::TestnetExperimental,
-            satspath_core::ExecutionMode::ManualWallet => crate::satspath::r#ExecutionMode::ManualWallet,
-        }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+fn parse_network(s: &str) -> BitcoinNetwork {
+    match s {
+        "testnet" => BitcoinNetwork::Testnet,
+        "regtest" => BitcoinNetwork::Regtest,
+        _ => BitcoinNetwork::Mainnet,
     }
 }

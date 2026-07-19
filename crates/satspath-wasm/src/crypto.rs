@@ -12,6 +12,68 @@ use wasm_bindgen::prelude::*;
 /// Domain separator — must match satspath-core::crypto::PROFILE_DOMAIN_SEPARATOR
 const PROFILE_DOMAIN_SEPARATOR: &[u8] = b"SatsPathProfileV1";
 
+#[wasm_bindgen]
+pub struct IdentityKeypair {
+    pubkey_hex: String,
+    secret_key_hex: String,
+}
+
+#[wasm_bindgen]
+impl IdentityKeypair {
+    #[wasm_bindgen(getter)]
+    pub fn pubkey_hex(&self) -> String {
+        self.pubkey_hex.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn secret_key_hex(&self) -> String {
+        self.secret_key_hex.clone()
+    }
+}
+
+/// Generate a fresh secp256k1 keypair for the identity.
+#[wasm_bindgen]
+pub fn generate_identity_keypair() -> IdentityKeypair {
+    let secp = secp256k1::Secp256k1::new();
+    let (sk, pk) = secp.generate_keypair(&mut rand_core::OsRng);
+    IdentityKeypair {
+        pubkey_hex: hex::encode(pk.serialize()),
+        secret_key_hex: hex::encode(sk.secret_bytes()),
+    }
+}
+
+/// Sign a canonical JSON profile using Schnorr.
+/// Takes the profile JSON and the secret key hex.
+/// Returns the signature in hex.
+#[wasm_bindgen]
+pub fn sign_profile_json(profile_json: &str, secret_key_hex: &str) -> String {
+    let sk_bytes = match hex::decode(secret_key_hex) {
+        Ok(b) => b,
+        Err(_) => return String::new(),
+    };
+    let keypair = match secp256k1::Keypair::from_seckey_slice(&secp256k1::Secp256k1::new(), &sk_bytes) {
+        Ok(kp) => kp,
+        Err(_) => return String::new(),
+    };
+
+    let canonical_bytes = canonical_profile_json(profile_json);
+    if canonical_bytes.is_empty() {
+        return String::new();
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(PROFILE_DOMAIN_SEPARATOR);
+    hasher.update(&canonical_bytes);
+    let digest = hasher.finalize();
+
+    let msg = match secp256k1::Message::from_digest_slice(&digest) {
+        Ok(m) => m,
+        Err(_) => return String::new(),
+    };
+
+    let sig = secp256k1::Secp256k1::new().sign_schnorr_with_rng(&msg, &keypair, &mut rand_core::OsRng);
+    hex::encode(sig.as_ref())
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct SignedPaymentProfile {
     profile: Value,

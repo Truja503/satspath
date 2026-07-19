@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#09090b" />
+  <meta name="description" content="SatsPath — enrutamiento de pagos Bitcoin descentralizado" />
+  <title>SatsPath PWA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #09090b;
+      --surface:   rgba(24,24,27,0.7);
+      --border:    rgba(63,63,70,0.5);
+      --text:      #f4f4f5;
+      --muted:     #71717a;
+      --lightning: #fbbf24;
+      --ark:       #a855f7;
+      --onchain:   #60a5fa;
+      --green:     #4ade80;
+      --red:       #f87171;
+      --font:      'Space Grotesk', sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #1e1b4b 0%, var(--bg) 65%);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--lightning), var(--ark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    header h1 {
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+    }
+    header p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      padding: 5px 14px;
+      border-radius: 100px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Layout ──────────────────────────────────── */
+    .container {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Card ─────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
+      transition: box-shadow .2s;
+    }
+    .card:hover { box-shadow: 0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07); }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title span.badge {
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(168,85,247,.15);
+      color: var(--ark);
+      border: 1px solid rgba(168,85,247,.3);
+      letter-spacing: .05em;
+    }
+
+    /* ── Buttons ─────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font);
+      font-weight: 600;
+      font-size: 14px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-primary {
+      width: 100%;
+      background: #fff;
+      color: #000;
+      letter-spacing: .02em;
+    }
+    .btn-primary:hover { background: #e4e4e7; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      width: 100%;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.1); transform: translateY(-1px); }
+    .btn-secondary:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+    /* ── Output box ──────────────────────────────── */
+    .output {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      background: rgba(9,9,11,.8);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+      animation: fadeUp .3s ease-out;
+    }
+    .output.valid { border-color: rgba(74,222,128,.4); }
+    .output.invalid { border-color: rgba(248,113,113,.4); }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── Rail selector ───────────────────────────── */
+    .rail-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .rail-tab {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+    }
+    .rail-tab.active-lightning { border-color: var(--lightning); color: var(--lightning); background: rgba(251,191,36,.1); }
+    .rail-tab.active-ark       { border-color: var(--ark);       color: var(--ark);       background: rgba(168,85,247,.1); }
+    .rail-tab.active-onchain   { border-color: var(--onchain);   color: var(--onchain);   background: rgba(96,165,250,.1); }
+
+    /* ── Field ───────────────────────────────────── */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 7px; }
+    .field input {
+      width: 100%;
+      background: rgba(9,9,11,.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field input:focus {
+      border-color: rgba(255,255,255,.3);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.05);
+    }
+
+    /* ── Rail descriptions ───────────────────────── */
+    .rail-info {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    /* ── QR placeholder ──────────────────────────── */
+    .qr-placeholder {
+      width: 160px;
+      height: 160px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 11px;
+      margin: 0 auto 16px;
+    }
+
+    /* ── Laser animation ─────────────────────────── */
+    .laser-wrap {
+      position: relative;
+      overflow: hidden;
+    }
+    .laser {
+      display: none;
+      position: absolute;
+      height: 2px;
+      width: 100%;
+      left: -100%;
+      background: linear-gradient(90deg, transparent, var(--lightning), var(--ark), var(--onchain), transparent);
+      animation: laser-sweep 0.6s ease-in-out forwards;
+    }
+    .laser.fire { display: block; }
+    @keyframes laser-sweep {
+      from { left: -100%; }
+      to   { left: 100%; }
+    }
+
+    /* ── Divider ─────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 2;
+    }
+    footer strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡ SatsPath Network</div>
+  <h1>Pay anyone.<br>Non-custodial.</h1>
+  <p>Sin servidor central. Claves en tu dispositivo.</p>
+  <div class="status-pill">
+    <span class="dot" id="wasm-dot"></span>
+    <span id="wasm-status">Cargando WASM…</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── Card 1: Identidad ── -->
+  <div class="card laser-wrap" id="card-identity">
+    <div class="laser" id="laser-identity"></div>
+    <div class="card-title">
+      🔑 Identidad
+      <span class="badge">LOCAL</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">
+      Genera un par de claves secp256k1 directamente en tu navegador.
+      La clave privada <strong>nunca sale de este dispositivo</strong>.
+    </p>
+    <button class="btn btn-primary" id="btn-gen" disabled>⚡ Generar Keypair</button>
+    <pre class="output" id="out-keys"></pre>
+  </div>
+
+  <!-- ── Card 2: Firma de perfil ── -->
+  <div class="card laser-wrap" id="card-sign">
+    <div class="laser" id="laser-sign"></div>
+    <div class="card-title">
+      ✍️ Firma de Perfil
+      <span class="badge">SCHNORR</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">
+      Firma un perfil de pago con tu clave privada usando Schnorr (secp256k1).
+      La verificación ocurre 100% en el navegador vía WASM.
+    </p>
+    <button class="btn btn-secondary" id="btn-sign" disabled>Firmar Perfil Demo</button>
+    <pre class="output" id="out-sig"></pre>
+  </div>
+
+  <!-- ── Card 3: Receive ── -->
+  <div class="card laser-wrap" id="card-receive">
+    <div class="laser" id="laser-receive"></div>
+    <div class="card-title">📥 Recibir Pago</div>
+
+    <div class="rail-tabs">
+      <button class="rail-tab active-lightning" id="rail-lightning" onclick="selectRail('lightning')">⚡ Lightning</button>
+      <button class="rail-tab" id="rail-ark" onclick="selectRail('ark')">🌳 Ark</button>
+      <button class="rail-tab" id="rail-onchain" onclick="selectRail('onchain')">₿ On-chain</button>
+    </div>
+
+    <div class="field">
+      <label>Monto (sats)</label>
+      <input type="number" id="amount-input" placeholder="e.g. 21000" />
+    </div>
+
+    <div class="rail-info" id="rail-info">
+      ⚡ <strong>Lightning</strong> — instantáneo, bajo costo. Requiere que tu nodo esté online.
+    </div>
+
+    <div class="qr-placeholder" id="qr-box">QR aparece aquí</div>
+
+    <button class="btn btn-primary" id="btn-receive" disabled>Generar URI de Pago</button>
+    <pre class="output" id="out-receive"></pre>
+  </div>
+
+</div>
+
+<footer>
+  <div><strong>SatsPath PWA</strong> — open source, no custodios, no servidores centrales</div>
+  <div>Rust → WebAssembly → Tu navegador &nbsp;🦀</div>
+</footer>
+
+<script type="module" src="/main.js"></script>
+
+<script>
+  let _selectedRail = 'lightning';
+  const RAIL_INFO = {
+    lightning: '⚡ <strong>Lightning</strong> — instantáneo, bajo costo. Requiere nodo online o Lightning Address.',
+    ark:       '🌳 <strong>Ark</strong> — salidas VTXO fuera de cadena, privacidad mejorada.',
+    onchain:   '₿ <strong>On-chain</strong> — Bitcoin base layer. Ideal para montos grandes.',
+  };
+
+  function selectRail(rail) {
+    _selectedRail = rail;
+    document.querySelectorAll('.rail-tab').forEach(el => {
+      el.className = 'rail-tab';
+      const r = el.id.replace('rail-', '');
+      if (r === rail) el.classList.add('active-' + rail);
+    });
+    document.getElementById('rail-info').innerHTML = RAIL_INFO[rail];
+  }
+
+  function fireLaser(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('fire');
+    void el.offsetWidth; // reflow
+    el.classList.add('fire');
+    el.addEventListener('animationend', () => el.classList.remove('fire'), { once: true });
+  }
+
+  window.selectRail = selectRail;
+  window.fireLaser = fireLaser;
+</script>
+
+</body>
+</html>

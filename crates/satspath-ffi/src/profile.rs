@@ -1,22 +1,23 @@
-//! Profile FFI implementation (internal - no direct exports)
+//! Profile FFI — save/load profiles (platform-specific storage).
 
-use satspath_core::{SignedPaymentProfile as CoreSignedPaymentProfile, SatsPathError};
+use crate::types::*;
 
-/// Save a profile to local storage (platform-specific implementation needed)
-pub async fn save_profile_ffi(_profile: CoreSignedPaymentProfile) -> Result<(), SatsPathError> {
-    // In production, save to platform-specific encrypted storage
-    // Android: SQLCipher/KeyStore, iOS: Keychain, Desktop: SQLCipher
-    // WASM: IndexedDB / localStorage (encrypted)
+/// Save a profile to local storage.
+///
+/// In production, this delegates to platform-specific encrypted storage:
+/// - Android: SQLCipher / KeyStore
+/// - iOS: Keychain
+/// - Desktop: SQLCipher
+/// - WASM: IndexedDB (encrypted)
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn save_profile(_profile: FfiSignedPaymentProfile) -> Result<(), FfiError> {
+    // TODO(Phase 4): Implement via SecureStorage trait
     Ok(())
 }
 
-/// Load a profile from local storage
-pub async fn load_profile_ffi(_alias: String) -> Result<Option<CoreSignedPaymentProfile>, SatsPathError> {
-    // Platform-specific storage implementation required
+/// Load a profile from local storage by alias.
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn load_profile(_alias: String) -> Result<Option<FfiSignedPaymentProfile>, FfiError> {
+    // TODO(Phase 4): Implement via SecureStorage trait
     Ok(None)
-}
-
-/// Verify a signed profile's signature
-pub fn verify_profile_ffi(profile: crate::r#SignedPaymentProfile) -> bool {
-    satspath_core::crypto::verify_signed_profile(&profile.into()).unwrap_or(false)
 }

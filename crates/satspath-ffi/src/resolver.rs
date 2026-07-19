@@ -1,52 +1,41 @@
-//! Resolver FFI implementation
+//! Resolver FFI — exposes the resolver chain to foreign platforms.
 
+use crate::types::*;
 use satspath_core::resolver::{ChainResolver, ProfileResolver};
-use satspath_core::resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
-use satspath_core::{SignedPaymentProfile as CoreSignedPaymentProfile, SatsPathError};
-use uniffi::deps::anyhow::Result;
 
-// Use the generated FFI types from crate root
-use crate::{
-    SignedPaymentProfile as FfiSignedPaymentProfile,
-    FfiError,
-};
-
-/// Resolver chain that combines all resolvers
+/// Resolver chain that combines all resolvers (BIP-353, HTTP, Nostr).
+/// Exposed to foreign platforms via UniFFI.
 #[derive(uniffi::Object)]
-pub struct ResolverChain {
-    pub inner: satspath_core::resolver::ChainResolver,
+pub struct FfiResolverChain {
+    inner: ChainResolver,
 }
 
 #[uniffi::export(async_runtime = "tokio")]
-impl ResolverChain {
+impl FfiResolverChain {
+    /// Create a new resolver chain with all built-in resolvers.
     #[uniffi::constructor]
     pub fn new() -> Self {
-        let mut chain = satspath_core::resolver::ChainResolver::new();
-        chain = chain.push(satspath_core::resolvers::bip353::Bip353Resolver::new());
-        chain = chain.push(satspath_core::resolvers::http::HttpResolver::new());
-        chain = chain.push(satspath_core::resolvers::nostr::NostrResolver::new());
-        // P2P resolver would be added here when available
+        let chain = ChainResolver::new()
+            .push(satspath_core::resolvers::bip353::Bip353Resolver::new())
+            .push(satspath_core::resolvers::http::HttpResolver::new())
+            .push(satspath_core::resolvers::nostr::NostrResolver::new());
+        // P2P resolver added when available
         Self { inner: chain }
     }
 
-    pub async fn resolve_alias(&self, alias: String) -> Result<crate::SignedPaymentProfile, crate::FfiError> {
-        self.inner.resolve_alias(&alias).await
-            .map(|p| p.into())
-            .map_err(|e| crate::FfiError::Other(e.to_string()))
+    /// Resolve an alias to a signed payment profile.
+    pub async fn resolve_alias(&self, alias: String) -> Result<FfiSignedPaymentProfile, FfiError> {
+        self.inner
+            .resolve_alias(&alias)
+            .await
+            .map(Into::into)
+            .map_err(Into::into)
     }
 }
 
-impl Default for ResolverChain {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// Implement the generated ProfileResolver trait for ResolverChain
-impl crate::ProfileResolver for ResolverChain {
-    async fn resolveAlias(&self, alias: &str) -> crate::SignedPaymentProfile {
-        self.inner.resolve_alias(alias).await
-            .map(|p| p.into())
-            .unwrap_or_else(|e| panic!("Resolver error: {}", e))
+impl FfiResolverChain {
+    /// Get a reference to the inner ChainResolver (for internal use).
+    pub(crate) fn inner(&self) -> &ChainResolver {
+        &self.inner
     }
 }
