@@ -1,0 +1,111 @@
+import { Variants } from 'framer-motion'
+
+// Easing: Emil Kowalski's curves
+export const EASE_OUT_QUINT = [0.23, 1, 0.32, 1]
+export const EASE_OUT_QUINT_TUPLE = EASE_OUT_QUINT as [number, number, number, number]
+// ease-in-out-quint: for on-screen elements moving between positions
+export const EASE_IN_OUT_QUINT = [0.86, 0, 0.07, 1]
+export const EASE_IN_OUT_QUINT_TUPLE = EASE_IN_OUT_QUINT as [number, number, number, number]
+
+// Page transition timing
+export const PAGE_TRANSITION_DURATION = 0.3
+export const PAGE_TRANSITION_EXIT_DURATION = 0.24 // 20% faster exit
+
+// Stagger timing for wallet load-in
+export const STAGGER_DELAY = 0.06
+export const STAGGER_DURATION = 0.3
+
+// Slide distance (% of container)
+const SLIDE_OFFSET = '20%'
+
+// Dynamic page transition variants — direction is passed via Framer Motion's `custom` prop.
+// AnimatePresence's `custom` overrides the child's `custom` for exiting elements,
+// ensuring exit animations always use the CURRENT direction, not the stale one from mount time.
+export const pageTransitionVariants: Variants = {
+  initial: (direction: string) => {
+    if (direction === 'forward') return { x: SLIDE_OFFSET, opacity: 0 }
+    if (direction === 'back') return { x: `-${SLIDE_OFFSET}`, opacity: 0 }
+    return { opacity: 1 }
+  },
+  animate: (direction: string) => ({
+    x: '0%',
+    opacity: 1,
+    transition:
+      direction === 'none' ? { duration: 0 } : { duration: PAGE_TRANSITION_DURATION, ease: EASE_OUT_QUINT_TUPLE },
+  }),
+  exit: (direction: string) => {
+    if (direction === 'forward')
+      return {
+        x: `-${SLIDE_OFFSET}`,
+        opacity: 0,
+        pointerEvents: 'none' as const,
+        transition: { duration: PAGE_TRANSITION_EXIT_DURATION, ease: EASE_OUT_QUINT_TUPLE },
+      }
+    if (direction === 'back')
+      return {
+        x: SLIDE_OFFSET,
+        opacity: 0,
+        pointerEvents: 'none' as const,
+        transition: { duration: PAGE_TRANSITION_EXIT_DURATION, ease: EASE_OUT_QUINT_TUPLE },
+      }
+    return { opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0 } }
+  },
+}
+
+// Fullscreen overlay style (keyboard, scanner, etc.)
+export const overlayStyle = {
+  position: 'absolute' as const,
+  inset: 0,
+  zIndex: 10,
+  display: 'flex',
+  flexDirection: 'column' as const,
+  background: 'var(--background-color)',
+}
+
+// Overlay slide-up animation — used for keyboard, scanner, etc.
+export const overlaySlideUp: Variants = {
+  initial: { y: '100%' },
+  animate: {
+    y: '0%',
+    transition: { duration: PAGE_TRANSITION_DURATION, ease: EASE_OUT_QUINT_TUPLE },
+  },
+  exit: {
+    y: '100%',
+    transition: { duration: PAGE_TRANSITION_EXIT_DURATION, ease: EASE_OUT_QUINT_TUPLE },
+  },
+}
+
+export const walletLoadInContainer: Variants = {
+  initial: {},
+  animate: {
+    transition: { delayChildren: 0.04, staggerChildren: 0.09 },
+  },
+}
+
+export const walletLoadInChild: Variants = {
+  initial: { transform: 'translate3d(0, 18px, 0) scale(0.985)', opacity: 0 },
+  animate: {
+    transform: 'translate3d(0, 0, 0) scale(1)',
+    opacity: 1,
+    transition: { duration: 0.34, ease: EASE_OUT_QUINT_TUPLE },
+  },
+}
+
+// Onboarding stagger — fade up, slightly more pronounced for first-time experience
+export const ONBOARD_STAGGER_DELAY = 0.08
+
+export const onboardStaggerContainer: Variants = {
+  initial: {},
+  animate: {
+    transition: { staggerChildren: ONBOARD_STAGGER_DELAY },
+  },
+}
+
+export const onboardStaggerChild: Variants = {
+  initial: { y: 16, opacity: 0 },
+  animate: {
+    y: 0,
+    opacity: 1,
+    transition: { duration: STAGGER_DURATION, ease: EASE_OUT_QUINT_TUPLE },
+  },
+}

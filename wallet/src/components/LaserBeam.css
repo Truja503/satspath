@@ -1,0 +1,40 @@
+.laser-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 100;
+  background: radial-gradient(circle at center, rgba(247, 147, 26, 0.1) 0%, transparent 70%);
+}
+
+.laser-beam {
+  position: absolute;
+  background: #f7931a; /* Bitcoin Orange */
+  box-shadow: 0 0 10px #f7931a, 0 0 20px #f7931a, 0 0 40px #f7931a, 0 0 80px #f7931a;
+  border-radius: 10px;
+}
+
+.orange-laser-1 {
+  top: 30%;
+  left: 0;
+  width: 200px;
+  height: 4px;
+}
+
+.orange-laser-2 {
+  left: 60%;
+  top: 0;
+  width: 4px;
+  height: 200px;
+}
+
+.orange-laser-3 {
+  bottom: 0;
+  right: 0;
+  width: 250px;
+  height: 6px;
+  transform-origin: center;
+}
