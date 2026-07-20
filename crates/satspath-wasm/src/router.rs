@@ -411,3 +411,10 @@ mod tests {
         assert_eq!(ONCHAIN_FEE_THRESHOLD_SAT_VB, 10);
     }
 }
+#[wasm_bindgen(js_name = quote)]
+pub async fn quote_js(recipient: &str, amount_sats: f64) -> Result<JsValue, JsValue> {
+    match quote(recipient, amount_sats as u64).await {
+        Ok(resp) => Ok(serde_wasm_bindgen::to_value(&resp).map_err(|e| JsValue::from_str(&e.to_string()))?),
+        Err(e) => Err(JsValue::from_str(&e)),
+    }
+}
