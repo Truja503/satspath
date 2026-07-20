@@ -53,6 +53,10 @@ sequenceDiagram
 2. **`satspath.ts` (WASM Bridge):** Es el traductor. Se encarga de convertir los objetos de JavaScript a los tipos primitivos que espera Rust, y viceversa. Aquí es donde inyectamos los "mocks" para desarrollo.
 3. **`satspath-wasm` (Rust):** El cerebro de la operación. Hereda el código de `satspath-core`. Contiene el generador criptográfico seguro, la lógica matemática de las firmas de Schnorr, y el motor de Scoring que decide si es más barato irse por Ark, Lightning o On-chain dependiendo de las comisiones en tiempo real.
 
+## Visión: Arquitectura Soberana P2P
+
+Este es el modelo teórico 100% cypherpunk que busca eliminar la dependencia de servidores DNS y HTTP, garantizando privacidad mediante conexiones enjambre y Web of Trust.
+
 ```mermaid
 graph TD
     %% Flujo de Usuarios
@@ -110,7 +114,7 @@ graph TD
     %% Flujo de Usuarios
     User((Usuario)) -- "Enviar Sats a chelo@dev.idk" --> Wallet[(Arkade Wallet)]
     Wallet -- "routePayment()" --> Bridge[satspath.ts WASM Bridge]
-    Bridge -- "quote()" --> Router{SatsPath Router (Rust)}
+    Bridge -- "quote()" --> Router{"SatsPath Router (Rust)"}
 
     %% Resolvers Actuales Implementados
     subgraph Resolvers [Módulos de Resolución Actuales]
@@ -142,10 +146,23 @@ graph TD
     Scoring -- "QuoteResponse" --> Wallet
 ```
 
-### ¿Cumple el código actual con el diagrama Soberano?
-**Respuesta corta: NO.**
+---
 
-### ¿Dónde están los fallos actuales según el código?
-1. **El `PearResolver` expone el Alias:** Si miras el archivo `crates/satspath-core/src/resolvers/pear.rs`, verás que Rust simplemente ejecuta `node satspath-pear/index.js resolve <alias>`. Esto significa que Hyperswarm usa el alias en texto plano (o un hash directo de él) para encontrar el enjambre, lo que permite ataques de diccionario y rompe la privacidad. No hay ECDH implementado aún.
-2. **Dependencia de la Web Tradicional (DNS/HTTP):** El sistema actual recae fuertemente en `bip353.rs` y `nostr.rs`, los cuales hacen peticiones a servidores DNS y servidores web tradicionales. Esto delega la confianza y soberanía a los dueños de esos dominios.
-3. **Ausencia de Web of Trust (WoT) y Hashcash:** Actualmente el sistema valida matemáticamente que la firma de Schnorr sea correcta (lo hace en `validation.rs`), pero no verifica **quién** firmó. Aceptará cualquier perfil válido sin requerir una conexión previa de confianza.
+## Implementation Plan: Migración a P2P Soberano (Trusted Connections)
+
+Para lograr que el código de SatsPath cumpla con el modelo 100% soberano (y resolver el problema de privacidad del alias expuesto), se debe ejecutar el siguiente plan de desarrollo:
+
+### Fase 1: Enjambres Ofuscados y Cifrado (ECDH)
+1. [ ] **Derivación de Tópico Seguro:** Modificar `satspath-core` para que no pase el alias en texto plano al script de Node.
+2. [ ] **ECDH Compartido:** Implementar Diffie-Hellman usando la `IdentityPubkey` del emisor y receptor para generar un secreto. El `Topic` de Hyperswarm será el `SHA256(SharedSecret)`.
+3. [ ] **Cifrado de Carga Útil:** Usar ChaCha20-Poly1305 (con el secreto compartido) para encriptar los paquetes de datos P2P, garantizando confidencialidad total.
+
+### Fase 2: Protocolo TCP-Style (SYN / SYN-ACK)
+1. [ ] **Paquete SYN (Emisor -> Receptor):** El nodo de Hyperswarm emisor debe enviar un payload cifrado con su intención de pago (`Amount` y `Nonce` aleatorio), y firmado criptográficamente por la Wallet.
+2. [ ] **Generación Just-In-Time (Ark):** El nodo receptor recibe el SYN, valida la firma, y detona un llamado al servidor ASP de Ark para generar un VTXO dinámico que se bloquee específicamente para esta transacción.
+3. [ ] **Paquete SYN-ACK (Receptor -> Emisor):** El receptor devuelve el invoice fresco, su alias local, y firma el `Nonce` para probar liveness.
+
+### Fase 3: Escudos Anti-Bot / Anti-IA (Web of Trust)
+1. [ ] **Módulo de Web of Trust (WoT):** Integrar Nostr (NIP-65) en la wallet para mantener una gráfica social de llaves públicas conocidas.
+2. [ ] **Reglas de Aceptación:** Configurar el demonio P2P para rechazar/dropear automáticamente conexiones `SYN` de Pubkeys que estén a más de 2 grados de separación en la red de confianza.
+3. [ ] **Integración de Hashcash (Lightning/Ark):** Obligar a conexiones fuera de la WoT a adjuntar un HTLC válido por una micro-transacción de 10 sats para cubrir el costo computacional del ataque Sybil.
