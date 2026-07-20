@@ -94,3 +94,58 @@ graph TD
         Hashcash --> Trust
     end
 ```
+
+---
+
+## Arquitectura Actual (Implementada en el Código)
+
+A diferencia del diagrama teórico 100% soberano que discutimos arriba, el código actual de `satspath-core` y `satspath-router` implementa una arquitectura híbrida de transición. 
+
+Actualmente, el sistema resuelve los alias apoyándose en infraestructuras existentes (DNS y HTTP) y tiene un prototipo básico de P2P con Pear/Hyperswarm, pero **aún no implementa** el cifrado ECDH, los Handshakes ni las pruebas anti-spam (Hashcash).
+
+Aquí tienes el diagrama exacto de cómo funciona el código **hoy**:
+
+```mermaid
+graph TD
+    %% Flujo de Usuarios
+    User((Usuario)) -- "Enviar Sats a chelo@dev.idk" --> Wallet[(Arkade Wallet)]
+    Wallet -- "routePayment()" --> Bridge[satspath.ts WASM Bridge]
+    Bridge -- "quote()" --> Router{SatsPath Router (Rust)}
+
+    %% Resolvers Actuales Implementados
+    subgraph Resolvers [Módulos de Resolución Actuales]
+        DNS["BIP353Resolver (DNS TXT)"]
+        Nostr["NostrResolver (HTTP NIP-05)"]
+        Pear["PearResolver (P2P Básico)"]
+        Local["MockResolver (Desarrollo)"]
+    end
+
+    Router --> DNS
+    Router --> Nostr
+    Router --> Pear
+    Router --> Local
+
+    %% Detalle de los Resolvers
+    DNS -. "Consulta DNS" .-> Cloudflare[Servidor DNS]
+    Nostr -. "GET /.well-known/nostr.json" .-> WebServer[Servidor Web]
+    
+    %% Detalle del fallo de soberanía actual
+    Pear -. "node satspath-pear/index.js resolve <alias>" .-> NodeJS[Script Local Node.js]
+    NodeJS -. "SHA256(alias) = Topic" .-> Hyperswarm[Hyperswarm DHT]
+    
+    %% Proceso de Scoring
+    Cloudflare -. "SignedPaymentProfile" .-> Router
+    WebServer -. "SignedPaymentProfile" .-> Router
+    Hyperswarm -. "SignedPaymentProfile" .-> Router
+    
+    Router -- "router::select_route()" --> Scoring[Motor de Scoring]
+    Scoring -- "QuoteResponse" --> Wallet
+```
+
+### ¿Cumple el código actual con el diagrama Soberano?
+**Respuesta corta: NO.**
+
+### ¿Dónde están los fallos actuales según el código?
+1. **El `PearResolver` expone el Alias:** Si miras el archivo `crates/satspath-core/src/resolvers/pear.rs`, verás que Rust simplemente ejecuta `node satspath-pear/index.js resolve <alias>`. Esto significa que Hyperswarm usa el alias en texto plano (o un hash directo de él) para encontrar el enjambre, lo que permite ataques de diccionario y rompe la privacidad. No hay ECDH implementado aún.
+2. **Dependencia de la Web Tradicional (DNS/HTTP):** El sistema actual recae fuertemente en `bip353.rs` y `nostr.rs`, los cuales hacen peticiones a servidores DNS y servidores web tradicionales. Esto delega la confianza y soberanía a los dueños de esos dominios.
+3. **Ausencia de Web of Trust (WoT) y Hashcash:** Actualmente el sistema valida matemáticamente que la firma de Schnorr sea correcta (lo hace en `validation.rs`), pero no verifica **quién** firmó. Aceptará cualquier perfil válido sin requerir una conexión previa de confianza.
