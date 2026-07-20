@@ -53,6 +53,7 @@ sequenceDiagram
 2. **`satspath.ts` (WASM Bridge):** Es el traductor. Se encarga de convertir los objetos de JavaScript a los tipos primitivos que espera Rust, y viceversa. Aquí es donde inyectamos los "mocks" para desarrollo.
 3. **`satspath-wasm` (Rust):** El cerebro de la operación. Hereda el código de `satspath-core`. Contiene el generador criptográfico seguro, la lógica matemática de las firmas de Schnorr, y el motor de Scoring que decide si es más barato irse por Ark, Lightning o On-chain dependiendo de las comisiones en tiempo real.
 
+```mermaid
 graph TD
     %% Flujo de Usuarios
     User((Usuario)) -- "Enviar Sats" --> Bob((Bob))
@@ -92,3 +93,4 @@ graph TD
         WoT --> Trust
         Hashcash --> Trust
     end
+```
