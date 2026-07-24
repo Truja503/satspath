@@ -41,11 +41,21 @@ export const readWalletFromStorage = (): Wallet | undefined => {
   return getStorageItem('wallet', undefined, (val) => JSON.parse(val))
 }
 
+/** Encrypted secret key envelope produced by AES-GCM (Web Crypto). */
+export type EncryptedKey = {
+  ciphertext: string
+  iv: string
+  salt: string
+}
+
 export type SatsPathLocalData = {
   alias: string
   pubkey: string
-  secretKey: string
+  /** Encrypted identity secret key — never stored in plaintext. */
+  encryptedKey: EncryptedKey
   signedJson: string
+  /** Sequence number — incremented on each profile update. */
+  sequence: number
 }
 
 export const saveSatsPathProfileToStorage = (data: SatsPathLocalData): void => {

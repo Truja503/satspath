@@ -11,7 +11,6 @@ crate-type = ["rlib", "cdylib"]
 default = ["std"]
 std = ["reqwest", "tokio"]
 wasm = ["satspath-core/wasm", "getrandom/js", "web-sys/Request", "web-sys/Response", "web-sys/Headers", "web-sys/Window", "web-sys/RequestInit", "web-sys/RequestMode"]
-uniffi_feature = ["uniffi", "satspath-core/uniffi_feature", "tokio/rt-multi-thread", "reqwest/native-tls"]
 
 [dependencies]
 satspath-core = { path = "../satspath-core" }
@@ -30,9 +29,6 @@ bitcoin = { workspace = true }
 bech32 = { workspace = true }
 rand = { workspace = true }
 sha2 = { workspace = true }
-
-# UniFFI
-uniffi = { workspace = true, optional = true }
 
 # WASM-only dependencies
 getrandom = { version = "0.2", features = ["js"], optional = true }

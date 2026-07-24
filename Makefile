@@ -3,7 +3,7 @@
 # Convenience targets for Docker build, run, and development workflows.
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help build build-cli build-bridge build-wasm run shell up down logs clean scan
+.PHONY: help build build-cli build-bridge build-wasm build-wasm-wallet wallet-dev test run shell up down logs clean scan
 
 # ── Default ──────────────────────────────────────────────────────────────────
 help: ## Show this help message
@@ -13,13 +13,28 @@ help: ## Show this help message
 # ── Build ─────────────────────────────────────────────────────────────────────
 build: build-cli build-bridge ## Build all Docker images
 
-build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli v0.2.92)
+build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli)
 	source $(HOME)/.cargo/env && \
 	  cargo build -p satspath-wasm --target wasm32-unknown-unknown --release && \
 	  wasm-bindgen target/wasm32-unknown-unknown/release/satspath_wasm.wasm \
 	    --out-dir sdk/satspath-p2p/pkg --target nodejs && \
 	  echo '{"type":"commonjs"}' > sdk/satspath-p2p/pkg/package.json
 	@echo "WASM built → sdk/satspath-p2p/pkg/"
+
+build-wasm-wallet: ## Build WASM module and copy into wallet/public/ (requires wasm-pack)
+	source $(HOME)/.cargo/env && \
+	  wasm-pack build crates/satspath-wasm \
+	    --target web \
+	    --release \
+	    --out-dir ../../wallet/public/satspath-wasm-pkg && \
+	  cp wallet/public/satspath-wasm-pkg/satspath_wasm_bg.wasm wallet/public/satspath_wasm_bg.wasm
+	@echo "WASM → wallet/public/satspath_wasm_bg.wasm"
+
+wallet-dev: ## Start the Arkade Money wallet dev server
+	cd wallet && npm run dev
+
+test: ## Run all Rust workspace tests
+	source $(HOME)/.cargo/env && cargo test --workspace
 
 build-cli: ## Build the SatsPath CLI image
 	docker build \

@@ -42,7 +42,7 @@ import { extractError } from '../../../lib/error'
 import { getInvoiceSatoshis } from '@arkade-os/boltz-swap'
 import { SwapsContext } from '../../../providers/swaps'
 import { decodeBip21, isBip21 } from '../../../lib/bip21'
-import { routePayment } from '../../../lib/satspath'
+import { routePayment, RouteResult } from '../../../lib/satspath'
 import { InfoLine } from '../../../components/Info'
 import { centsToUnits, prettyAssetAmount, unitsToCents } from '../../../lib/assets'
 import { FeesContext } from '../../../providers/fees'
@@ -148,7 +148,7 @@ export default function SendForm() {
   const [showReserveModal, setShowReserveModal] = useState(false)
   const [tryingToSelfSend, setTryingToSelfSend] = useState(false)
   const [valueSats, setValueSats] = useState<number | undefined>(undefined)
-  const [satspathRoute, setSatspathRoute] = useState<{ methodType: string, feeEstimate: number } | null>(null)
+  const [satspathRoute, setSatspathRoute] = useState<RouteResult | null>(null)
 
   const timeoutRef = useRef<NodeJS.Timeout>()
 
@@ -318,7 +318,7 @@ export default function SendForm() {
           if (satoshisToRoute > 0) {
              const route = await routePayment(recipient.trim(), satoshisToRoute)
              if (route) {
-               setSatspathRoute({ methodType: route.methodType, feeEstimate: route.feeEstimate })
+               setSatspathRoute(route)
                
                // Route the payload to the specific wallet logic
                if (route.methodType === 'lightning') {
@@ -918,13 +918,40 @@ export default function SendForm() {
               {satspathRoute ? (
                 <Shadow>
                   <FlexRow between padding='0.75rem'>
-                    <FlexCol gap='0.1rem'>
-                      <Text smaller>SatsPath Route: {satspathRoute.methodType.toUpperCase()}</Text>
+                    <FlexCol gap='0.25rem'>
+                      <FlexRow gap='0.4rem'>
+                        <Text smaller bold>
+                          ⚡ SatsPath → {satspathRoute.methodType.toUpperCase()}
+                        </Text>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          padding: '1px 6px',
+                          borderRadius: '99px',
+                          background: satspathRoute.resolverSource === 'bip353' ? '#0a2e1a'
+                            : satspathRoute.resolverSource === 'nostr' ? '#1a1a2e'
+                            : satspathRoute.resolverSource === 'https' ? '#1a2a1a'
+                            : '#2a2a2a',
+                          color: satspathRoute.resolverSource === 'bip353' ? '#22c55e'
+                            : satspathRoute.resolverSource === 'nostr' ? '#a78bfa'
+                            : satspathRoute.resolverSource === 'https' ? '#60a5fa'
+                            : '#a0aec0',
+                          border: '1px solid currentColor',
+                        }}>
+                          {satspathRoute.resolverSource === 'bip353' ? '✓ DNS/DNSSEC'
+                            : satspathRoute.resolverSource === 'nostr' ? '◈ Nostr'
+                            : satspathRoute.resolverSource === 'https' ? '🔒 HTTPS'
+                            : satspathRoute.resolverSource === 'p2p' ? '⬡ P2P'
+                            : satspathRoute.resolverSource === 'local' ? '⬤ Local'
+                            : '? Unverified'}
+                        </span>
+                      </FlexRow>
+                      {satspathRoute.routingReason ? (
+                        <Text smaller color='neutral-500'>
+                          {satspathRoute.routingReason.slice(0, 80)}
+                        </Text>
+                      ) : null}
                       <Text smaller color='neutral-500'>
-                        Estimated fee: {satspathRoute.feeEstimate} sats
-                      </Text>
-                      <Text smaller color='green-500'>
-                        Powered by SatsPath
+                        Est. fee: {satspathRoute.feeEstimate} sats
                       </Text>
                     </FlexCol>
                   </FlexRow>
