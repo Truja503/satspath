@@ -1,0 +1,360 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{arkade-wallet}{%
+\section{👾 Arkade Wallet}\label{arkade-wallet}}
+
+Arkade Wallet is the entry-point to the Arkade ecosystem---a
+self-custodial Bitcoin wallet delivered as a lightweight Progressive Web
+App (installable on mobile or desktop in seconds, no app-store
+gatekeepers). Built around the open-source ARK protocol, it speaks
+natively to any \href{https://github.com/arkade-os/arkd}{arkd} instance,
+letting you create, send, and receive Virtual Transaction Outputs
+(VTXOs) for instant, off-chain pre-confirmations and batched,
+fee-efficient on-chain settlement.
+
+\hypertarget{screenshots}{%
+\subsection{Screenshots}\label{screenshots}}
+
+\hypertarget{environment-variables}{%
+\subsection{Environment Variables}\label{environment-variables}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3710}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.4624}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Variable
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Description
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Example Value
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{VITE\_ARK\_SERVER} & Override the default Arkade server URL &
+\texttt{VITE\_ARK\_SERVER=http://localhost:7070} \\
+\texttt{VITE\_APP\_VERSION} & App version string shown in support
+diagnostics & \texttt{VITE\_APP\_VERSION=1.2.3} \\
+\texttt{VITE\_BOLTZ\_URL} & Override the default Boltz swap provider URL
+for Lightning &
+\texttt{VITE\_BOLTZ\_URL=https://boltz-provider-url.com} \\
+\texttt{VITE\_CHATWOOT\_WEBSITE\_TOKEN} & ChatWoot website token for
+customer support integration &
+\texttt{VITE\_CHATWOOT\_WEBSITE\_TOKEN=your-token} \\
+\texttt{VITE\_CHATWOOT\_BASE\_URL} & ChatWoot server base URL for
+customer support integration &
+\texttt{VITE\_CHATWOOT\_BASE\_URL=https://app.chatwoot.com} \\
+\texttt{VITE\_DELEGATOR\_URL} & Delegator service URL for the wallet
+service worker &
+\texttt{VITE\_DELEGATOR\_URL=https://delegator.example.com} \\
+\texttt{VITE\_LENDASAT\_IFRAME\_URL} & Override the default LendaSat URL
+& \texttt{VITE\_LENDASAT\_IFRAME\_URL=http://localhost:5173} \\
+\texttt{VITE\_SATORA\_IFRAME\_URL} & Override the default Satora URL &
+\texttt{VITE\_SATORA\_IFRAME\_URL=http://localhost:5174} \\
+\texttt{VITE\_MAX\_PERCENTAGE} & Override the max fee percentage
+(default 10) & \texttt{VITE\_MAX\_PERCENTAGE=5} \\
+\texttt{VITE\_NOSTR\_RELAY\_URL} & Override the default Nostr relay URLs
+for backup & \texttt{VITE\_NOSTR\_RELAY\_URL=wss://relay.example.com} \\
+\texttt{VITE\_PSA\_MESSAGE} & Message to show on the wallet index page &
+\texttt{VITE\_PSA\_MESSAGE=@arkade\_os\ on\ TG\ for\ support} \\
+\texttt{VITE\_SENTRY\_DSN} & Enable Sentry error tracking (only in
+production, not on localhost) &
+\texttt{VITE\_SENTRY\_DSN=your-sentry-dsn} \\
+\texttt{VITE\_UTXO\_MAX\_AMOUNT} & Override the server's utxoMaxAmount &
+\texttt{VITE\_UTXO\_MAX\_AMOUNT=-1} \\
+\texttt{VITE\_UTXO\_MIN\_AMOUNT} & Override the server's utxoMinAmount &
+\texttt{VITE\_UTXO\_MIN\_AMOUNT=330} \\
+\texttt{VITE\_VERIFIED\_ASSETS\_URL} & URL to fetch the verified assets
+list &
+\texttt{VITE\_VERIFIED\_ASSETS\_URL=https://arklabshq.github.io/asset-registry/mutinynet.json} \\
+\texttt{VITE\_VTXO\_MAX\_AMOUNT} & Override the server's vtxoMaxAmount &
+\texttt{VITE\_VTXO\_MAX\_AMOUNT=-1} \\
+\texttt{VITE\_VTXO\_MIN\_AMOUNT} & Override the server's vtxoMinAmount &
+\texttt{VITE\_VTXO\_MIN\_AMOUNT=330} \\
+\texttt{CI} & Set to \texttt{true} for Continuous Integration
+environments & \texttt{CI=true} \\
+\texttt{GENERATE\_SOURCEMAP} & Disable source map generation during
+build & \texttt{GENERATE\_SOURCEMAP=false} \\
+\end{longtable}
+
+\hypertarget{docker}{%
+\subsection{Docker}\label{docker}}
+
+The wallet is available as a Docker image on GitHub Container Registry.
+
+\hypertarget{pull-and-run}{%
+\subsubsection{Pull and run}\label{pull-and-run}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{docker}\NormalTok{ pull ghcr.io/arkade{-}os/wallet:latest}
+\ExtensionTok{docker}\NormalTok{ run }\AttributeTok{{-}p}\NormalTok{ 8080:80 ghcr.io/arkade{-}os/wallet:latest}
+\end{Highlighting}
+\end{Shaded}
+
+Open \url{http://localhost:8080} to view the wallet.
+
+\hypertarget{runtime-configuration}{%
+\subsubsection{Runtime configuration}\label{runtime-configuration}}
+
+Environment variables can be passed at runtime to configure the wallet
+without rebuilding the image:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{docker}\NormalTok{ run }\AttributeTok{{-}p}\NormalTok{ 8080:80 }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}e}\NormalTok{ VITE\_ARK\_SERVER=https://arkade.computer }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}e}\NormalTok{ VITE\_BOLTZ\_URL=https://api.boltz.exchange }\DataTypeTok{\textbackslash{}}
+\NormalTok{  ghcr.io/arkade{-}os/wallet:latest}
+\end{Highlighting}
+\end{Shaded}
+
+See the \protect\hyperlink{environment-variables}{Environment Variables}
+table for all supported variables.
+
+\hypertarget{build-locally}{%
+\subsubsection{Build locally}\label{build-locally}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{docker}\NormalTok{ build }\AttributeTok{{-}t}\NormalTok{ arkade{-}wallet .}
+
+\CommentTok{\# With build{-}time configuration}
+\ExtensionTok{docker}\NormalTok{ build }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}build{-}arg}\NormalTok{ VITE\_ARK\_SERVER=https://arkade.computer }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}{-}build{-}arg}\NormalTok{ VITE\_BOLTZ\_URL=https://api.boltz.exchange }\DataTypeTok{\textbackslash{}}
+  \AttributeTok{{-}t}\NormalTok{ arkade{-}wallet .}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{getting-started}{%
+\subsection{Getting Started}\label{getting-started}}
+
+\hypertarget{prerequisites}{%
+\subsubsection{Prerequisites}\label{prerequisites}}
+
+\begin{itemize}
+\tightlist
+\item
+  Node.js v24.15.0 (see \texttt{.nvmrc})
+\item
+  PNPM \textgreater=8
+\end{itemize}
+
+\hypertarget{installation}{%
+\subsubsection{Installation}\label{installation}}
+
+Install dependencies
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{pnpm}\NormalTok{ install}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{development}{%
+\subsection{Development}\label{development}}
+
+\hypertarget{pnpm-run-start}{%
+\subsubsection{\texorpdfstring{\texttt{pnpm\ run\ start}}{pnpm run start}}\label{pnpm-run-start}}
+
+Runs the app in the development mode.\\
+Open \url{http://localhost:3002} to view it in the browser.
+
+The page will reload if you make edits.\\
+You will also see any lint errors in the console.
+
+\hypertarget{pnpm-run-build}{%
+\subsubsection{\texorpdfstring{\texttt{pnpm\ run\ build}}{pnpm run build}}\label{pnpm-run-build}}
+
+Builds the app for production to the \texttt{dist} folder.\\
+It correctly bundles React in production mode and optimizes the build
+for the best performance.
+
+The build is minified and the filenames include the hashes.\\
+Your app is ready to be deployed!
+
+\hypertarget{pnpm-run-regteststart}{%
+\subsubsection{\texorpdfstring{\texttt{pnpm\ run\ regtest:start}}{pnpm run regtest:start}}\label{pnpm-run-regteststart}}
+
+Starts the regtest environment and sets up the arkd instance.\\
+Requires Docker and Node.js v20.19+ or v22.12+. The stack is driven by
+the in-house \texttt{arkade-regtest} Node CLI
+(\texttt{regtest/regtest.mjs}) --- no Nigiri required.
+
+Use \texttt{pnpm\ run\ regtest:stop} to stop it and
+\texttt{pnpm\ run\ regtest:clean} to tear it down.
+
+\hypertarget{funding-your-local-wallet}{%
+\subsubsection{Funding your local
+wallet}\label{funding-your-local-wallet}}
+
+To interact with Ark features, you need Regtest coins. 1. Copy your
+address from the wallet's \textbf{Receive} screen (ensure it starts with
+bcrt1 for Regtest). 2. Run the faucet command (the \texttt{-\/-confirm}
+flag mines a block so the deposit confirms):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{node}\NormalTok{ regtest/regtest.mjs faucet }\OperatorTok{\textless{}}\NormalTok{bcrt{-}address}\OperatorTok{\textgreater{}} \OperatorTok{\textless{}}\NormalTok{btc}\OperatorTok{\textgreater{}}\NormalTok{ {-}{-}confirm}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{e2e-tests}{%
+\subsubsection{e2e tests}\label{e2e-tests}}
+
+\begin{quote}
+note: e2e tests require a regtest environment to be running.
+\texttt{pnpm\ run\ regtest:start} to start and setup the regtest
+environment.
+\end{quote}
+
+\begin{quote}
+note: e2e tests use playwright for ui testing, you may need to run
+\texttt{pnpm\ exec\ playwright\ install} once to download new browsers.
+\end{quote}
+
+Run the tests with:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{pnpm}\NormalTok{ run test:e2e}
+\end{Highlighting}
+\end{Shaded}
+
+Run the tests in interactive mode with:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{pnpm}\NormalTok{ run test:e2e }\AttributeTok{{-}{-}ui}
+\end{Highlighting}
+\end{Shaded}
+
+Access the playwright code generator tool with:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{pnpm}\NormalTok{ run test:codegen}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{troubleshooting}{%
+\subsection{Troubleshooting}\label{troubleshooting}}
+
+\hypertarget{address-already-in-use-port-5000-on-macos}{%
+\subsubsection{\texorpdfstring{\texttt{address\ already\ in\ use} (Port
+5000) on
+macOS}{address already in use (Port 5000) on macOS}}\label{address-already-in-use-port-5000-on-macos}}
+
+macOS AirPlay Receiver uses port 5000 by default, which conflicts with
+the regtest stack. - \textbf{Fix:} Go to
+\texttt{System\ Settings\ \textgreater{}\ General\ \textgreater{}\ AirDrop\ \&\ Handoff}
+and disable \textbf{AirPlay Receiver}.
+
+\end{document}

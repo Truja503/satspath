@@ -254,9 +254,36 @@ work)}\label{engine-v1-scope-future-work}}
 \item
   Cooperative Taproot/MuSig2 spend for chain swaps
 \item
-  Refund recovery for failed swaps
-\item
   BIP-353 DNS-based payment address resolution
+\end{itemize}
+
+\hypertarget{wallet-integration-post-quantum-security-fase-2-3}{%
+\subsection{Wallet Integration \& Post-Quantum Security (Fase 2 \&
+3)}\label{wallet-integration-post-quantum-security-fase-2-3}}
+
+The Arkade Money Wallet has been fully integrated with the SatsPath
+protocol in the frontend via WASM.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Post-Quantum Cryptography (PQC):} The protocol now uses a
+  hybrid signature scheme (\texttt{ML-DSA-65-Schnorr}) for generating
+  and verifying identity keys. The \texttt{pqc\_seed} is encrypted and
+  stored locally via the Web Crypto API alongside the classical identity
+  key.
+\item
+  \textbf{SSRF Protection:} Resolvers (both WASM and Core) now strictly
+  validate URLs and block loopback, private, and internal metadata IP
+  ranges to prevent malicious profile endpoints from exploiting the
+  client's internal network.
+\item
+  \textbf{Nostr Profiles:} The wallet now successfully builds, signs,
+  and publishes NIP-78 SatsPath profiles to Nostr relays.
+\item
+  \textbf{Routing \& Execution:} The Wallet's Send Flow uses the
+  SatsPath resolver WASM module to dynamically quote and fallback
+  between Lightning, On-chain, and Ark endpoints seamlessly.
 \end{itemize}
 
 \end{document}
