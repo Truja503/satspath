@@ -54,7 +54,7 @@ export default function SatsPathProfile() {
       const onchainAddress = svcWallet ? await svcWallet.getAddress() : ''
       const sequence = (profileData?.sequence ?? 0) + 1
 
-      const { secretKeyHex, pubkeyHex, signedJson } = await buildSatsPathProfile(
+      const { secretKeyHex, pqcSeedHex, pubkeyHex, signedJson } = await buildSatsPathProfile(
         alias,
         lightningAddress,
         arkPubkey,
@@ -66,11 +66,13 @@ export default function SatsPathProfile() {
       // don't need a separate user password prompt.
       const lockPassword = arkPubkey || pubkeyHex.slice(0, 32)
       const encryptedKey = await encryptSecretKey(secretKeyHex, lockPassword)
+      const encryptedPqcSeed = await encryptSecretKey(pqcSeedHex, lockPassword)
 
       const newData: SatsPathLocalData = {
         alias,
         pubkey: pubkeyHex,
         encryptedKey,
+        encryptedPqcSeed,
         signedJson,
         sequence,
       }
@@ -164,7 +166,7 @@ export default function SatsPathProfile() {
                     </Text>
                     <Text big>{profileData.alias}</Text>
 
-                    <Text color="neutral-500" smaller style={{ marginTop: '0.4rem' }}>
+                    <Text color="neutral-500" smaller className="mt-1.5">
                       Identity Pubkey
                     </Text>
                     <div
@@ -178,7 +180,7 @@ export default function SatsPathProfile() {
                       {profileData.pubkey}
                     </div>
 
-                    <Text color="neutral-500" smaller style={{ marginTop: '0.4rem' }}>
+                    <Text color="neutral-500" smaller className="mt-1.5">
                       Sequence #{profileData.sequence} · Key encrypted ✓
                     </Text>
                   </FlexCol>
@@ -226,7 +228,7 @@ export default function SatsPathProfile() {
                     placeholder="e.g. satoshi@arkade.bitcoin"
                     value={alias}
                     onChange={(v) => setAlias(v)}
-                    disabled={isWorking}
+                    readOnly={isWorking}
                   />
                 </FlexCol>
 
@@ -236,7 +238,7 @@ export default function SatsPathProfile() {
                     placeholder="e.g. satoshi@getalby.com"
                     value={lightningAddress}
                     onChange={(v) => setLightningAddress(v)}
-                    disabled={isWorking}
+                    readOnly={isWorking}
                   />
                 </FlexCol>
 

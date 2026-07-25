@@ -375,10 +375,34 @@ async fn serve(state: AppState) -> Result<()> {
     Ok(())
 }
 
+fn check_auth(request: &Request) -> anyhow::Result<()> {
+    if let Ok(token) = std::env::var("SATSPATHD_AUTH_TOKEN") {
+        for header in request.headers() {
+            if header.field.equiv("Authorization") {
+                let val = header.value.as_str();
+                if val == format!("Bearer {}", token) {
+                    return Ok(());
+                }
+            }
+        }
+        anyhow::bail!("Unauthorized: Invalid or missing Bearer token");
+    }
+    Ok(())
+}
+
 async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let method = request.method().clone();
     let path = request.url().split('?').next().unwrap_or("/").to_string();
-    let response = match (method, path.as_str()) {
+
+    // SEC: Auth check for profile mutations (admin)
+    if path.starts_with("/v1/profile") && method != Method::Get && method != Method::Options {
+        if let Err(e) = check_auth(&request) {
+            let _ = request.respond(json_error(StatusCode(401), e));
+            return Ok(());
+        }
+    }
+
+    let response = match (method.clone(), path.as_str()) {
         (Method::Options, _) => empty_response(StatusCode(204)),
         (Method::Get, "/") => html_response(INDEX_HTML),
         (Method::Post, "/v1/receive") => match read_json::<ReceiveRequest>(&mut request) {
@@ -1382,20 +1406,38 @@ fn json_header() -> Header {
 }
 
 fn cors_origin_header() -> Header {
-    Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).expect("valid static header")
+    // SEC-CORS: Restrict to local daemon UI and Arkade wallet origins.
+    // Override via SATSPATHD_CORS_ORIGIN env var for custom deployments.
+    let origin = std::env::var("SATSPATHD_CORS_ORIGIN").unwrap_or_else(|_| {
+        "http://localhost:5173, http://localhost:3000, http://127.0.0.1:5173, https://app.arkade.money".to_string()
+    });
+    // Note: Access-Control-Allow-Origin only supports a single origin value or '*'.
+    // For multiple origins, the server should echo back the request Origin if it's
+    // in the allowed list. Since tiny_http doesn't give us per-request headers easily,
+    // we use the first allowed origin as default. In production, use a reverse proxy
+    // (nginx/caddy) for proper multi-origin CORS.
+    let first_origin = origin.split(',').next().unwrap_or("http://localhost:5173").trim();
+    Header::from_bytes(
+        &b"Access-Control-Allow-Origin"[..],
+        first_origin.as_bytes(),
+    )
+    .expect("valid static header")
 }
 
 fn cors_methods_header() -> Header {
     Header::from_bytes(
         &b"Access-Control-Allow-Methods"[..],
-        &b"GET, POST, PUT, OPTIONS"[..],
+        &b"GET, POST, OPTIONS"[..],
     )
     .expect("valid static header")
 }
 
 fn cors_headers_header() -> Header {
-    Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..])
-        .expect("valid static header")
+    Header::from_bytes(
+        &b"Access-Control-Allow-Headers"[..],
+        &b"Content-Type, Authorization, X-Request-Id"[..],
+    )
+    .expect("valid static header")
 }
 
 fn safety_warnings() -> Vec<&'static str> {

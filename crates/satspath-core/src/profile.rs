@@ -171,6 +171,12 @@ pub struct PaymentProfile {
     /// tamper-evident.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub method_verifications: Vec<crate::ownership::MethodVerification>,
+    /// PQC: Post-quantum hybrid public key bundle (classical + PQC)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hybrid_pubkey: Option<satspath_pqc::types::HybridPublicKey>,
+    /// PQC: If true, verifiers MUST check the hybrid_signature. If false, it's optional.
+    #[serde(default)]
+    pub pqc_required: bool,
 }
 
 /// A payment profile together with the owner's signature over its contents.
@@ -179,6 +185,9 @@ pub struct SignedPaymentProfile {
     pub profile: PaymentProfile,
     /// Hex-encoded secp256k1 Schnorr signature (64 bytes)
     pub signature: String,
+    /// PQC: Hybrid signature (Schnorr + ML-DSA)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hybrid_signature: Option<satspath_pqc::types::HybridSignature>,
 }
 
 /// A parsed universal SatsPath payment request.

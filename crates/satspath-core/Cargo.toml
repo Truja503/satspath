@@ -42,6 +42,7 @@ uuid = { workspace = true }
 canonical_json = "0.5"
 bech32 = "0.9"
 hmac = "0.12"
+satspath-pqc = { path = "../satspath-pqc" }
 
 # Optional dependencies (enabled by default/std feature)
 tokio = { workspace = true, optional = true }

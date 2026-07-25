@@ -18,7 +18,8 @@ mod helpers;
 mod resolver;
 mod router;
 mod topic;
-mod types;
+pub mod types;
+mod ssrf;
 
 pub use crypto::{canonical_profile_json, verify_signed_profile, fingerprint_pubkey};
 pub use helpers::{identifier_hash, mask_identifier};

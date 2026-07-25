@@ -108,5 +108,13 @@ The `ark-bridge/` directory contains a JSON-RPC bridge skeleton that would conne
 - BOLT11 expiry parsing via bech32 data field decode
 - Ark VTXO DAG validation via full ARK SDK
 - Cooperative Taproot/MuSig2 spend for chain swaps
-- Refund recovery for failed swaps
 - BIP-353 DNS-based payment address resolution
+
+## Wallet Integration & Post-Quantum Security (Fase 2 & 3)
+
+The Arkade Money Wallet has been fully integrated with the SatsPath protocol in the frontend via WASM.
+
+- **Post-Quantum Cryptography (PQC):** The protocol now uses a hybrid signature scheme (`ML-DSA-65-Schnorr`) for generating and verifying identity keys. The `pqc_seed` is encrypted and stored locally via the Web Crypto API alongside the classical identity key.
+- **SSRF Protection:** Resolvers (both WASM and Core) now strictly validate URLs and block loopback, private, and internal metadata IP ranges to prevent malicious profile endpoints from exploiting the client's internal network.
+- **Nostr Profiles:** The wallet now successfully builds, signs, and publishes NIP-78 SatsPath profiles to Nostr relays.
+- **Routing & Execution:** The Wallet's Send Flow uses the SatsPath resolver WASM module to dynamically quote and fallback between Lightning, On-chain, and Ark endpoints seamlessly.

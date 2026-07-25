@@ -62,6 +62,9 @@ pub enum SatsPathError {
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
 
+    #[error("validation error: {0}")]
+    ValidationError(String),
+
     #[error("json error: {0}")]
     JsonError(#[from] serde_json::Error),
 }

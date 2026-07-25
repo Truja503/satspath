@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crate::crypto::{check_profile_expiry, verify_signed_profile};
 use crate::resolver::ProfileResolver;
+use crate::ssrf::validate_url;
 use crate::{Result, SatsPathError, SignedPaymentProfile};
 
 /// Resolves a profile by making an HTTP GET request to the domain of the alias.
@@ -12,8 +13,9 @@ use crate::{Result, SatsPathError, SignedPaymentProfile};
 /// `https://satspath.dev/.well-known/satspath/rodrigo`
 ///
 /// After fetching, the resolver:
-/// 1. Verifies the profile signature (ECDSA secp256k1 over canonical JSON).
-/// 2. Checks the profile expiry (`expires_at` field).
+/// 1. **SSRF validation** — blocks requests to private/loopback/metadata IPs.
+/// 2. Verifies the profile signature (ECDSA secp256k1 over canonical JSON).
+/// 3. Checks the profile expiry (`expires_at` field).
 ///
 /// Both checks must pass. Fail-closed: unsigned or expired profiles are
 /// rejected with a hard error, never passed through.
@@ -26,6 +28,8 @@ impl HttpResolver {
         Self {
             client: Client::builder()
                 .timeout(Duration::from_secs(10))
+                // Disallow redirects to prevent open redirect → SSRF chains
+                .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .unwrap_or_default(),
         }
@@ -58,6 +62,9 @@ impl ProfileResolver for HttpResolver {
 
         // Always HTTPS in production.
         let url = format!("https://{}/.well-known/satspath/{}", domain, username);
+
+        // SSRF-01: validate URL before fetching
+        validate_url(&url, false)?;
 
         self.resolve_from_url(&url).await
     }
@@ -129,6 +136,8 @@ mod tests {
             nonce: None,
             rotation: None,
             method_verifications: vec![],
+            hybrid_pubkey: None,
+            pqc_required: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

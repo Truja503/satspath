@@ -53,6 +53,8 @@ export type SatsPathLocalData = {
   pubkey: string
   /** Encrypted identity secret key — never stored in plaintext. */
   encryptedKey: EncryptedKey
+  /** Encrypted PQC seed (optional for legacy profiles). */
+  encryptedPqcSeed?: EncryptedKey
   signedJson: string
   /** Sequence number — incremented on each profile update. */
   sequence: number

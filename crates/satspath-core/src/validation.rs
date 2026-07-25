@@ -392,6 +392,8 @@ mod tests {
             nonce: None,
             rotation: None,
             method_verifications: Vec::new(),
+            hybrid_pubkey: None,
+            pqc_required: false,
         };
         assert!(validate_public_profile(&profile).is_err());
     }

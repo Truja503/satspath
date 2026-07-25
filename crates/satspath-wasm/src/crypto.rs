@@ -74,6 +74,73 @@ pub fn sign_profile_json(profile_json: &str, secret_key_hex: &str) -> String {
     hex::encode(sig.as_ref())
 }
 
+#[wasm_bindgen]
+pub struct HybridIdentityKeypair {
+    classical_pubkey_hex: String,
+    classical_secret_key_hex: String,
+    pqc_verification_key_hex: String,
+    pqc_seed_hex: String,
+}
+
+#[wasm_bindgen]
+impl HybridIdentityKeypair {
+    #[wasm_bindgen(getter)]
+    pub fn classical_pubkey_hex(&self) -> String {
+        self.classical_pubkey_hex.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn classical_secret_key_hex(&self) -> String {
+        self.classical_secret_key_hex.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn pqc_verification_key_hex(&self) -> String {
+        self.pqc_verification_key_hex.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn pqc_seed_hex(&self) -> String {
+        self.pqc_seed_hex.clone()
+    }
+}
+
+/// Generate a fresh hybrid keypair for the identity.
+#[wasm_bindgen]
+pub fn generate_hybrid_identity_keypair() -> HybridIdentityKeypair {
+    let kp = satspath_pqc::hybrid_sig::generate_hybrid_keypair();
+    HybridIdentityKeypair {
+        classical_pubkey_hex: hex::encode(kp.classical_pk.serialize()),
+        classical_secret_key_hex: hex::encode(kp.classical_sk.secret_bytes()),
+        pqc_verification_key_hex: hex::encode(kp.pqc_vk.encode()),
+        pqc_seed_hex: hex::encode(kp.pqc_seed()),
+    }
+}
+
+/// Sign a canonical JSON profile using Hybrid Signature (Schnorr + ML-DSA).
+/// Returns a JSON string of the `HybridSignature` object, or empty string on error.
+#[wasm_bindgen]
+pub fn sign_hybrid_profile_json(profile_json: &str, classical_sk_hex: &str, pqc_seed_hex: &str) -> String {
+    let sk_bytes = match hex::decode(classical_sk_hex) {
+        Ok(b) => b,
+        Err(_) => return String::new(),
+    };
+    let seed_bytes = match hex::decode(pqc_seed_hex) {
+        Ok(b) => b,
+        Err(_) => return String::new(),
+    };
+    
+    let kp = match satspath_pqc::hybrid_sig::HybridSigningKeyPair::from_seeds(&sk_bytes, &seed_bytes) {
+        Some(k) => k,
+        None => return String::new(),
+    };
+
+    let canonical_bytes = canonical_profile_json(profile_json);
+    if canonical_bytes.is_empty() {
+        return String::new();
+    }
+
+    let sig = satspath_pqc::hybrid_sig::hybrid_sign(&canonical_bytes, &kp);
+    serde_json::to_string(&sig).unwrap_or_default()
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct SignedPaymentProfile {
     profile: Value,

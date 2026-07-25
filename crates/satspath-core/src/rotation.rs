@@ -67,7 +67,8 @@ pub fn apply_key_rotation(profile: &SignedPaymentProfile, new_pubkey_hex: &str) 
     // For now, we return the profile without signature (caller must re-sign)
     Ok(SignedPaymentProfile {
         profile: new_profile,
-        signature: String::new(), // Placeholder - must be re-signed
+        signature: String::new(),
+            hybrid_signature: None, // Placeholder - must be re-signed
     })
 }
 
@@ -115,6 +116,7 @@ pub fn rotate_identity_key(
     Ok(SignedPaymentProfile {
         profile: new_profile,
         signature: String::new(),
+            hybrid_signature: None,
     })
 }
 

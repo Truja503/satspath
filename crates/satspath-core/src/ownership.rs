@@ -1884,6 +1884,8 @@ mod tests {
             nonce: None,
             rotation: None,
             method_verifications: vec![verification],
+            hybrid_pubkey: None,
+            pqc_required: false,
         };
         let mut signed = sign_profile(profile, &identity.secret).unwrap();
         assert!(verify_signed_profile(&signed).unwrap());
@@ -1961,6 +1963,8 @@ mod tests {
             nonce: None,
             rotation: None,
             method_verifications: Vec::new(),
+            hybrid_pubkey: None,
+            pqc_required: false,
         }
     }
 

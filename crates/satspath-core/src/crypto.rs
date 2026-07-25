@@ -56,6 +56,7 @@ pub fn sign_profile(
     Ok(SignedPaymentProfile {
         profile,
         signature: hex::encode(sig.serialize()),
+            hybrid_signature: None,
     })
 }
 
@@ -83,7 +84,31 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
     let digest = hasher.finalize();
     let message = Message::from_digest(digest.into());
 
-    Ok(secp.verify_schnorr(&sig, &message, &x_only_public_key).is_ok())
+    let classical_ok = secp.verify_schnorr(&sig, &message, &x_only_public_key).is_ok();
+    if !classical_ok {
+        return Ok(false);
+    }
+
+    // 2. Post-Quantum verification (ML-DSA) if present or required
+    if signed.profile.pqc_required {
+        if let (Some(hybrid_pubkey), Some(hybrid_sig)) = (&signed.profile.hybrid_pubkey, &signed.hybrid_signature) {
+            let pqc_ok = satspath_pqc::hybrid_sig::hybrid_verify(&bytes, hybrid_sig, hybrid_pubkey);
+            if !pqc_ok {
+                return Ok(false);
+            }
+        } else {
+            // Missing PQC fields but required by profile
+            return Ok(false);
+        }
+    } else if let (Some(hybrid_pubkey), Some(hybrid_sig)) = (&signed.profile.hybrid_pubkey, &signed.hybrid_signature) {
+        // Optional verification if present
+        let pqc_ok = satspath_pqc::hybrid_sig::hybrid_verify(&bytes, hybrid_sig, hybrid_pubkey);
+        if !pqc_ok {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
 }
 
 /// Check whether a `PaymentProfile` is expired.
@@ -198,6 +223,8 @@ mod tests {
             nonce: None,
             rotation: None,
             method_verifications: Vec::new(),
+            hybrid_pubkey: None,
+            pqc_required: false,
         }
     }
 

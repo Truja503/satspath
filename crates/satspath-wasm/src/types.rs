@@ -99,6 +99,12 @@ pub struct PaymentProfile {
     /// Ownership-proof attestations
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub method_verifications: Vec<MethodVerification>,
+    /// PQC: Post-quantum hybrid public key bundle (classical + PQC)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hybrid_pubkey: Option<HybridPublicKey>,
+    /// PQC: If true, verifiers MUST check the hybrid_signature. If false, it's optional.
+    #[serde(default)]
+    pub pqc_required: bool,
 }
 
 /// A payment profile together with the owner's signature over its contents
@@ -107,6 +113,23 @@ pub struct SignedPaymentProfile {
     pub profile: PaymentProfile,
     /// Hex-encoded secp256k1 Schnorr signature (64 bytes)
     pub signature: String,
+    /// PQC: Hybrid signature (Schnorr + ML-DSA)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hybrid_signature: Option<HybridSignature>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HybridPublicKey {
+    pub classical_pubkey: String,
+    pub pqc_verification_key: String,
+    pub suite: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HybridSignature {
+    pub schnorr_sig: String,
+    pub pqc_sig: String,
+    pub suite: String,
 }
 
 /// Key rotation object

@@ -21,6 +21,8 @@ pub mod validation;
 pub mod resolver;
 #[cfg(feature = "std")]
 pub mod resolvers;
+#[cfg(feature = "std")]
+pub mod ssrf;
 
 pub use ark::{
     ark_ownership_challenge, validate_ark_receive_pointer, validate_ark_server_url,

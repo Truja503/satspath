@@ -231,6 +231,9 @@ impl HttpsWellKnownResolver {
         let (name, domain) = split_alias(alias)?;
         let url = format!("https://{}/.well-known/satspath/{}.json", domain, name);
 
+        // SSRF protection
+        crate::ssrf::validate_url(&url)?;
+
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::Cors);
@@ -260,6 +263,7 @@ impl HttpsWellKnownResolver {
         serde_json::to_string(&SignedPaymentProfile {
             profile: data.profile,
             signature: data.signature,
+            hybrid_signature: None,
         }).map_err(|e| e.to_string())
     }
 }
@@ -308,6 +312,10 @@ impl NostrNip05Resolver {
 
     async fn fetch_nip05(&self, name: &str, domain: &str) -> Result<Nip05Response, String> {
         let url = format!("https://{}/.well-known/nostr.json?name={}", domain, name);
+        
+        // SSRF protection
+        crate::ssrf::validate_url(&url)?;
+
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::Cors);
@@ -424,11 +432,14 @@ fn uri_to_profile(alias: &str, uri: String) -> SignedPaymentProfile {
         nonce: None,
         rotation: None,
         method_verifications: vec![],
+        hybrid_pubkey: None,
+        pqc_required: false,
     };
 
     SignedPaymentProfile {
         profile,
         signature: String::new(),
+        hybrid_signature: None,
     }
 }
 

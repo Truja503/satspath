@@ -49,7 +49,6 @@
     "web-haptics": "^0.0.6"
   },
   "scripts": {
-    "prepare": "husky install",
     "start": "pnpm git-info && pnpm build:worker && vite",
     "start:mainnet": "pnpm git-info && pnpm build:worker && cross-env VITE_ARK_SERVER=https://arkade.computer VITE_BOLTZ_URL=https://api.boltz.exchange vite",
     "build": "pnpm git-info && pnpm build:worker && vite build",

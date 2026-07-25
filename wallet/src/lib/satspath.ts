@@ -13,6 +13,8 @@ import init, {
   quote,
   generate_identity_keypair,
   sign_profile_json,
+  generate_hybrid_identity_keypair,
+  sign_hybrid_profile_json,
 } from 'satspath-wasm'
 import { finalizeEvent, SimplePool } from 'nostr-tools'
 import { toXOnlyHex } from './keys'
@@ -54,7 +56,7 @@ async function deriveAesKey(password: string, salt: Uint8Array): Promise<CryptoK
     ['deriveKey'],
   )
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 200_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt as unknown as BufferSource, iterations: 200_000, hash: 'SHA-256' },
     baseKey,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -128,6 +130,12 @@ export interface SatsPathProfile {
   sequence: number
   preferences: string[]
   nonce: string
+  hybrid_pubkey: {
+    classical_pubkey: string
+    pqc_verification_key: string
+    suite: string
+  } | null
+  pqc_required: boolean
 }
 
 export interface SignedProfile {
@@ -148,14 +156,18 @@ export async function buildSatsPathProfile(
   onchainAddress: string,
   /** Pass the existing sequence number to increment on update. Pass 1 for new profiles. */
   currentSequence = 1,
-): Promise<{ secretKeyHex: string; pubkeyHex: string; signedJson: string }> {
+): Promise<{ secretKeyHex: string; pqcSeedHex: string; pubkeyHex: string; signedJson: string }> {
   await ensureSatsPathInitialized()
 
-  const keypair = generate_identity_keypair()
+  const keypair = generate_hybrid_identity_keypair()
   // @ts-ignore — WASM getter properties
-  const pubkeyHex: string = keypair.pubkey_hex
+  const pubkeyHex: string = keypair.classical_pubkey_hex
   // @ts-ignore
-  const secretKeyHex: string = keypair.secret_key_hex
+  const secretKeyHex: string = keypair.classical_secret_key_hex
+  // @ts-ignore
+  const pqcVerificationKeyHex: string = keypair.pqc_verification_key_hex
+  // @ts-ignore
+  const pqcSeedHex: string = keypair.pqc_seed_hex
 
   const methods: unknown[] = []
 
@@ -206,11 +218,17 @@ export async function buildSatsPathProfile(
     nonce: Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join(''),
+    hybrid_pubkey: {
+      classical_pubkey: pubkeyHex,
+      pqc_verification_key: pqcVerificationKeyHex,
+      suite: 'ML-DSA-65-Schnorr',
+    },
+    pqc_required: true,
   }
 
-  const signedJson = sign_profile_json(JSON.stringify(profile), secretKeyHex)
+  const signedJson = sign_hybrid_profile_json(JSON.stringify(profile), secretKeyHex, pqcSeedHex)
 
-  return { secretKeyHex, pubkeyHex, signedJson }
+  return { secretKeyHex, pqcSeedHex, pubkeyHex, signedJson }
 }
 
 // ─── Nostr publishing ─────────────────────────────────────────────────────────

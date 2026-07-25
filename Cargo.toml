@@ -6,6 +6,7 @@ members = [
     "crates/satspath-swaps",
     "crates/satspathd",
     "crates/satspath-wasm",
+    "crates/satspath-pqc",
 ]
 resolver = "2"
 
