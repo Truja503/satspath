@@ -5,7 +5,7 @@ use crate::fees::FeeEstimate;
 /// Apply the protocol-specified safety margin to a raw fee rate.
 /// `selected_feerate = max(raw + ceil(raw * 0.10), 1)`
 pub fn apply_fee_safety_margin(raw_sat_vb: u64) -> u64 {
-    let margin = (raw_sat_vb + 9) / 10; // ceil(raw * 0.10)
+    let margin = raw_sat_vb.div_ceil(10); // ceil(raw * 0.10)
     std::cmp::max(raw_sat_vb + margin, 1)
 }
 

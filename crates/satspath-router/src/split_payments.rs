@@ -1,4 +1,4 @@
-use satspath_core::{SatsPathError, SignedPaymentProfile, SplitPaymentRequest, SplitRecipient};
+use satspath_core::{SatsPathError, SignedPaymentProfile, SplitPaymentRequest};
 use crate::fees::FeeEstimate;
 
 /// Split Payment Route - represents a single payment within a split

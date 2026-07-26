@@ -203,7 +203,7 @@ pub fn create_invoice_request(
 }
 
 /// Encode a BOLT12 invoice request to bech32m string
-pub fn encode_invoice_request(request: &Bolt12InvoiceRequest) -> Result<String, anyhow::Error> {
+pub fn encode_invoice_request(_request: &Bolt12InvoiceRequest) -> Result<String, anyhow::Error> {
     // In a full implementation, this would use bech32m encoding
     // For now, return a placeholder
     Ok("lnr1...".to_string())
@@ -211,11 +211,11 @@ pub fn encode_invoice_request(request: &Bolt12InvoiceRequest) -> Result<String, 
 
 /// Fetch a BOLT12 invoice from an offer via LNURL-like callback
 pub async fn fetch_bolt12_invoice(
-    offer: &Bolt12Offer,
-    amount_msats: u64,
-    payer_node_id: Option<String>,
-    quantity: Option<u64>,
-    payer_note: Option<String>,
+    _offer: &Bolt12Offer,
+    _amount_msats: u64,
+    _payer_node_id: Option<String>,
+    _quantity: Option<u64>,
+    _payer_note: Option<String>,
 ) -> Result<Bolt12Invoice, anyhow::Error> {
     // This would typically use a websocket or HTTP connection to the offer's node
     // For now, return an error indicating not implemented

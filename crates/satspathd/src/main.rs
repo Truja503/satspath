@@ -325,9 +325,9 @@ async fn main() -> Result<()> {
     let macaroon_path = home.join("admin.macaroon");
     if std::env::var("SATSPATHD_AUTH_TOKEN").is_err() {
         if !macaroon_path.exists() {
-            use rand::RngCore;
+            use secp256k1::rand::RngCore;
             let mut token = [0u8; 32];
-            rand::thread_rng().fill_bytes(&mut token);
+            secp256k1::rand::thread_rng().fill_bytes(&mut token);
             let token_hex = hex::encode(token);
             fs::write(&macaroon_path, &token_hex).context("writing admin.macaroon")?;
             #[cfg(unix)]

@@ -60,7 +60,7 @@ pub fn apply_key_rotation(
     
     // Sign with new secret key
     let signed = satspath_core::crypto::sign_profile(new_profile, new_secret_key)
-        .map_err(|e| SatsPathError::InvalidSignature)?;
+        .map_err(|_e| SatsPathError::InvalidSignature)?;
     
     Ok(signed)
 }

@@ -1,4 +1,4 @@
-use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile, SplitPaymentRequest};
+use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile};
 
 use crate::ark::{first_ark_method, is_ark_available};
 use crate::fees::{fetch_fee_estimate, FeeEstimate};
@@ -6,7 +6,6 @@ use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available, is_l
 use crate::onchain::{
     estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
 };
-use crate::split_payments::{validate_split_request, SplitPaymentRoute};
 
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
 

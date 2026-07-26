@@ -108,7 +108,7 @@ impl SilentPayment {
         // This is a simplified version - full implementation needs bech32m encoding
         let combined = format!("{}{}", spend_pubkey, scan_pubkey);
         // In practice, this uses bech32m encoding with "sp" prefix
-        Ok(format!("sp1q{}", &combined[..70].to_lowercase())) // Placeholder
+        Ok(format!("sp1q{}", combined[..70].to_lowercase())) // Placeholder
     }
     
     /// Derive the tweaked public key for a silent payment output
@@ -149,8 +149,8 @@ pub fn derive_tweaked_pubkey(
     /// 3. Creates P2TR output with tweaked pubkey
     pub fn create_output(
         &self,
-        recipient_scan_pubkey: &PublicKey,
-        recipient_spend_pubkey: &PublicKey,
+        _recipient_scan_pubkey: &PublicKey,
+        _recipient_spend_pubkey: &PublicKey,
     ) -> Result<SilentPaymentOutput, anyhow::Error> {
         // This requires the sender's private key which should be in the inputs
         // For now, return a placeholder
@@ -169,19 +169,19 @@ pub fn derive_tweaked_pubkey(
     /// 2. For each output, check if output_pubkey == spend_pubkey + shared_secret * G
     /// 3. If match, the output belongs to the recipient
     pub fn detect_outputs(
-        scan_privkey: &SecretKey,
-        spend_pubkey: &PublicKey,
+        _scan_privkey: &SecretKey,
+        _spend_pubkey: &PublicKey,
         tx_outputs: &[(String, u64)], // (script_pubkey, amount_sats)
     ) -> Result<Vec<SilentPaymentOutput>, anyhow::Error> {
-        let secp = Secp256k1::new();
-        let mut detected = Vec::new();
+        let _secp = Secp256k1::new();
+        let detected = Vec::new();
         
-        for (script_pubkey, amount_sats) in tx_outputs {
+        for (script_pubkey, _amount_sats) in tx_outputs {
             // Check if this is a P2TR output
             if script_pubkey.starts_with("5120") { // P2TR marker
                 // Extract the public key from the script
                 let output_pubkey_hex = &script_pubkey[4..70]; // Skip "5120" (OP_1 OP_32)
-                let output_pubkey = PublicKey::from_slice(&hex::decode(output_pubkey_hex)?)
+                let _output_pubkey = PublicKey::from_slice(&hex::decode(output_pubkey_hex)?)
                     .map_err(|e| anyhow!("Failed to parse output pubkey: {}", e))?;
                 
                 // We need the input pubkeys to compute shared secrets

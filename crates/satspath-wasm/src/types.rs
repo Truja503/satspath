@@ -1,5 +1,6 @@
 //! Type definitions for WASM bindings — must match Rust satspath-core exactly
 
+#![allow(dead_code, clippy::new_without_default, clippy::needless_borrow, clippy::needless_question_mark)]
 use serde::{Deserialize, Serialize};
 
 /// Bitcoin network
@@ -225,7 +226,8 @@ pub struct RouteQuote {
 }
 
 /// High-level quote response — matches Rust `QuoteResponse` exactly
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum QuoteResponse {
     Ok {

@@ -44,7 +44,7 @@ fn derive_key(password: &str, salt: &[u8]) -> Key<Aes256Gcm> {
     key.copy_from_slice(&hasher.finalize());
     for _ in 0..100_000 {
         let mut h = Sha256::new();
-        h.update(&key);
+        h.update(key);
         key.copy_from_slice(&h.finalize());
     }
     *Key::<Aes256Gcm>::from_slice(&key)

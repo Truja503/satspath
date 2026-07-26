@@ -66,7 +66,7 @@ impl ProfileResolver for PearResolver {
         match serde_json::from_str::<SignedPaymentProfile>(stdout.trim()) {
             Ok(profile) => {
                 // SEC-01: enforce profile expiry before returning to the router
-                if let Err(_) = crate::crypto::check_profile_expiry(&profile.profile) {
+                if crate::crypto::check_profile_expiry(&profile.profile).is_err() {
                     return Err(SatsPathError::AliasNotFound(alias.to_string()));
                 }
                 Ok(profile)
