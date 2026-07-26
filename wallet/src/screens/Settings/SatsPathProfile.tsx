@@ -166,9 +166,11 @@ export default function SatsPathProfile() {
                     </Text>
                     <Text big>{profileData.alias}</Text>
 
-                    <Text color="neutral-500" smaller className="mt-1.5">
-                      Identity Pubkey
-                    </Text>
+                    <div className="mt-1.5">
+                      <Text color="neutral-500" smaller>
+                        Identity Pubkey
+                      </Text>
+                    </div>
                     <div
                       style={{
                         wordBreak: 'break-all',
@@ -180,9 +182,11 @@ export default function SatsPathProfile() {
                       {profileData.pubkey}
                     </div>
 
-                    <Text color="neutral-500" smaller className="mt-1.5">
-                      Sequence #{profileData.sequence} · Key encrypted ✓
-                    </Text>
+                    <div className="mt-1.5">
+                      <Text color="neutral-500" smaller>
+                        Sequence #{profileData.sequence} · Key encrypted ✓
+                      </Text>
+                    </div>
                   </FlexCol>
                 </div>
 
@@ -228,7 +232,6 @@ export default function SatsPathProfile() {
                     placeholder="e.g. satoshi@arkade.bitcoin"
                     value={alias}
                     onChange={(v) => setAlias(v)}
-                    readOnly={isWorking}
                   />
                 </FlexCol>
 
@@ -238,7 +241,6 @@ export default function SatsPathProfile() {
                     placeholder="e.g. satoshi@getalby.com"
                     value={lightningAddress}
                     onChange={(v) => setLightningAddress(v)}
-                    readOnly={isWorking}
                   />
                 </FlexCol>
 
@@ -262,12 +264,6 @@ export default function SatsPathProfile() {
                   onClick={handleGenerate}
                   loading={isWorking}
                   disabled={!alias || isWorking}
-                  style={{
-                    background: isWorking
-                      ? 'linear-gradient(135deg, #f7931a, #ff6b35)'
-                      : undefined,
-                    boxShadow: isWorking ? '0 0 24px rgba(247,147,26,0.5)' : undefined,
-                  }}
                 />
               </FlexCol>
             )}

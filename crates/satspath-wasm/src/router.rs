@@ -272,9 +272,16 @@ pub async fn quote(recipient: &str, amount_sats: u64) -> Result<QuoteResponse, S
     let mut qr = build_qr_payload(&route_quote.selected_method, amount_sats)?;
 
     // 6. Optionally fetch real BOLT11 for Lightning
-    if let PaymentMethod::Lightning { lightning_address: Some(addr), .. } = &route_quote.selected_method {
-        if let Ok(invoice) = fetch_real_invoice(addr, amount_sats).await {
-            qr = invoice;
+    if let PaymentMethod::Lightning { lightning_address, bolt12, .. } = &route_quote.selected_method {
+        if let Some(addr) = lightning_address {
+            if let Ok(invoice) = fetch_real_invoice(addr, amount_sats).await {
+                qr = invoice;
+            }
+        } else if let Some(offer) = bolt12 {
+            let proxy = "https://bolt12-proxy.satspath.dev";
+            if let Ok(invoice) = crate::bolt12::fetch_bolt12_invoice(offer, amount_sats, proxy).await {
+                qr = invoice;
+            }
         }
     }
 

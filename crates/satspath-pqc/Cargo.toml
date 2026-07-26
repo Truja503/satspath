@@ -23,8 +23,13 @@ rand = { workspace = true }
 chacha20poly1305 = "0.10"
 
 [dev-dependencies]
+criterion = "0.8.2"
 rand = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
 getrandom_04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+
+[[bench]]
+name = "crypto_benches"
+harness = false

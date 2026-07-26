@@ -49,6 +49,7 @@ import { AssetIconApprovalManager } from '../lib/assetIconApproval'
 import { IndexedDBStorageAdapter } from '@arkade-os/sdk/adapters/indexedDB'
 import { Indexer } from '../lib/indexer'
 import { IndexedDbSwapRepository, migrateToSwapRepository, Network } from '@arkade-os/boltz-swap'
+import { onReceiveVtxo, type IndexerProvider, type OnchainProvider } from '../lib/ark-verification'
 
 const SERVICE_WORKER_ACTIVATION_TIMEOUT_MS = 5_000
 const MESSAGE_BUS_INIT_TIMEOUT_MS = 30_000
@@ -469,6 +470,102 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setDataReady(true)
   }
 
+  /**
+   * Zero-trust Ark VTXO verification.
+   * Called on VTXO_UPDATE to verify newly received VTXOs against the full
+   * DAG (taproot, signatures, timelocks, amount conservation).
+   *
+   * Results are logged only — verification never blocks the wallet.
+   * The IndexerProvider and OnchainProvider are thin wrappers over the
+   * ASP REST API that the wallet already uses.
+   */
+  const verifyNewVtxos = async (swWallet: ServiceWorkerWallet | undefined, aspUrl: string): Promise<void> => {
+    if (!swWallet) return
+    const spendableVtxos = await swWallet.getVtxos()
+    const fresh = spendableVtxos.filter(
+      (v) => !v.spentBy?.length && !v.settledBy?.length && v.virtualStatus?.commitmentTxIds?.length,
+    )
+    if (fresh.length === 0) return
+
+    // Build minimal IndexerProvider wrapping the ASP REST endpoints
+    let baseUrl = aspUrl
+    if (!baseUrl.startsWith('http')) baseUrl = 'https://' + baseUrl
+
+    const indexer: IndexerProvider = {
+      getBatchVtxos: async (commitmentTxid: string) => {
+        const res = await fetch(`${baseUrl}/v1/vtxo/batch/${commitmentTxid}`)
+        if (!res.ok) return []
+        return (await res.json()).chains ?? []
+      },
+      getVtxoChain: async (txid: string, vout: number) => {
+        const res = await fetch(`${baseUrl}/v1/vtxo/chain?txid=${txid}&vout=${vout}`)
+        if (!res.ok) throw new Error(`getVtxoChain HTTP ${res.status}`)
+        return res.json()
+      },
+      getVirtualTxs: async (txids: string[]) => {
+        const res = await fetch(`${baseUrl}/v1/vtxo/txs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txids }),
+        })
+        if (!res.ok) throw new Error(`getVirtualTxs HTTP ${res.status}`)
+        return res.json()
+      },
+    }
+
+    const esploraUrl = getRestApiExplorerURL(aspInfo.network as any) ?? ''
+
+    const onchain: OnchainProvider = {
+      getRawTransaction: async (txid: string) => {
+        const res = await fetch(`${esploraUrl}/tx/${txid}/hex`)
+        if (!res.ok) throw new Error(`getRawTransaction HTTP ${res.status}`)
+        return res.text()
+      },
+      getTxStatus: async (txid: string) => {
+        const res = await fetch(`${esploraUrl}/tx/${txid}/status`)
+        if (!res.ok) throw new Error(`getTxStatus HTTP ${res.status}`)
+        const data = await res.json()
+        return {
+          confirmed: data.confirmed ?? false,
+          blockHeight: data.block_height,
+          blockTime: data.block_time,
+        }
+      },
+      getBlockchainInfo: async () => {
+        const res = await fetch(`${esploraUrl}/blocks/tip/height`)
+        if (!res.ok) return undefined as any
+        const height = parseInt(await res.text(), 10)
+        return { height, medianTime: Math.floor(Date.now() / 1000) }
+      },
+      broadcastTransaction: async (txHex: string) => {
+        const res = await fetch(`${esploraUrl}/tx`, { method: 'POST', body: txHex })
+        if (!res.ok) throw new Error(`broadcastTransaction HTTP ${res.status}`)
+        return res.text()
+      },
+    }
+
+    // Verify each fresh VTXO in parallel (throttled by our ConcurrencyLimiter internally)
+    const results = await Promise.allSettled(
+      fresh.map((vtxo) => {
+        const txid = vtxo.virtualStatus?.commitmentTxIds?.[0]
+        if (!txid) return Promise.resolve({ success: false, error: 'no commitmentTxId' })
+        return onReceiveVtxo({ txid: vtxo.txid ?? txid, vout: 0 }, indexer, onchain)
+      }),
+    )
+
+    let verified = 0
+    let failed = 0
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value.success) verified++
+      else {
+        failed++
+        const err = r.status === 'rejected' ? r.reason : r.value?.error
+        consoleError(err, '[Ark Verification] VTXO failed zero-trust check')
+      }
+    }
+    console.info(`[Ark Verification] ${verified} VTXOs verified, ${failed} failed`)
+  }
+
   const initSvcWorkerWallet = async (params: InitSvcWorkerWalletParams): Promise<boolean> => {
     const signal = startInitSession()
     return runInitAttempt(signal, params.identity, params)
@@ -600,10 +697,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const handleServiceWorkerMessages = (event: MessageEvent) => {
         if (event.data && ['VTXO_UPDATE', 'UTXO_UPDATE'].includes(event.data.type)) {
           // Debounced reload: short delay lets the indexer update its cache.
-          // If multiple updates arrive in quick succession, only the last
-          // one triggers a reload (avoids redundant fetches).
           clearTimeout(reloadTimerRef.current)
           reloadTimerRef.current = setTimeout(() => reloadWallet(svcWallet), 1000)
+
+          // Zero-trust Ark VTXO verification (fire-and-forget on receive)
+          if (event.data.type === 'VTXO_UPDATE') {
+            verifyNewVtxos(svcWallet, aspInfo.url).catch((err) =>
+              consoleError(err, '[Ark Verification] Background verification error'),
+            )
+          }
         }
       }
 

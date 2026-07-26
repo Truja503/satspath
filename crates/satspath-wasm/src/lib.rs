@@ -20,12 +20,13 @@ mod router;
 mod topic;
 pub mod types;
 mod ssrf;
+pub mod bolt12;
 
 pub use crypto::{canonical_profile_json, verify_signed_profile, fingerprint_pubkey};
 pub use helpers::{identifier_hash, mask_identifier};
 pub use topic::topic_for_alias;
 pub use resolver::{ChainResolver, LocalRegistry, Bip353Resolver, HttpsWellKnownResolver, NostrNip05Resolver};
-pub use router::{quote, build_qr_payload, select_route, select_route_live, fetch_fee_estimate};
+pub use router::{quote, build_qr_payload, select_route, select_route_live, fetch_fee_estimate, fetch_bolt12_invoice};
 pub use types::{
     SignedPaymentProfile, PaymentProfile, PaymentMethod, BitcoinNetwork, FeeEstimate, FeeRateSnapshot,
     RouteRequest, Invite, SwapDirective, PaymentUrgency, QuoteRecipient, FALLBACK_FEES,

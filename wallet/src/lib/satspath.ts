@@ -16,6 +16,8 @@ import init, {
   generate_hybrid_identity_keypair,
   sign_hybrid_profile_json,
 } from 'satspath-wasm'
+
+export { generate_hybrid_identity_keypair }
 import { finalizeEvent, SimplePool } from 'nostr-tools'
 import { toXOnlyHex } from './keys'
 
@@ -349,7 +351,7 @@ export async function routePayment(
       methodType = 'onchain'
       const chain = bestMethod.Onchain
       // BIP-21 URI with amount
-      const address = chain.address ?? chain.silent_payment_code ?? ''
+      const address = chain.address ?? chain.silent_payment_pubkey ?? ''
       payload = address
         ? `bitcoin:${address}?amount=${(amountSats / 1e8).toFixed(8)}`
         : ''
