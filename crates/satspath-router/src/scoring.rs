@@ -299,6 +299,8 @@ mod tests {
             nonce: Some(satspath_core::crypto::generate_nonce()),
             rotation: None,
             method_verifications: Vec::new(),
+            hybrid_pubkey: None,
+            pqc_required: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

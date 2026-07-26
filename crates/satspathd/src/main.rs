@@ -635,7 +635,9 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         preferences: vec!["lightning".into(), "ark".into(), "onchain".into()],
         nonce: Some(satspath_core::crypto::generate_nonce()),
         rotation: None,
-        method_verifications: Vec::new(),
+        method_verifications: vec![],
+        hybrid_pubkey: None,
+        pqc_required: false,
     };
     let signed = sign_profile(profile, &secret)?;
     registry.update_profile(signed)?;

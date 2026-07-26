@@ -87,6 +87,8 @@ pub async fn cmd_register(
         nonce: Some(generate_nonce()),
         rotation: None,
         method_verifications: Vec::new(),
+        hybrid_pubkey: None,
+        pqc_required: false,
     };
 
     let signed = sign_profile(profile, &kp.secret_key)?;

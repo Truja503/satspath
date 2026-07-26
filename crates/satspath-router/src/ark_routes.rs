@@ -127,18 +127,21 @@ mod tests {
     fn signed(methods: Vec<PaymentMethod>) -> SignedPaymentProfile {
         SignedPaymentProfile {
             profile: PaymentProfile {
-                alias: "alice@example.com".into(),
-                identity_pubkey: PUBKEY.into(),
+                alias: "ark_user".into(),
+                identity_pubkey: "03pubkey".into(),
                 methods,
-                updated_at: 1,
+                updated_at: 1_700_000_000,
                 expires_at: None,
                 sequence: None,
                 preferences: vec![],
                 nonce: None,
                 rotation: None,
                 method_verifications: Vec::new(),
+                hybrid_pubkey: None,
+                pqc_required: false,
             },
             signature: "sig".into(),
+            hybrid_signature: None,
         }
     }
 

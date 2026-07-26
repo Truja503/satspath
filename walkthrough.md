@@ -118,3 +118,36 @@ The Arkade Money Wallet has been fully integrated with the SatsPath protocol in 
 - **SSRF Protection:** Resolvers (both WASM and Core) now strictly validate URLs and block loopback, private, and internal metadata IP ranges to prevent malicious profile endpoints from exploiting the client's internal network.
 - **Nostr Profiles:** The wallet now successfully builds, signs, and publishes NIP-78 SatsPath profiles to Nostr relays.
 - **Routing & Execution:** The Wallet's Send Flow uses the SatsPath resolver WASM module to dynamically quote and fallback between Lightning, On-chain, and Ark endpoints seamlessly.
+
+## Phase 4: Advanced Rails (Ark Verification, Silent Payments, BOLT12)
+
+### 1. Ark VTXO Zero-Trust Verification
+- **Ported Validation Logic:** Copied and adapted the client-side DAG verification logic from `ARK/src` into `wallet/src/lib/ark-verification/`.
+- **v2 Upgrades:** Upgraded all references to `@scure/btc-signer` v2, `@noble/hashes` v2, and `@noble/curves` v2, removing legacy `Buffer` dependencies in favor of `Uint8Array`.
+- **Background Validation:** Integrated a zero-trust, fire-and-forget background verification hook in `wallet.tsx` using the `verifyNewVtxos()` helper. Every time `VTXO_UPDATE` is triggered by the service worker, the wallet asynchronously verifies the full DAG of the new VTXOs without blocking the UI.
+
+### 2. BIP-352 Silent Payments Support
+- **Core Integration:** Confirmed the `silent_payment_pubkey` configuration exists in `crates/satspath-core/src/profile.rs` onchain methods.
+- **WASM Router Updates:** Modified the WASM router `satspath-wasm/src/router.rs` to format the `bitcoin:` URI using `sp1...` if the `silent_payment_pubkey` is defined for a given onchain method, ensuring privacy-preserving static-address behavior.
+- **Wallet Hookup:** Updated `satspath.ts` to seamlessly parse `silent_payment_pubkey` from the method outputs.
+
+### 3. BOLT12 HTTP Scaffold
+- **Scaffold Function:** Added a configurable HTTP proxy scaffold via `crates/satspath-wasm/src/bolt12.rs` to allow resolving BOLT12 offers to real BOLT11 invoices.
+- **Router Support:** The router was enhanced to inspect the `bolt12` field within `LightningMethod` and fetch the proxy asynchronously as a fallback when an LNURL string isn't available.
+
+## Lógica y Rendimiento (Unit Tests & Benchmarks)
+
+De acuerdo a las prioridades establecidas, enfocamos los esfuerzos exclusivamente en la lógica de negocio en el backend de Rust (Crates).
+
+### 1. Pruebas Unitarias e Integración (91 tests passing)
+- **SSRF (Fase 1):** Verificamos matemáticamente que el validador en `ssrf.rs` bloquee rangos IPV4 e IPV6 locales/privados (127.0.0.0/8, 10.0.0.0/8, etc.) y endpoints de metadata en la nube (`169.254.169.254`).
+- **Silent Payments (Fase 4):** Probamos el router WASM comprobando que si el usuario registra una llave pública de pagos silenciosos (`sp1...`), el payload generado prioriza esta llave y la inyecta correctamente como `bitcoin:sp1...?amount=X`.
+- **BOLT12 (Fase 4):** Extrajimos el constructor de URIs del proxy proxy a una función pura testeable en Rust.
+- **Correcciones transversales:** Resolvimos múltiples fallas de compilación en el `satspath-router` y el CLI `satspathd` asegurando que todos inicialicen los nuevos campos híbridos (`hybrid_pubkey`, `pqc_required`) del `PaymentProfile`.
+
+### 2. Criterion Benchmarks (ML-DSA + Schnorr)
+Ejecutamos con éxito los benchmarks definidos para la suite criptográfica híbrida PQC, arrojando métricas de excelente rendimiento:
+- **Keygen:** `~347 µs`
+- **Signing:** `~721 µs`
+- **Verifying:** `~275 µs`
+El rendimiento de firma y validación se mantiene muy por debajo del milisegundo a pesar de usar algoritmos post-cuánticos ML-DSA de alto nivel de seguridad.

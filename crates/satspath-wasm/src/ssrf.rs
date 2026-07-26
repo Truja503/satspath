@@ -50,3 +50,33 @@ fn extract_first_octet(host: &str) -> Option<u8> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_urls() {
+        assert!(validate_url("https://example.com").is_ok());
+        assert!(validate_url("https://satspath.dev/profile.json").is_ok());
+        assert!(validate_url("https://9.9.9.9").is_ok()); // Public IP
+    }
+
+    #[test]
+    fn test_blocked_schemes() {
+        assert!(validate_url("http://example.com").is_err());
+        assert!(validate_url("ftp://example.com").is_err());
+        assert!(validate_url("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn test_blocked_hosts() {
+        assert!(validate_url("https://localhost").is_err());
+        assert!(validate_url("https://127.0.0.1").is_err());
+        assert!(validate_url("https://169.254.169.254/latest/meta-data").is_err()); // Cloud metadata
+        assert!(validate_url("https://metadata.google.internal").is_err());
+        assert!(validate_url("https://192.168.1.1").is_err()); // Private IPv4
+        assert!(validate_url("https://10.0.0.1").is_err());
+        assert!(validate_url("https://[::1]").is_err()); // Loopback IPv6
+    }
+}

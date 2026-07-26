@@ -253,6 +253,8 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
         nonce: Some(generate_nonce()),
         rotation: None,
         method_verifications: Vec::new(),
+        hybrid_pubkey: None,
+        pqc_required: false,
     };
     let signed = sign_profile(profile, &secret)?;
     let fp = fingerprint_pubkey(pubkey)?;
@@ -344,6 +346,8 @@ pub fn cmd_wallet_rotate() -> Result<()> {
         nonce: Some(generate_nonce()),
         rotation: Some(rotation),
         method_verifications: Vec::new(),
+        hybrid_pubkey: None,
+        pqc_required: false,
     };
     
     let signed = sign_profile(profile, &new_kp.secret_key)?;

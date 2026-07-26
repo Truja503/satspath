@@ -1,7 +1,7 @@
 //! WASM-compatible resolver chain — local → BIP353 → HTTPS well-known → Nostr NIP-05
 
 use crate::types::{SignedPaymentProfile, PaymentMethod, BitcoinNetwork};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::future::Future;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -195,8 +195,8 @@ impl Bip353Resolver {
     async fn query_doh(&self, provider: &str, name: &str) -> Result<DohResponse, String> {
         let url = format!("{}?name={}&type=16&do=1", provider, name);
         let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::Cors);
+        opts.set_method("GET");
+        opts.set_mode(RequestMode::Cors);
 
         let request = Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
         let window = window().ok_or("no window")?;
@@ -235,8 +235,8 @@ impl HttpsWellKnownResolver {
         crate::ssrf::validate_url(&url)?;
 
         let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::Cors);
+        opts.set_method("GET");
+        opts.set_mode(RequestMode::Cors);
 
         let request = Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
         let window = window().ok_or("no window")?;
@@ -317,8 +317,8 @@ impl NostrNip05Resolver {
         crate::ssrf::validate_url(&url)?;
 
         let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::Cors);
+        opts.set_method("GET");
+        opts.set_mode(RequestMode::Cors);
 
         let request = Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
         let window = window().ok_or("no window")?;

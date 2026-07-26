@@ -4,7 +4,12 @@
 //! 
 
 use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen::JsCast;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+
+pub fn build_bolt12_proxy_url(offer: &str, amount_sats: u64, proxy_url: &str) -> String {
+    format!("{}/invoice?offer={}&amount_msats={}", proxy_url, offer, amount_sats * 1000)
+}
 
 /// Fetch a real BOLT11 invoice for a BOLT12 offer via a proxy.
 pub async fn fetch_bolt12_invoice(
@@ -12,7 +17,7 @@ pub async fn fetch_bolt12_invoice(
     amount_sats: u64,
     proxy_url: &str,
 ) -> Result<String, String> {
-    let url = format!("{}/invoice?offer={}&amount_msats={}", proxy_url, offer, amount_sats * 1000);
+    let url = build_bolt12_proxy_url(offer, amount_sats, proxy_url);
     
     let mut opts = RequestInit::new();
     opts.method("GET");
@@ -42,4 +47,19 @@ pub async fn fetch_bolt12_invoice(
         .as_str()
         .map(|s| s.to_string())
         .ok_or_else(|| "No invoice in response".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_bolt12_proxy_url() {
+        let offer = "lno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
+        let proxy = "https://proxy.example.com";
+        let amount = 500; // sats
+        
+        let url = build_bolt12_proxy_url(offer, amount, proxy);
+        assert_eq!(url, "https://proxy.example.com/invoice?offer=lno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq&amount_msats=500000");
+    }
 }

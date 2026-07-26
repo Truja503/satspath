@@ -417,6 +417,39 @@ mod tests {
     fn onchain_fee_threshold() {
         assert_eq!(ONCHAIN_FEE_THRESHOLD_SAT_VB, 10);
     }
+
+    #[test]
+    fn test_build_qr_payload_silent_payment() {
+        let method = PaymentMethod::Onchain {
+            label: "Main".to_string(),
+            network: crate::types::BitcoinNetwork::Mainnet,
+            address: Some("bc1qold".to_string()),
+            silent_payment_pubkey: Some("sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq".to_string()),
+            pubkey_hint: None,
+            descriptor_hint: None,
+            address_list: vec![],
+        };
+        
+        let payload = build_qr_payload(&method, 100_000).unwrap();
+        // Should prioritize silent_payment_pubkey over address
+        assert_eq!(payload, "bitcoin:sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq?amount=0.00100000");
+    }
+
+    #[test]
+    fn test_build_qr_payload_fallback_address() {
+        let method = PaymentMethod::Onchain {
+            label: "Main".to_string(),
+            network: crate::types::BitcoinNetwork::Mainnet,
+            address: Some("bc1qold".to_string()),
+            silent_payment_pubkey: None,
+            pubkey_hint: None,
+            descriptor_hint: None,
+            address_list: vec![],
+        };
+        
+        let payload = build_qr_payload(&method, 50_000).unwrap();
+        assert_eq!(payload, "bitcoin:bc1qold?amount=0.00050000");
+    }
 }
 #[wasm_bindgen(js_name = quote)]
 pub async fn quote_js(recipient: &str, amount_sats: f64) -> Result<JsValue, JsValue> {
