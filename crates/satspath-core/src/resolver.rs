@@ -108,6 +108,7 @@ mod tests {
                     method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
                 };
                 Ok(sign_profile(profile, &kp.secret_key).unwrap())
             } else {

@@ -255,6 +255,7 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
         method_verifications: Vec::new(),
         hybrid_pubkey: None,
         pqc_required: false,
+            revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
     let fp = fingerprint_pubkey(pubkey)?;
@@ -348,6 +349,7 @@ pub fn cmd_wallet_rotate() -> Result<()> {
         method_verifications: Vec::new(),
         hybrid_pubkey: None,
         pqc_required: false,
+            revoked: false,
     };
     
     let signed = sign_profile(profile, &new_kp.secret_key)?;

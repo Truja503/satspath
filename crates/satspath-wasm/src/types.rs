@@ -105,6 +105,8 @@ pub struct PaymentProfile {
     /// PQC: If true, verifiers MUST check the hybrid_signature. If false, it's optional.
     #[serde(default)]
     pub pqc_required: bool,
+    #[serde(default)]
+    pub revoked: bool,
 }
 
 /// A payment profile together with the owner's signature over its contents

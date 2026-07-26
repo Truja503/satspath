@@ -137,15 +137,27 @@ mod native_fees {
             .timeout(std::time::Duration::from_secs(5))
             .build()
             .map_err(|e| SatsPathError::NetworkError(e.to_string()))?;
-        let est = client
-            .get("https://mempool.space/api/v1/fees/recommended")
-            .send()
-            .await
-            .map_err(|e| SatsPathError::NetworkError(e.to_string()))?
-            .json::<MempoolFeeEstimate>()
-            .await
-            .map_err(|e| SatsPathError::NetworkError(e.to_string()))?;
-        Ok(est.into())
+        
+        let urls = [
+            "https://mempool.space/api/v1/fees/recommended",
+            "https://mempool.ninja/api/v1/fees/recommended",
+        ];
+        
+        let mut last_err = String::new();
+        for url in urls {
+            match client.get(url).send().await {
+                Ok(resp) => {
+                    if let Ok(est) = resp.json::<MempoolFeeEstimate>().await {
+                        return Ok(est.into());
+                    }
+                },
+                Err(e) => {
+                    last_err = e.to_string();
+                }
+            }
+        }
+        
+        Err(SatsPathError::NetworkError(format!("All fee oracles failed. Last error: {}", last_err)))
     }
 }
 
@@ -167,28 +179,33 @@ mod wasm_fees {
     }
 
     pub async fn fetch_fee_estimate() -> Result<FeeEstimate> {
-        let opts = RequestInit::new();
-        opts.set_method("GET");
-        opts.set_mode(RequestMode::Cors);
-
-        let request = Request::new_with_str_and_init(
-            "https://mempool.space/api/v1/fees/recommended",
-            &opts,
-        )?;
-
         let window = window().ok_or_else(|| SatsPathError::NetworkError("no window".into()))?;
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let response: Response = resp_value.dyn_into()?;
+        
+        let urls = [
+            "https://mempool.space/api/v1/fees/recommended",
+            "https://mempool.ninja/api/v1/fees/recommended",
+        ];
 
-        if !response.ok() {
-            return Ok(FALLBACK_FEES);
+        for url in urls {
+            let opts = RequestInit::new();
+            opts.set_method("GET");
+            opts.set_mode(RequestMode::Cors);
+
+            let request = Request::new_with_str_and_init(url, &opts)?;
+            
+            if let Ok(resp_value) = JsFuture::from(window.fetch_with_request(&request)).await {
+                let response: Response = resp_value.dyn_into()?;
+                if response.ok() {
+                    if let Ok(json) = JsFuture::from(response.json()?).await {
+                        if let Ok(estimate) = serde_wasm_bindgen::from_value::<MempoolFeeEstimate>(json) {
+                            return Ok(estimate.into());
+                        }
+                    }
+                }
+            }
         }
-
-        let json = JsFuture::from(response.json()?).await?;
-        let estimate: MempoolFeeEstimate = serde_wasm_bindgen::from_value(json)
-            .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
-
-        Ok(estimate.into())
+        
+        Ok(FALLBACK_FEES)
     }
 }
 

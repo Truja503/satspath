@@ -320,6 +320,24 @@ async fn main() -> Result<()> {
     let p2p_requested = cli.p2p || env_truthy("SATSPATHD_P2P");
 
     fs::create_dir_all(&home).context("creating SATSPATH_HOME")?;
+    
+    // SEC-04: Daemon API Authorization
+    let macaroon_path = home.join("admin.macaroon");
+    if std::env::var("SATSPATHD_AUTH_TOKEN").is_err() {
+        if !macaroon_path.exists() {
+            use rand::RngCore;
+            let mut token = [0u8; 32];
+            rand::thread_rng().fill_bytes(&mut token);
+            let token_hex = hex::encode(token);
+            fs::write(&macaroon_path, &token_hex).context("writing admin.macaroon")?;
+            #[cfg(unix)]
+            set_owner_only(&macaroon_path).ok();
+        }
+        if let Ok(token) = fs::read_to_string(&macaroon_path) {
+            std::env::set_var("SATSPATHD_AUTH_TOKEN", token.trim());
+        }
+    }
+    
     let wallet = load_or_create_identity(&home)?;
     let mut bridge = P2pBridge {
         enabled: p2p_requested,
@@ -638,6 +656,7 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         method_verifications: vec![],
         hybrid_pubkey: None,
         pqc_required: false,
+            revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
     registry.update_profile(signed)?;

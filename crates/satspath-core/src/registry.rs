@@ -115,15 +115,20 @@ impl Registry {
         self.save()
     }
 
-    /// Resolve an alias to its signed profile.
     pub fn resolve_alias(&self, alias: &str) -> Result<&SignedPaymentProfile> {
         let canonical = canonical_identifier(alias);
         let key = identifier_hash(&canonical);
-        self.data
+        let profile = self.data
             .profiles
             .get(&key)
             .or_else(|| self.data.profiles.get(&canonical))
-            .ok_or(SatsPathError::AliasNotFound(canonical))
+            .ok_or_else(|| SatsPathError::AliasNotFound(canonical.clone()))?;
+            
+        if profile.profile.revoked {
+            return Err(SatsPathError::RegistryError(format!("Alias {} has been revoked", canonical)));
+        }
+        
+        Ok(profile)
     }
 
     /// Check whether an alias is already registered.
@@ -183,6 +188,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

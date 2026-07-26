@@ -151,3 +151,26 @@ Ejecutamos con éxito los benchmarks definidos para la suite criptográfica híb
 - **Signing:** `~721 µs`
 - **Verifying:** `~275 µs`
 El rendimiento de firma y validación se mantiene muy por debajo del milisegundo a pesar de usar algoritmos post-cuánticos ML-DSA de alto nivel de seguridad.
+
+## Phase 5: Production Readiness (Infra & Security)
+
+Hemos implementado un conjunto robusto de mejoras a nivel protocolo y demonio para certificar SatsPath como **Production-Ready**:
+
+### 1. Proxy BOLT12 (Cloudflare Worker)
+- **Infraestructura:** Se inicializó el código de despliegue en `proxy-workers/bolt12` usando Hono y Wrangler. 
+- **Integración WASM:** Actualizado `satspath-wasm/src/bolt12.rs` apuntando a la futura URL del proxy Cloudflare `https://satspath-bolt12-proxy.workers.dev/resolve`.
+
+### 2. Redundancia de Oráculos (Fees)
+- **Fallbacks:** `crates/satspath-router/src/fees.rs` ahora itera sobre `mempool.ninja` en caso de que `mempool.space` falle, protegiendo al router de decidir pagos por la cadena principal basándose en APIs caídas.
+
+### 3. Sync Concurrente Nostr y Revocación (Tombstoning)
+- **Revocación:** Se introdujo la bandera `revoked: bool` dentro de `PaymentProfile` (compatible con versiones anteriores vía `#[serde(default)]`). Un perfil revocado será estrictamente rechazado por el `Registry` local.
+- **Concurrencia P2P:** `crates/satspath-core/src/resolvers/nostr.rs` ahora descarga perfiles de múltiples relays *simultáneamente* y se asegura de retornar únicamente el que posea la secuencia más alta (`sequence`), frustrando cualquier intento de *downgrade attack*.
+
+### 4. Endurecimiento del Daemon (`satspathd`)
+- **Autenticación Zero-Configuration:** Al iniciar, `satspathd` ahora autogenera un token de 32 bytes (`admin.macaroon`) e inyecta la variable de entorno `SATSPATHD_AUTH_TOKEN`.
+- **Middleware API:** Las rutas mutativas (POST/PUT a `/v1/profile`) requieren ahora el *header* `Authorization: Bearer <token>`, bloqueando el acceso a cualquier proceso malicioso corriendo en *localhost*.
+
+### 5. Preparación para Auditoría Externa y CI/CD
+- **Pipelines:** Se añadió `publish.yml` en GitHub Actions para orquestar la compilación automática de `wasm-pack` y los comandos de `cargo publish` hacia Crates.io y NPM.
+- **Auditoría:** Creado el artefacto `SECURITY_AUDIT_BRIEF.md`, el cual formaliza para terceros el modelo *Zero-Trust* sobre los VTXOs de Ark y las asunciones matemáticas de la criptografía híbrida de `satspath-pqc`.

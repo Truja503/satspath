@@ -89,6 +89,7 @@ pub async fn cmd_register(
         method_verifications: Vec::new(),
         hybrid_pubkey: None,
         pqc_required: false,
+            revoked: false,
     };
 
     let signed = sign_profile(profile, &kp.secret_key)?;

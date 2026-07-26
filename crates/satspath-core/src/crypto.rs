@@ -225,6 +225,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         }
     }
 

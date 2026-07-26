@@ -1,7 +1,8 @@
 //! BOLT12 HTTP proxy scaffold.
 //! 
-//! Resolves BOLT12 offers to BOLT11 invoices via a configurable HTTP proxy.
-//! 
+/// Fallback default proxy for BOLT12 resolution if none is explicitly provided.
+/// In production, this would be a Cloudflare Worker or AWS Lambda instance.
+pub const DEFAULT_BOLT12_PROXY: &str = "https://satspath-bolt12-proxy.workers.dev/resolve";
 
 use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen::JsCast;

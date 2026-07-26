@@ -1886,6 +1886,7 @@ mod tests {
             method_verifications: vec![verification],
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         let mut signed = sign_profile(profile, &identity.secret).unwrap();
         assert!(verify_signed_profile(&signed).unwrap());
@@ -1965,6 +1966,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         }
     }
 

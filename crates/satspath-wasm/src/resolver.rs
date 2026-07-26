@@ -434,6 +434,7 @@ fn uri_to_profile(alias: &str, uri: String) -> SignedPaymentProfile {
         method_verifications: vec![],
         hybrid_pubkey: None,
         pqc_required: false,
+            revoked: false,
     };
 
     SignedPaymentProfile {

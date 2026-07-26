@@ -175,19 +175,42 @@ impl NostrResolver {
 impl ProfileResolver for NostrResolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
         let nip05 = self.resolve_nip05(alias).await?;
+        
+        let futures: Vec<_> = nip05.relays.iter().map(|relay| {
+            self.query_relay(relay, &nip05.pubkey, alias)
+        }).collect();
+        
+        let results = futures_util::future::join_all(futures).await;
+        
+        let mut best_profile: Option<SignedPaymentProfile> = None;
         let mut last_error = None;
-
-        for relay in &nip05.relays {
-            match self.query_relay(relay, &nip05.pubkey, alias).await {
-                Ok(signed) => return Ok(signed),
-                Err(SatsPathError::AliasNotFound(_)) => {}
+        
+        for result in results {
+            match result {
+                Ok(signed) => {
+                    let current_best_seq = best_profile.as_ref().and_then(|p| p.profile.sequence).unwrap_or(0);
+                    let new_seq = signed.profile.sequence.unwrap_or(0);
+                    
+                    if best_profile.is_none() || new_seq > current_best_seq {
+                        best_profile = Some(signed);
+                    }
+                },
                 Err(e) => last_error = Some(e),
             }
         }
 
-        match last_error {
-            Some(e) => Err(e),
-            None => Err(SatsPathError::AliasNotFound(alias.to_string())),
+        match best_profile {
+            Some(profile) => {
+                if profile.profile.revoked {
+                    Err(SatsPathError::RegistryError(format!("Alias {} has been revoked", alias)))
+                } else {
+                    Ok(profile)
+                }
+            },
+            None => match last_error {
+                Some(e) => Err(e),
+                None => Err(SatsPathError::AliasNotFound(alias.to_string())),
+            }
         }
     }
 }
@@ -398,6 +421,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

@@ -138,6 +138,7 @@ mod tests {
             method_verifications: vec![],
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }
