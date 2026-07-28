@@ -30,4 +30,4 @@
 
 2. **Scope.** The must-have MVP core — identity, signed profiles, signing/verification, routing, invite flow, and the quote JSON — is **complete and stable**. Several areas (ownership proofs, BIP-353 DNS, mainnet preview, P2P transfer, swaps) go **beyond a minimal MVP**: ambitious, but the UX-facing core is stable.
 
-3. **Nothing executes real payments.** By design this is a signed-profile *resolver + router + preview*; real send/broadcast is intentionally out of scope for now.
+3. **Nothing executes real payments.** By design this is a signed-profile *resolver + router + preview*. Real send/broadcast, PSBT signing, and Ark VTXO client-side validation are strictly delegated to the host Wallet. SatsPath acts solely as the routing protocol.

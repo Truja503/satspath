@@ -100,15 +100,23 @@ The `ark-bridge/` directory contains a JSON-RPC bridge skeleton that would conne
 | PSBT signing | ❌ Engine v1 |
 | BOLT11 expiry verification (needs bech32 data decode) | ❌ Engine v1 |
 | Ark VTXO DAG validation | ❌ Engine v1 |
-| Mainnet swap execution | ❌ Intentionally closed |
+| Mainnet swap execution | ❌ Intentionally out of scope |
 
 ## Engine v1 scope (future work)
 
-- PSBT construction and signing (rust-bitcoin + BDK)
-- BOLT11 expiry parsing via bech32 data field decode
-- Ark VTXO DAG validation via full ARK SDK
-- Cooperative Taproot/MuSig2 spend for chain swaps
-- BIP-353 DNS-based payment address resolution
+SatsPath is strictly a **Payment Routing and Identity Protocol**. It is designed to be embedded into existing or new wallets (via WASM or FFI) to act as the "brain" for resolving profiles and optimizing fees. 
+
+**Out of Scope (Delegated to the integrating Wallet):**
+- PSBT construction, signing, and broadcasting (`rust-bitcoin` / `BDK`)
+- Cooperative Taproot/MuSig2 spend executions for swaps
+- Client-side Ark VTXO DAG validation (handled by dedicated external libraries like `ARK`)
+- Secure storage of seeds and derivation paths
+
+**In Scope for SatsPath Protocol:**
+- P2P native integration (e.g., replacing Node.js holepunch with native Rust DHT/P2P)
+- Enhanced network fallback capabilities for resolvers
+- BOLT11 expiry parsing via bech32 data decode (to avoid routing to expired invoices)
+- BIP-353 DNS-based payment address resolution hardening
 
 ## Wallet Integration & Post-Quantum Security (Fase 2 & 3)
 
@@ -174,3 +182,19 @@ Hemos implementado un conjunto robusto de mejoras a nivel protocolo y demonio pa
 ### 5. Preparación para Auditoría Externa y CI/CD
 - **Pipelines:** Se añadió `publish.yml` en GitHub Actions para orquestar la compilación automática de `wasm-pack` y los comandos de `cargo publish` hacia Crates.io y NPM.
 - **Auditoría:** Creado el artefacto `SECURITY_AUDIT_BRIEF.md`, el cual formaliza para terceros el modelo *Zero-Trust* sobre los VTXOs de Ark y las asunciones matemáticas de la criptografía híbrida de `satspath-pqc`.
+
+## Phase 6: Core Audit & Standalone Branch (`satspath-standalone`)
+
+Siguiendo el objetivo de transformar el proyecto en una herramienta exclusivamente de backend que puede ejecutarse de manera independiente, hemos aislado el core de SatsPath en una rama dedicada.
+
+### 1. Limpieza de Infraestructura (Pruning)
+- Se eliminaron por completo las carpetas correspondientes al frontend React Native (`wallet/`), a la versión web (`pwa/`), y a otras utilidades que no son estrictamente del core.
+- **Resultado:** El repositorio ahora es un proyecto minimalista enfocado puramente en Rust (`crates/`), `proxy-workers/` y los SDKs de integración.
+
+### 2. Auditoría Clippy
+- Ejecutamos un riguroso `cargo clippy --workspace -- -D warnings` sobre todos los crates.
+- Corregimos más de 30 advertencias del compilador (variables no utilizadas, métodos deprecados de `web_sys` y declaraciones `mut` redundantes).
+- Se preservaron intencionalmente advertencias inofensivas como *dead code* utilizando macros `#[allow]` cuando correspondía, asegurando que la integración `satspath-wasm` esté limpia pero siga exportando las herramientas para futuros desarrollos.
+
+### 3. Entorno Dockerizado
+- Creamos un archivo `docker-compose.yml` que lanza y auto-configura el demonio `satspathd` directamente a través de un Multi-Stage Build ligero, cumpliendo con la premisa de desplegar el nodo de registro fácilmente.

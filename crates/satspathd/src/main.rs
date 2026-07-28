@@ -7,8 +7,8 @@
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -65,9 +65,6 @@ struct Cli {
     /// SatsPath home directory. Defaults to SATSPATH_HOME or ~/.satspath.
     #[arg(long)]
     home: Option<PathBuf>,
-    /// Start the optional Holepunch P2P profile publisher bridge.
-    #[arg(long)]
-    p2p: bool,
     /// Do not open the wallet UI in a browser on startup.
     #[arg(long)]
     no_open: bool,
@@ -101,14 +98,7 @@ struct AppState {
     bind: SocketAddr,
     network: String,
     open_ui: bool,
-    p2p: Arc<Mutex<P2pBridge>>,
     // Removed escrow state to enforce non-custodial rule
-}
-
-struct P2pBridge {
-    enabled: bool,
-    status: String,
-    child: Option<Child>,
 }
 
 #[derive(Debug, Serialize)]
@@ -122,7 +112,6 @@ struct StatusResponse {
     alias: Option<String>,
     identity_fingerprint: Option<String>,
     methods: Vec<String>,
-    p2p: P2pStatus,
     safety: SafetyStatus,
 }
 
@@ -166,13 +155,6 @@ struct ConnectionView {
     detail: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-struct P2pStatus {
-    enabled: bool,
-    status: String,
-    active: bool,
-    pid: Option<u32>,
-}
 
 #[derive(Debug, Serialize)]
 struct SafetyStatus {
@@ -317,7 +299,6 @@ async fn main() -> Result<()> {
         .home
         .or_else(|| std::env::var_os("SATSPATH_HOME").map(PathBuf::from))
         .unwrap_or_else(default_home);
-    let p2p_requested = cli.p2p || env_truthy("SATSPATHD_P2P");
 
     fs::create_dir_all(&home).context("creating SATSPATH_HOME")?;
     
@@ -338,30 +319,13 @@ async fn main() -> Result<()> {
         }
     }
     
-    let wallet = load_or_create_identity(&home)?;
-    let mut bridge = P2pBridge {
-        enabled: p2p_requested,
-        status: "disabled".into(),
-        child: None,
-    };
-    if p2p_requested {
-        match start_p2p_bridge(&home, &wallet) {
-            Ok((status, child)) => {
-                bridge.status = status;
-                bridge.child = Some(child);
-            }
-            Err(e) => {
-                bridge.status = format!("inactive: {e}");
-            }
-        }
-    }
+    load_or_create_identity(&home)?;
 
     let state = AppState {
         home,
         bind,
         network,
         open_ui: !cli.no_open,
-        p2p: Arc::new(Mutex::new(bridge)),
         // Removed escrow init
     };
 
@@ -859,14 +823,7 @@ fn peer_view(record: PeerRecord) -> PeerView {
 
 fn connections_response(state: &AppState) -> Result<ConnectionsResponse> {
     let peers = peers_response(state)?;
-    let p2p = p2p_status(state);
     let mut connections = Vec::new();
-    connections.push(ConnectionView {
-        kind: "p2p_bridge",
-        status: p2p.status.clone(),
-        active: p2p.active,
-        detail: p2p.pid.map(|pid| format!("pid:{pid}")),
-    });
     connections.push(ConnectionView {
         kind: "peer_registry",
         status: format!("{} active peer(s)", peers.active_count),
@@ -891,16 +848,20 @@ fn connections_response(state: &AppState) -> Result<ConnectionsResponse> {
 
 fn status_response(state: &AppState) -> Result<StatusResponse> {
     let wallet = load_wallet(&state.home)?;
-    let methods = build_methods(&wallet, &state.network)
-        .iter()
-        .map(|method| method.method_name().to_string())
-        .collect();
+    let mut methods = Vec::new();
+    if let Some(alias) = wallet.alias.as_deref() {
+        if let Ok(registry) = Registry::open(&state.home) {
+            if let Ok(signed) = registry.resolve_alias(alias) {
+                methods = signed.profile.methods.clone().into_iter().map(|m| m.method_name().to_string()).collect();
+            }
+        }
+    }
+
     let identity_fingerprint = wallet
         .identity_pubkey
         .as_deref()
         .map(fingerprint_pubkey)
         .transpose()?;
-    let p2p = p2p_status(state);
     Ok(StatusResponse {
         daemon: "satspathd",
         version: env!("CARGO_PKG_VERSION"),
@@ -911,44 +872,8 @@ fn status_response(state: &AppState) -> Result<StatusResponse> {
         alias: wallet.alias,
         identity_fingerprint,
         methods,
-        p2p: P2pStatus {
-            enabled: p2p.enabled,
-            status: p2p.status,
-            active: p2p.active,
-            pid: p2p.pid,
-        },
         safety: safety_status(),
     })
-}
-
-fn p2p_status(state: &AppState) -> P2pStatus {
-    let mut p2p = state.p2p.lock().expect("p2p mutex poisoned");
-    let mut active = false;
-    let mut pid = None;
-    if let Some(child) = p2p.child.as_mut() {
-        pid = Some(child.id());
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                p2p.status = format!("exited: {status}");
-                p2p.child = None;
-            }
-            Ok(None) => {
-                active = true;
-                if p2p.status == "disabled" {
-                    p2p.status = "started".into();
-                }
-            }
-            Err(e) => {
-                p2p.status = format!("unknown: {e}");
-            }
-        }
-    }
-    P2pStatus {
-        enabled: p2p.enabled,
-        status: p2p.status.clone(),
-        active,
-        pid,
-    }
 }
 
 fn safety_status() -> SafetyStatus {
@@ -1161,39 +1086,7 @@ fn set_owner_only(_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn start_p2p_bridge(home: &Path, wallet: &WalletState) -> Result<(String, Child)> {
-    let alias = wallet
-        .alias
-        .as_deref()
-        .ok_or_else(|| anyhow::anyhow!("no local alias/profile yet"))?;
-    let signed = Registry::open(home)?.resolve_alias(alias)?.clone();
-    if !verify_signed_profile(&signed)? {
-        anyhow::bail!("refusing to bridge invalid signed profile");
-    }
-    let out_path = home.join(format!("{}-profile.json", sanitize(alias)));
-    fs::write(&out_path, serde_json::to_string_pretty(&signed)?)?;
-    let out_path = std::fs::canonicalize(&out_path)?;
 
-    let repo_root = std::env::current_dir()?;
-    let sdk_dir = repo_root.join("sdk").join("satspath-p2p");
-    let script = sdk_dir.join("examples").join("publish.mjs");
-    if !script.exists() {
-        anyhow::bail!("P2P SDK publish script not found at {}", script.display());
-    }
-    let child = Command::new("node")
-        .arg("examples/publish.mjs")
-        .arg(&out_path)
-        .current_dir(&sdk_dir)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .context("starting Node Holepunch bridge")?;
-
-    // The child is intentionally detached from request handling. If it exits,
-    // status remains "started"; users can see process logs by running the SDK
-    // directly while this bridge is still optional.
-    Ok((format!("started: publishing {alias}"), child))
-}
 
 fn print_startup_status(state: &AppState) -> Result<()> {
     let status = status_response(state)?;
@@ -1220,7 +1113,6 @@ fn print_startup_status(state: &AppState) -> Result<()> {
             status.methods.join(", ")
         }
     );
-    println!("  p2p: {}", status.p2p.status);
     println!("  safety: profile node only; no funds moved, no Bitcoin tx signing, no broadcast");
     Ok(())
 }
@@ -1503,18 +1395,6 @@ fn bitcoin_network(network: &str) -> BitcoinNetwork {
     }
 }
 
-fn env_truthy(name: &str) -> bool {
-    std::env::var(name)
-        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
-        .unwrap_or(false)
-}
-
-fn sanitize(alias: &str) -> String {
-    alias
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect()
-}
 
 #[cfg(test)]
 mod tests {
@@ -1751,31 +1631,14 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
     Ok(payload)
 }
 
-/// Publish the local signed profile over the Holepunch P2P bridge so peers can
-/// resolve it. Returns the bridge status. (Best-effort; needs the JS SDK.)
+/// P2P is now exclusively Nostr. The broadcast endpoint triggers a re-sign.
 fn broadcast(state: &AppState) -> Result<serde_json::Value> {
     let mut wallet = load_wallet(&state.home)?;
     if wallet.alias.is_none() {
         anyhow::bail!("set your profile first (alias + methods) before broadcasting");
     }
     ensure_signed_profile(&state.home, &mut wallet, &state.network)?;
-    let mut bridge = state.p2p.lock().unwrap();
-    if let Some(mut child) = bridge.child.take() {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
-    match start_p2p_bridge(&state.home, &wallet) {
-        Ok((status, child)) => {
-            bridge.enabled = true;
-            bridge.status = status.clone();
-            bridge.child = Some(child);
-            Ok(serde_json::json!({ "broadcasting": true, "status": status }))
-        }
-        Err(e) => {
-            bridge.status = format!("inactive: {e}");
-            Ok(serde_json::json!({ "broadcasting": false, "status": bridge.status }))
-        }
-    }
+    Ok(serde_json::json!({ "broadcasting": true, "status": "Nostr is the exclusive P2P layer. Profile saved." }))
 }
 
 fn ensure_signed_profile(home: &Path, wallet: &mut WalletState, network: &str) -> Result<()> {
