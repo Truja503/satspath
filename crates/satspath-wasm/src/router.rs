@@ -1,17 +1,16 @@
 //! WASM-compatible router — TypeScript port of Rust satspath-router logic
 
 use crate::types::{
-    PaymentMethod, RouteRequest, RouteQuote, FeeEstimate, FeeRateSnapshot,
-    SwapDirective, ExecutionMode, PaymentUrgency, QuoteResponse, QuoteRecipient, Invite,
-    SignedPaymentProfile,
+    ExecutionMode, FeeEstimate, FeeRateSnapshot, Invite, PaymentMethod, PaymentUrgency,
+    QuoteRecipient, QuoteResponse, RouteQuote, RouteRequest, SignedPaymentProfile, SwapDirective,
 };
 
 use crate::{fingerprint_pubkey, mask_identifier, ChainResolver};
 
+use js_sys::Date;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response, window};
-use js_sys::Date;
+use web_sys::{window, Request, RequestInit, RequestMode, Response};
 
 // Constants matching Rust satspath-router
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
@@ -38,7 +37,9 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
                 continue;
             }
             let ln_address = match method {
-                PaymentMethod::Lightning { lightning_address, .. } => lightning_address.clone(),
+                PaymentMethod::Lightning {
+                    lightning_address, ..
+                } => lightning_address.clone(),
                 _ => None,
             };
             let fee = estimate_lightning_fee(req.amount_sats);
@@ -51,9 +52,13 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
                 estimated_fee_sats: fee,
                 estimated_confirmation: "instant".to_string(),
                 fee_snapshot: None,
-                swap_directive: SwapDirective::LightningPayment { target_ln_address: ln_address },
+                swap_directive: SwapDirective::LightningPayment {
+                    target_ln_address: ln_address,
+                },
                 execution: ExecutionMode::ManualWallet,
-                wallet_hint: "Use any Lightning wallet (LDK, Breez, Phoenix, etc.) to pay the invoice.".to_string(),
+                wallet_hint:
+                    "Use any Lightning wallet (LDK, Breez, Phoenix, etc.) to pay the invoice."
+                        .to_string(),
             });
         }
     }
@@ -67,9 +72,11 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee(req.amount_sats, selected_fee_rate);
         let (target_address, silent_payment_pubkey) = match &method {
-            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-                (address.clone(), silent_payment_pubkey.clone())
-            }
+            PaymentMethod::Onchain {
+                address,
+                silent_payment_pubkey,
+                ..
+            } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -81,9 +88,13 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
             estimated_fee_sats: fee,
             estimated_confirmation: expected_conf.to_string(),
             fee_snapshot: Some(fees.clone()),
-            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
+            swap_directive: SwapDirective::ChainSwap {
+                target_address,
+                silent_payment_pubkey,
+            },
             execution: ExecutionMode::ManualWallet,
-            wallet_hint: "Use any BIP-21 compatible wallet (BlueWallet, Sparrow, Electrum, etc.)".to_string(),
+            wallet_hint: "Use any BIP-21 compatible wallet (BlueWallet, Sparrow, Electrum, etc.)"
+                .to_string(),
         });
     }
 
@@ -91,14 +102,20 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
         let (server, pubkey, is_arkade, reason) = match &method {
-            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => {
+            PaymentMethod::Ark {
+                server,
+                pubkey,
+                opaque_uri,
+                ..
+            } => {
                 let reason = if is_onchain_available(methods) {
                     format!(
                         "On-chain fee ({} sat/vB) exceeds {} sat/vB. Falling back to Ark.",
                         selected_fee_rate, ONCHAIN_FEE_THRESHOLD_SAT_VB
                     )
                 } else {
-                    "No Lightning (amount above threshold) or on-chain method. Using Ark.".to_string()
+                    "No Lightning (amount above threshold) or on-chain method. Using Ark."
+                        .to_string()
                 };
                 (server.clone(), pubkey.clone(), opaque_uri.is_some(), reason)
             }
@@ -106,9 +123,17 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
         };
 
         let (swap_directive, execution, wallet_hint) = if is_arkade {
-            (SwapDirective::ArkadeManual, ExecutionMode::ManualWallet, "Open Arkade.money wallet to complete the VTXO transfer.".to_string())
+            (
+                SwapDirective::ArkadeManual,
+                ExecutionMode::ManualWallet,
+                "Open Arkade.money wallet to complete the VTXO transfer.".to_string(),
+            )
         } else {
-            (SwapDirective::ArkTransfer { server, pubkey }, ExecutionMode::TestnetExperimental, "Ark VTXO transfer (testnet preview).".to_string())
+            (
+                SwapDirective::ArkTransfer { server, pubkey },
+                ExecutionMode::TestnetExperimental,
+                "Ark VTXO transfer (testnet preview).".to_string(),
+            )
         };
 
         return Ok(RouteQuote {
@@ -128,7 +153,11 @@ pub fn select_route(req: &RouteRequest, fees: &FeeEstimate) -> Result<RouteQuote
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee(req.amount_sats, selected_fee_rate);
         let (target_address, silent_payment_pubkey) = match &method {
-            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
+            PaymentMethod::Onchain {
+                address,
+                silent_payment_pubkey,
+                ..
+            } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -167,10 +196,9 @@ pub async fn fetch_fee_estimate() -> Result<FeeEstimate, String> {
     opts.method("GET");
     opts.mode(RequestMode::Cors);
 
-    let request = Request::new_with_str_and_init(
-        "https://mempool.space/api/v1/fees/recommended",
-        &opts,
-    ).map_err(|e| format!("Request creation failed: {:?}", e))?;
+    let request =
+        Request::new_with_str_and_init("https://mempool.space/api/v1/fees/recommended", &opts)
+            .map_err(|e| format!("Request creation failed: {:?}", e))?;
 
     let window = window().ok_or("no window")?;
     let resp_value = JsFuture::from(window.fetch_with_request(&request))
@@ -182,9 +210,13 @@ pub async fn fetch_fee_estimate() -> Result<FeeEstimate, String> {
         return Ok(FALLBACK_FEES.clone());
     }
 
-    let json_value = JsFuture::from(response.json().map_err(|e| format!("JSON parse failed: {:?}", e))?)
-        .await
-        .map_err(|e| format!("JSON parse failed: {:?}", e))?;
+    let json_value = JsFuture::from(
+        response
+            .json()
+            .map_err(|e| format!("JSON parse failed: {:?}", e))?,
+    )
+    .await
+    .map_err(|e| format!("JSON parse failed: {:?}", e))?;
 
     let estimate: serde_json::Value = serde_wasm_bindgen::from_value(json_value)
         .map_err(|e| format!("Deserialization failed: {:?}", e))?;
@@ -201,24 +233,36 @@ pub async fn fetch_fee_estimate() -> Result<FeeEstimate, String> {
 /// Build QR payload for a payment method
 pub fn build_qr_payload(method: &PaymentMethod, amount_sats: u64) -> Result<String, String> {
     match method {
-        PaymentMethod::Lightning { lnurl, lightning_address, bolt12, .. } => {
-            Ok(lnurl.clone()
-                .or_else(|| lightning_address.clone())
-                .or_else(|| bolt12.clone())
-                .ok_or_else(|| "Lightning method has no address, LNURL, or BOLT12".to_string())?)
-        }
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Lightning {
+            lnurl,
+            lightning_address,
+            bolt12,
+            ..
+        } => Ok(lnurl
+            .clone()
+            .or_else(|| lightning_address.clone())
+            .or_else(|| bolt12.clone())
+            .ok_or_else(|| "Lightning method has no address, LNURL, or BOLT12".to_string())?),
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             let btc = format!("{:.8}", amount_sats as f64 / 100_000_000.0);
             Ok(format!("bitcoin:{}?amount={}", target, btc))
         }
         PaymentMethod::Ark { server, pubkey, .. } => {
             // Simple URL encoding - replace special chars
-            let encode = |s: &str| s.replace(' ', "%20")
-                .replace('&', "%26")
-                .replace('=', "%3D")
-                .replace('?', "%3F")
-                .replace('#', "%23");
+            let encode = |s: &str| {
+                s.replace(' ', "%20")
+                    .replace('&', "%26")
+                    .replace('=', "%3D")
+                    .replace('?', "%3F")
+                    .replace('#', "%23")
+            };
             Ok(format!(
                 "ark:{}?server={}&amount={}",
                 encode(pubkey),
@@ -236,15 +280,18 @@ pub async fn quote(recipient: &str, amount_sats: u64) -> Result<QuoteResponse, S
     // 1. Resolve
     let chain_resolver = ChainResolver::new();
     let signed_json = chain_resolver.resolve_alias(recipient).await?;
-    
+
     // Parse the JSON string to get the profile
-    let signed: SignedPaymentProfile = serde_json::from_str(&signed_json).map_err(|e| e.to_string())?;
-    
+    let signed: SignedPaymentProfile =
+        serde_json::from_str(&signed_json).map_err(|e| e.to_string())?;
+
     // 2. Verify signature
     let profile_json = serde_json::to_string(&signed.profile).map_err(|e| e.to_string())?;
     if !crate::verify_signed_profile(&profile_json) {
         let recipient_info = build_recipient_info(&signed.profile, false);
-        return Ok(QuoteResponse::InvalidSignature { recipient: recipient_info });
+        return Ok(QuoteResponse::InvalidSignature {
+            recipient: recipient_info,
+        });
     }
 
     let recipient_info = build_recipient_info(&signed.profile, true);
@@ -252,7 +299,9 @@ pub async fn quote(recipient: &str, amount_sats: u64) -> Result<QuoteResponse, S
     // 3. Check expiry
     if let Some(expires) = signed.profile.expires_at {
         if expires * 1000 < js_sys::Date::now() as i64 {
-            return Ok(QuoteResponse::NoRoute { reason: "Profile expired.".to_string() });
+            return Ok(QuoteResponse::NoRoute {
+                reason: "Profile expired.".to_string(),
+            });
         }
     }
 
@@ -272,14 +321,21 @@ pub async fn quote(recipient: &str, amount_sats: u64) -> Result<QuoteResponse, S
     let mut qr = build_qr_payload(&route_quote.selected_method, amount_sats)?;
 
     // 6. Optionally fetch real BOLT11 for Lightning
-    if let PaymentMethod::Lightning { lightning_address, bolt12, .. } = &route_quote.selected_method {
+    if let PaymentMethod::Lightning {
+        lightning_address,
+        bolt12,
+        ..
+    } = &route_quote.selected_method
+    {
         if let Some(addr) = lightning_address {
             if let Ok(invoice) = fetch_real_invoice(addr, amount_sats).await {
                 qr = invoice;
             }
         } else if let Some(offer) = bolt12 {
             let proxy = "https://bolt12-proxy.satspath.dev";
-            if let Ok(invoice) = crate::bolt12::fetch_bolt12_invoice(offer, amount_sats, proxy).await {
+            if let Ok(invoice) =
+                crate::bolt12::fetch_bolt12_invoice(offer, amount_sats, proxy).await
+            {
                 qr = invoice;
             }
         }
@@ -303,14 +359,19 @@ fn build_recipient_info(profile: &crate::types::PaymentProfile, verified: bool) 
         verified,
         profile_signature_verified: verified,
         identifier_verified: false,
-        identifier_verification: "identifier-only; no inbox/domain ownership proof in this response".to_string(),
+        identifier_verification:
+            "identifier-only; no inbox/domain ownership proof in this response".to_string(),
         fingerprint: Some(fingerprint_pubkey(&profile.identity_pubkey)),
     }
 }
 
 /// Fetch real BOLT11 invoice from LNURL-pay
 async fn fetch_real_invoice(lightning_address: &str, amount_sats: u64) -> Result<String, String> {
-    let [user, domain] = lightning_address.split('@').collect::<Vec<_>>().try_into().map_err(|_| "Invalid lightning address")?;
+    let [user, domain] = lightning_address
+        .split('@')
+        .collect::<Vec<_>>()
+        .try_into()
+        .map_err(|_| "Invalid lightning address")?;
     let lnurl = format!("https://{}/.well-known/lnurlp/{}", domain, user);
 
     let mut opts = RequestInit::new();
@@ -324,15 +385,21 @@ async fn fetch_real_invoice(lightning_address: &str, amount_sats: u64) -> Result
     let resp_value = JsFuture::from(win.fetch_with_request(&request))
         .await
         .map_err(|e| format!("LNURL fetch failed: {:?}", e))?;
-    let response: Response = resp_value.dyn_into().map_err(|_| "Invalid LNURL response")?;
+    let response: Response = resp_value
+        .dyn_into()
+        .map_err(|_| "Invalid LNURL response")?;
 
     if !response.ok() {
         return Err("LNURL fetch failed".to_string());
     }
 
-    let json_value = JsFuture::from(response.json().map_err(|e| format!("LNURL JSON failed: {:?}", e))?)
-        .await
-        .map_err(|e| format!("LNURL JSON parse failed: {:?}", e))?;
+    let json_value = JsFuture::from(
+        response
+            .json()
+            .map_err(|e| format!("LNURL JSON failed: {:?}", e))?,
+    )
+    .await
+    .map_err(|e| format!("LNURL JSON parse failed: {:?}", e))?;
 
     let meta: serde_json::Value = serde_wasm_bindgen::from_value(json_value)
         .map_err(|e| format!("LNURL deserialize failed: {:?}", e))?;
@@ -347,20 +414,27 @@ async fn fetch_real_invoice(lightning_address: &str, amount_sats: u64) -> Result
     let inv_resp_value = JsFuture::from(win2.fetch_with_request(&inv_request))
         .await
         .map_err(|e| format!("Invoice fetch failed: {:?}", e))?;
-    let inv_response: Response = inv_resp_value.dyn_into().map_err(|_| "Invalid invoice response")?;
+    let inv_response: Response = inv_resp_value
+        .dyn_into()
+        .map_err(|_| "Invalid invoice response")?;
 
     if !inv_response.ok() {
         return Err("Invoice fetch failed".to_string());
     }
 
-    let inv_json = JsFuture::from(inv_response.json().map_err(|e| format!("Invoice JSON failed: {:?}", e))?)
-        .await
-        .map_err(|e| format!("Invoice JSON parse failed: {:?}", e))?;
+    let inv_json = JsFuture::from(
+        inv_response
+            .json()
+            .map_err(|e| format!("Invoice JSON failed: {:?}", e))?,
+    )
+    .await
+    .map_err(|e| format!("Invoice JSON parse failed: {:?}", e))?;
 
     let invoice: serde_json::Value = serde_wasm_bindgen::from_value(inv_json)
         .map_err(|e| format!("Invoice deserialize failed: {:?}", e))?;
 
-    invoice["pr"].as_str()
+    invoice["pr"]
+        .as_str()
         .map(|s| s.to_string())
         .ok_or_else(|| "No invoice in response".to_string())
 }
@@ -372,7 +446,13 @@ fn is_lightning_available(method: &PaymentMethod) -> bool {
 }
 
 fn is_lightning_available_for_amount(method: &PaymentMethod, _amount_sats: u64) -> bool {
-    if let PaymentMethod::Lightning { lightning_address, lnurl, bolt12, .. } = method {
+    if let PaymentMethod::Lightning {
+        lightning_address,
+        lnurl,
+        bolt12,
+        ..
+    } = method
+    {
         lightning_address.is_some() || lnurl.is_some() || bolt12.is_some()
     } else {
         false
@@ -380,19 +460,27 @@ fn is_lightning_available_for_amount(method: &PaymentMethod, _amount_sats: u64) 
 }
 
 fn is_onchain_available(methods: &[PaymentMethod]) -> bool {
-    methods.iter().any(|m| matches!(m, PaymentMethod::Onchain { .. }))
+    methods
+        .iter()
+        .any(|m| matches!(m, PaymentMethod::Onchain { .. }))
 }
 
 fn first_onchain_method(methods: &[PaymentMethod]) -> Option<&PaymentMethod> {
-    methods.iter().find(|m| matches!(m, PaymentMethod::Onchain { .. }))
+    methods
+        .iter()
+        .find(|m| matches!(m, PaymentMethod::Onchain { .. }))
 }
 
 fn is_ark_available(methods: &[PaymentMethod]) -> bool {
-    methods.iter().any(|m| matches!(m, PaymentMethod::Ark { .. }))
+    methods
+        .iter()
+        .any(|m| matches!(m, PaymentMethod::Ark { .. }))
 }
 
 fn first_ark_method(methods: &[PaymentMethod]) -> Option<&PaymentMethod> {
-    methods.iter().find(|m| matches!(m, PaymentMethod::Ark { .. }))
+    methods
+        .iter()
+        .find(|m| matches!(m, PaymentMethod::Ark { .. }))
 }
 
 fn estimate_lightning_fee(amount_sats: u64) -> u64 {
@@ -424,15 +512,20 @@ mod tests {
             label: "Main".to_string(),
             network: crate::types::BitcoinNetwork::Mainnet,
             address: Some("bc1qold".to_string()),
-            silent_payment_pubkey: Some("sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq".to_string()),
+            silent_payment_pubkey: Some(
+                "sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq".to_string(),
+            ),
             pubkey_hint: None,
             descriptor_hint: None,
             address_list: vec![],
         };
-        
+
         let payload = build_qr_payload(&method, 100_000).unwrap();
         // Should prioritize silent_payment_pubkey over address
-        assert_eq!(payload, "bitcoin:sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq?amount=0.00100000");
+        assert_eq!(
+            payload,
+            "bitcoin:sp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq?amount=0.00100000"
+        );
     }
 
     #[test]
@@ -446,7 +539,7 @@ mod tests {
             descriptor_hint: None,
             address_list: vec![],
         };
-        
+
         let payload = build_qr_payload(&method, 50_000).unwrap();
         assert_eq!(payload, "bitcoin:bc1qold?amount=0.00050000");
     }
@@ -454,7 +547,10 @@ mod tests {
 #[wasm_bindgen(js_name = quote)]
 pub async fn quote_js(recipient: &str, amount_sats: f64) -> Result<JsValue, JsValue> {
     match quote(recipient, amount_sats as u64).await {
-        Ok(resp) => Ok(serde_wasm_bindgen::to_value(&resp).map_err(|e| JsValue::from_str(&e.to_string()))?),
+        Ok(resp) => {
+            Ok(serde_wasm_bindgen::to_value(&resp)
+                .map_err(|e| JsValue::from_str(&e.to_string()))?)
+        }
         Err(e) => Err(JsValue::from_str(&e)),
     }
 }

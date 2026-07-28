@@ -1,3 +1,4 @@
+#![allow(warnings)]
 mod commands;
 
 use anyhow::Result;
@@ -144,10 +145,7 @@ enum Command {
     },
 
     /// Generate an invite for an unregistered alias (no funds sent, no keys generated)
-    Invite { 
-        alias: String, 
-        amount_sats: u64,
-    },
+    Invite { alias: String, amount_sats: u64 },
 
     /// Claim an invite using a claim URL or an alias (generates local keys)
     Claim {
@@ -327,13 +325,16 @@ async fn main() -> Result<()> {
             onchain_address,
             ark_server,
             ark_pubkey,
-        } => commands::cmd_register(
-            &alias,
-            lightning_address.as_deref(),
-            onchain_address.as_deref(),
-            ark_server.as_deref(),
-            ark_pubkey.as_deref(),
-        ).await?,
+        } => {
+            commands::cmd_register(
+                &alias,
+                lightning_address.as_deref(),
+                onchain_address.as_deref(),
+                ark_server.as_deref(),
+                ark_pubkey.as_deref(),
+            )
+            .await?
+        }
         Command::Show {
             alias,
             verify_online,
@@ -424,7 +425,14 @@ async fn main() -> Result<()> {
             claim_url_or_alias,
             lightning_address,
             onchain_address,
-        } => commands::cmd_claim(&claim_url_or_alias, lightning_address.as_deref(), onchain_address.as_deref()).await?,
+        } => {
+            commands::cmd_claim(
+                &claim_url_or_alias,
+                lightning_address.as_deref(),
+                onchain_address.as_deref(),
+            )
+            .await?
+        }
         Command::Export { alias } => commands::cmd_export(&alias)?,
         Command::Import { file, url } => {
             commands::cmd_import(file.as_deref(), url.as_deref()).await?

@@ -89,7 +89,7 @@ pub async fn cmd_register(
         method_verifications: Vec::new(),
         hybrid_pubkey: None,
         pqc_required: false,
-            revoked: false,
+        revoked: false,
     };
 
     let signed = sign_profile(profile, &kp.secret_key)?;
@@ -128,17 +128,20 @@ pub async fn cmd_register(
         "Prove ownership of a method:  satspath prove {} --method-index 0",
         alias
     );
-    
+
     println!("Broadcasting to Nostr relays...");
     match satspath_core::resolvers::nostr::publish_profile(&signed, &kp.secret_key, None).await {
         Ok(count) => {
-            println!("✅ Successfully broadcasted profile to {} Nostr relays", count);
+            println!(
+                "✅ Successfully broadcasted profile to {} Nostr relays",
+                count
+            );
         }
         Err(e) => {
             println!("⚠  Warning: Failed to broadcast to Nostr: {}", e);
             println!("   Your profile is saved locally but may not be reachable by other peers.");
         }
     }
-    
+
     Ok(())
 }

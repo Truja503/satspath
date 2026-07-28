@@ -1,6 +1,11 @@
 //! Type definitions for WASM bindings — must match Rust satspath-core exactly
 
-#![allow(dead_code, clippy::new_without_default, clippy::needless_borrow, clippy::needless_question_mark)]
+#![allow(
+    dead_code,
+    clippy::new_without_default,
+    clippy::needless_borrow,
+    clippy::needless_question_mark
+)]
 use serde::{Deserialize, Serialize};
 
 /// Bitcoin network
@@ -204,11 +209,24 @@ pub enum ExecutionMode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum SwapDirective {
-    LightningPayment { target_ln_address: Option<String> },
-    SubmarineSwap { target_invoice: Option<String> },
-    ReverseSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
-    ChainSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
-    ArkTransfer { server: String, pubkey: String },
+    LightningPayment {
+        target_ln_address: Option<String>,
+    },
+    SubmarineSwap {
+        target_invoice: Option<String>,
+    },
+    ReverseSwap {
+        target_address: Option<String>,
+        silent_payment_pubkey: Option<String>,
+    },
+    ChainSwap {
+        target_address: Option<String>,
+        silent_payment_pubkey: Option<String>,
+    },
+    ArkTransfer {
+        server: String,
+        pubkey: String,
+    },
     ArkadeManual,
 }
 
@@ -240,9 +258,15 @@ pub enum QuoteResponse {
         execution: ExecutionMode,
         wallet_hint: String,
     },
-    NotRegistered { invite: Invite },
-    NoRoute { reason: String },
-    InvalidSignature { recipient: QuoteRecipient },
+    NotRegistered {
+        invite: Invite,
+    },
+    NoRoute {
+        reason: String,
+    },
+    InvalidSignature {
+        recipient: QuoteRecipient,
+    },
 }
 
 /// Recipient info in quote response

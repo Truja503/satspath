@@ -190,13 +190,19 @@ fn receive_payload_for(method: &PaymentMethod, amount_sats: Option<u64>) -> Resu
         PaymentMethod::Lightning {
             lnurl: Some(url), ..
         } => url.clone(),
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             match amount_sats {
                 Some(sats) => format!("bitcoin:{target}?amount={}", sats_to_btc(sats)),
                 None => format!("bitcoin:{target}"),
             }
-        },
+        }
         PaymentMethod::Ark { server, pubkey, .. } => match amount_sats {
             Some(sats) => format!(
                 "satspath:ark?server={}&pubkey={}&amount={}",
@@ -255,7 +261,7 @@ fn sign_and_store(state: &WalletState) -> Result<String> {
         method_verifications: Vec::new(),
         hybrid_pubkey: None,
         pqc_required: false,
-            revoked: false,
+        revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
     let fp = fingerprint_pubkey(pubkey)?;
@@ -311,31 +317,38 @@ pub fn cmd_wallet_rotate() -> Result<()> {
     let old_pubkey_hex = state.identity_pubkey.clone().ok_or_else(|| {
         anyhow::anyhow!("wallet not initialized — run `satspath wallet init` first")
     })?;
-    
+
     let old_secret = keystore::load_identity_key(&satspath_dir(), &old_pubkey_hex)?;
-    
+
     let new_kp = generate_identity_keypair();
     let new_pubkey_hex = hex::encode(new_kp.public_key.serialize());
     keystore::save_identity_key(&satspath_dir(), &new_kp.secret_key)?;
-    
+
     state.identity_pubkey = Some(new_pubkey_hex.clone());
     state.updated_at = Some(now());
-    
-    let alias = state.alias.as_ref().ok_or_else(|| anyhow::anyhow!("no alias"))?;
+
+    let alias = state
+        .alias
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("no alias"))?;
     let methods = build_methods(&state);
     if methods.is_empty() {
         anyhow::bail!("no receive methods set");
     }
-    
+
     let mut registry = open_registry()?;
     let current_sequence = registry
         .resolve_alias(alias)
         .map(|signed| signed.profile.sequence.unwrap_or(0))
         .unwrap_or(0);
-        
+
     let t = now();
-    let rotation = satspath_core::rotation::KeyRotation::create(old_pubkey_hex.clone(), &old_secret, new_pubkey_hex.clone())?;
-    
+    let rotation = satspath_core::rotation::KeyRotation::create(
+        old_pubkey_hex.clone(),
+        &old_secret,
+        new_pubkey_hex.clone(),
+    )?;
+
     let profile = PaymentProfile {
         sequence: Some(current_sequence + 1),
         alias: alias.clone(),
@@ -349,16 +362,19 @@ pub fn cmd_wallet_rotate() -> Result<()> {
         method_verifications: Vec::new(),
         hybrid_pubkey: None,
         pqc_required: false,
-            revoked: false,
+        revoked: false,
     };
-    
+
     let signed = sign_profile(profile, &new_kp.secret_key)?;
     registry.update_profile(signed)?;
     save_wallet(&state)?;
-    
+
     println!("Identity key rotated successfully.");
-    println!("New identity fingerprint: {}", fingerprint_pubkey(&new_pubkey_hex)?);
-    
+    println!(
+        "New identity fingerprint: {}",
+        fingerprint_pubkey(&new_pubkey_hex)?
+    );
+
     Ok(())
 }
 

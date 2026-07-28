@@ -314,12 +314,18 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
                     };
                     let now = chrono::Utc::now().timestamp();
                     validate_ark_receive_pointer(&pointer, now)?;
-                    if proof.is_some() && !verify_ark_ownership_proof(&profile.alias, &profile.identity_pubkey, &pointer, now)? {
+                    if proof.is_some()
+                        && !verify_ark_ownership_proof(
+                            &profile.alias,
+                            &profile.identity_pubkey,
+                            &pointer,
+                            now,
+                        )?
+                    {
                         return Err(SatsPathError::InvalidSignature);
                     }
                 }
             }
-
         }
     }
 

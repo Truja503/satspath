@@ -49,7 +49,6 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
         println!();
     }
 
-
     print!("Fetching mempool fees + selecting rail... ");
     let req = RouteRequest {
         alias: alias.to_string(),
@@ -135,8 +134,14 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
                 }
             }
         }
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             let uri = bitcoin_uri(&target, amount_sats);
             println!("  Scan to pay — Bitcoin on-chain ({} sats)", amount_sats);
             println!("  ─────────────────────────────────────────");

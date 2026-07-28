@@ -1,13 +1,13 @@
-use sha2::Sha256;
-use hmac::{Hmac, Mac};
 use crate::errors::{Result, SatsPathError};
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
 
 type HmacSha256 = Hmac<Sha256>;
 
 /// Default pepper for identifier hashing.
 /// In production, this MUST be replaced with a securely generated random value
 /// stored in a config file or environment variable.
-/// 
+///
 /// The default is a well-known value for development ONLY.
 const DEFAULT_PEPPER: &[u8] = b"satspath-dev-pepper-change-in-production";
 
@@ -43,15 +43,14 @@ pub fn validate_ascii_identifier(identifier: &str) -> Result<()> {
 
 /// Hash an identifier with HMAC-SHA256 using a secret pepper.
 /// This prevents rainbow table attacks on low-entropy identifiers (emails).
-/// 
+///
 /// The pepper is loaded from SATSPATH_PEPPER env var or uses a dev default.
 pub fn identifier_hash(identifier: &str) -> String {
     let canonical = canonical_identifier(identifier);
     let data = canonical.as_bytes();
     let pepper = get_pepper();
-    
-    let mut mac = HmacSha256::new_from_slice(&pepper)
-        .expect("HMAC key must be valid");
+
+    let mut mac = HmacSha256::new_from_slice(&pepper).expect("HMAC key must be valid");
     mac.update(data);
     hex::encode(mac.finalize().into_bytes())
 }
@@ -60,9 +59,8 @@ pub fn identifier_hash(identifier: &str) -> String {
 pub fn identifier_hash_with_pepper(identifier: &str, pepper: &[u8]) -> String {
     let canonical = canonical_identifier(identifier);
     let data = canonical.as_bytes();
-    
-    let mut mac = HmacSha256::new_from_slice(pepper)
-        .expect("HMAC key must be valid");
+
+    let mut mac = HmacSha256::new_from_slice(pepper).expect("HMAC key must be valid");
     mac.update(data);
     hex::encode(mac.finalize().into_bytes())
 }

@@ -1,3 +1,4 @@
+#![allow(warnings)]
 //! `satspathd` is a local receiver-profile daemon.
 //!
 //! It manages SatsPath profile identity and public receive pointers only. It
@@ -155,7 +156,6 @@ struct ConnectionView {
     detail: Option<String>,
 }
 
-
 #[derive(Debug, Serialize)]
 struct SafetyStatus {
     moves_funds: bool,
@@ -301,7 +301,7 @@ async fn main() -> Result<()> {
         .unwrap_or_else(default_home);
 
     fs::create_dir_all(&home).context("creating SATSPATH_HOME")?;
-    
+
     // SEC-04: Daemon API Authorization
     let macaroon_path = home.join("admin.macaroon");
     if std::env::var("SATSPATHD_AUTH_TOKEN").is_err() {
@@ -318,7 +318,7 @@ async fn main() -> Result<()> {
             std::env::set_var("SATSPATHD_AUTH_TOKEN", token.trim());
         }
     }
-    
+
     load_or_create_identity(&home)?;
 
     let state = AppState {
@@ -620,7 +620,7 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         method_verifications: vec![],
         hybrid_pubkey: None,
         pqc_required: false,
-            revoked: false,
+        revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
     registry.update_profile(signed)?;
@@ -852,7 +852,13 @@ fn status_response(state: &AppState) -> Result<StatusResponse> {
     if let Some(alias) = wallet.alias.as_deref() {
         if let Ok(registry) = Registry::open(&state.home) {
             if let Ok(signed) = registry.resolve_alias(alias) {
-                methods = signed.profile.methods.clone().into_iter().map(|m| m.method_name().to_string()).collect();
+                methods = signed
+                    .profile
+                    .methods
+                    .clone()
+                    .into_iter()
+                    .map(|m| m.method_name().to_string())
+                    .collect();
             }
         }
     }
@@ -1086,8 +1092,6 @@ fn set_owner_only(_path: &Path) -> Result<()> {
     Ok(())
 }
 
-
-
 fn print_startup_status(state: &AppState) -> Result<()> {
     let status = status_response(state)?;
     println!("satspathd node starting");
@@ -1163,13 +1167,18 @@ fn receive_view(state: &AppState, req: ReceiveRequest) -> Result<ReceiveView> {
         .clone()
         .ok_or_else(|| anyhow::anyhow!("no profile yet — set one via POST /v1/profile"))?;
     let methods = build_methods(&wallet, &state.network);
-    
+
     let method = if let Some(req_rail) = req.rail {
         let req_rail = req_rail.to_lowercase();
         methods
             .into_iter()
             .find(|m| m.method_name().to_lowercase() == req_rail)
-            .ok_or_else(|| anyhow::anyhow!("requested rail '{}' is not configured in your profile", req_rail))?
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "requested rail '{}' is not configured in your profile",
+                    req_rail
+                )
+            })?
     } else {
         methods
             .iter()
@@ -1191,7 +1200,7 @@ fn receive_view(state: &AppState, req: ReceiveRequest) -> Result<ReceiveView> {
     };
 
     let mut payload = receive_payload_for(&method)?;
-    
+
     // Append amount if requested
     if let Some(sats) = req.amount_sats {
         if matches!(method, PaymentMethod::Onchain { .. }) {
@@ -1220,10 +1229,16 @@ fn receive_payload_for(method: &PaymentMethod) -> Result<String> {
         PaymentMethod::Lightning {
             lnurl: Some(url), ..
         } => url.clone(),
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             format!("bitcoin:{target}")
-        },
+        }
         PaymentMethod::Ark { server, pubkey, .. } => {
             format!("satspath:ark?server={server}&pubkey={pubkey}")
         }
@@ -1329,12 +1344,13 @@ fn cors_origin_header() -> Header {
     // in the allowed list. Since tiny_http doesn't give us per-request headers easily,
     // we use the first allowed origin as default. In production, use a reverse proxy
     // (nginx/caddy) for proper multi-origin CORS.
-    let first_origin = origin.split(',').next().unwrap_or("http://localhost:5173").trim();
-    Header::from_bytes(
-        &b"Access-Control-Allow-Origin"[..],
-        first_origin.as_bytes(),
-    )
-    .expect("valid static header")
+    let first_origin = origin
+        .split(',')
+        .next()
+        .unwrap_or("http://localhost:5173")
+        .trim();
+    Header::from_bytes(&b"Access-Control-Allow-Origin"[..], first_origin.as_bytes())
+        .expect("valid static header")
 }
 
 fn cors_methods_header() -> Header {
@@ -1394,7 +1410,6 @@ fn bitcoin_network(network: &str) -> BitcoinNetwork {
         _ => BitcoinNetwork::Testnet,
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1618,8 +1633,14 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
             ..
         } => a.clone(),
         PaymentMethod::Lightning { lnurl: Some(u), .. } => u.clone(),
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             format!("bitcoin:{target}?amount={}", fmt_btc(amount_sats))
         }
         PaymentMethod::Ark { server, pubkey, .. } => {
@@ -1638,7 +1659,9 @@ fn broadcast(state: &AppState) -> Result<serde_json::Value> {
         anyhow::bail!("set your profile first (alias + methods) before broadcasting");
     }
     ensure_signed_profile(&state.home, &mut wallet, &state.network)?;
-    Ok(serde_json::json!({ "broadcasting": true, "status": "Nostr is the exclusive P2P layer. Profile saved." }))
+    Ok(
+        serde_json::json!({ "broadcasting": true, "status": "Nostr is the exclusive P2P layer. Profile saved." }),
+    )
 }
 
 fn ensure_signed_profile(home: &Path, wallet: &mut WalletState, network: &str) -> Result<()> {

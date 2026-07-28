@@ -32,8 +32,14 @@ impl ArkClient for MockArkClient {
         if !self.available {
             anyhow::bail!("Ark server unavailable");
         }
-        
-        let intent_id = format!("intent_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
+
+        let intent_id = format!(
+            "intent_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+        );
         let intent = SimulatedArkIntent {
             intent_id,
             pubkey: pubkey.to_string(),
@@ -41,7 +47,7 @@ impl ArkClient for MockArkClient {
             status: "waiting_for_payment".to_string(),
             server_url: self.server_url.clone(),
         };
-        
+
         Ok(serde_json::to_string(&intent)?)
     }
 }

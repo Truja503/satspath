@@ -28,8 +28,9 @@ mod tests {
         );
 
         let profile_value: serde_json::Value = serde_json::from_str(&profile_json).unwrap();
-        let canonical_bytes =
-            canonical_json::to_string(&profile_value).unwrap().into_bytes();
+        let canonical_bytes = canonical_json::to_string(&profile_value)
+            .unwrap()
+            .into_bytes();
 
         const DOMAIN_SEP: &[u8] = b"SatsPathProfileV1";
         let mut hasher = Sha256::new();
@@ -49,7 +50,10 @@ mod tests {
     #[test]
     fn valid_signature_returns_true() {
         let signed_json = make_signed_profile_json();
-        assert!(verify_signed_profile(&signed_json), "valid profile must verify");
+        assert!(
+            verify_signed_profile(&signed_json),
+            "valid profile must verify"
+        );
     }
 
     #[test]
@@ -99,7 +103,10 @@ mod tests {
         // "a_key" must appear before "z_key" in the canonical output
         let a_pos = s.find("a_key").unwrap();
         let z_pos = s.find("z_key").unwrap();
-        assert!(a_pos < z_pos, "canonical JSON must sort keys alphabetically");
+        assert!(
+            a_pos < z_pos,
+            "canonical JSON must sort keys alphabetically"
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
-use secp256k1::{Keypair, Message, PublicKey, Secp256k1, SecretKey, XOnlyPublicKey};
 use secp256k1::schnorr::Signature;
+use secp256k1::{Keypair, Message, PublicKey, Secp256k1, SecretKey, XOnlyPublicKey};
 use sha2::{Digest, Sha256};
 
 use crate::errors::{Result, SatsPathError};
@@ -56,7 +56,7 @@ pub fn sign_profile(
     Ok(SignedPaymentProfile {
         profile,
         signature: hex::encode(sig.serialize()),
-            hybrid_signature: None,
+        hybrid_signature: None,
     })
 }
 
@@ -74,8 +74,8 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
 
     let sig_bytes =
         hex::decode(&signed.signature).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
-    let sig = Signature::from_slice(&sig_bytes)
-        .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+    let sig =
+        Signature::from_slice(&sig_bytes).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
 
     let bytes = canonical_profile_bytes(&signed.profile)?;
     let mut hasher = Sha256::new();
@@ -84,14 +84,18 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
     let digest = hasher.finalize();
     let message = Message::from_digest(digest.into());
 
-    let classical_ok = secp.verify_schnorr(&sig, &message, &x_only_public_key).is_ok();
+    let classical_ok = secp
+        .verify_schnorr(&sig, &message, &x_only_public_key)
+        .is_ok();
     if !classical_ok {
         return Ok(false);
     }
 
     // 2. Post-Quantum verification (ML-DSA) if present or required
     if signed.profile.pqc_required {
-        if let (Some(hybrid_pubkey), Some(hybrid_sig)) = (&signed.profile.hybrid_pubkey, &signed.hybrid_signature) {
+        if let (Some(hybrid_pubkey), Some(hybrid_sig)) =
+            (&signed.profile.hybrid_pubkey, &signed.hybrid_signature)
+        {
             let pqc_ok = satspath_pqc::hybrid_sig::hybrid_verify(&bytes, hybrid_sig, hybrid_pubkey);
             if !pqc_ok {
                 return Ok(false);
@@ -100,7 +104,9 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
             // Missing PQC fields but required by profile
             return Ok(false);
         }
-    } else if let (Some(hybrid_pubkey), Some(hybrid_sig)) = (&signed.profile.hybrid_pubkey, &signed.hybrid_signature) {
+    } else if let (Some(hybrid_pubkey), Some(hybrid_sig)) =
+        (&signed.profile.hybrid_pubkey, &signed.hybrid_signature)
+    {
         // Optional verification if present
         let pqc_ok = satspath_pqc::hybrid_sig::hybrid_verify(&bytes, hybrid_sig, hybrid_pubkey);
         if !pqc_ok {
@@ -179,7 +185,7 @@ pub fn verify_message_signature(
 
     let pubkey_bytes =
         hex::decode(pubkey_hex).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
-    
+
     let x_only_public_key = if pubkey_bytes.len() == 32 {
         XOnlyPublicKey::from_slice(&pubkey_bytes)
             .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?
@@ -191,8 +197,8 @@ pub fn verify_message_signature(
 
     let sig_bytes =
         hex::decode(signature_hex).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
-    let sig = Signature::from_slice(&sig_bytes)
-        .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+    let sig =
+        Signature::from_slice(&sig_bytes).map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
 
     let digest = Sha256::digest(message.as_bytes());
     let msg = Message::from_digest(digest.into());

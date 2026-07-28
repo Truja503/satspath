@@ -198,7 +198,10 @@ pub struct SimulatedLightningExecutor;
 impl LightningExecutor for SimulatedLightningExecutor {
     async fn pay_invoice(&self, invoice: &str, amount_sats: u64) -> Result<()> {
         println!("  [Simulated Lightning Execution]");
-        println!("  Simulating payment of {} sats to invoice {}", amount_sats, invoice);
+        println!(
+            "  Simulating payment of {} sats to invoice {}",
+            amount_sats, invoice
+        );
         println!("  Payment successful! (Simulated)");
         Ok(())
     }
@@ -247,18 +250,28 @@ async fn exec_experimental(
             );
             println!("  Amount  : {} sats", amount_sats);
         }
-        SwapDirective::ChainSwap { target_address, silent_payment_pubkey } => {
+        SwapDirective::ChainSwap {
+            target_address,
+            silent_payment_pubkey,
+        } => {
             println!("  [Chain Swap] Ark/L1 -> L1");
-            let target = silent_payment_pubkey.as_deref().unwrap_or_else(|| target_address.as_deref().unwrap_or(""));
+            let target = silent_payment_pubkey
+                .as_deref()
+                .unwrap_or_else(|| target_address.as_deref().unwrap_or(""));
             println!(
                 "  Destination : {}",
                 display_value(target, mask_address, debug)
             );
             println!("  Amount      : {} sats", amount_sats);
         }
-        SwapDirective::ReverseSwap { target_address, silent_payment_pubkey } => {
+        SwapDirective::ReverseSwap {
+            target_address,
+            silent_payment_pubkey,
+        } => {
             println!("  [Reverse Swap] Lightning -> L1");
-            let target = silent_payment_pubkey.as_deref().unwrap_or_else(|| target_address.as_deref().unwrap_or(""));
+            let target = silent_payment_pubkey
+                .as_deref()
+                .unwrap_or_else(|| target_address.as_deref().unwrap_or(""));
             println!(
                 "  Destination : {}",
                 display_value(target, mask_address, debug)
@@ -314,15 +327,20 @@ fn payment_method_to_pointer(method: &PaymentMethod) -> Result<PaymentPointer> {
             }
         }
         PaymentMethod::Onchain {
-            address, silent_payment_pubkey, network, ..
+            address,
+            silent_payment_pubkey,
+            network,
+            ..
         } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             Ok(PaymentPointer::OnchainAddress {
                 network: *network,
                 address: target,
                 claim_policy: None,
             })
-        },
+        }
         PaymentMethod::Ark { server, pubkey, .. } => Ok(PaymentPointer::Ark {
             server: server.clone(),
             receiver_pubkey: pubkey.clone(),

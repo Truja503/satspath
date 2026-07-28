@@ -24,7 +24,7 @@ pub fn mask_identifier(alias: &str) -> String {
     if local.len() <= 2 {
         return format!("***@{}", domain);
     }
-    format!("{}***{}@{}", &local[..1], &local[local.len()-1..], domain)
+    format!("{}***{}@{}", &local[..1], &local[local.len() - 1..], domain)
 }
 
 #[cfg(test)]

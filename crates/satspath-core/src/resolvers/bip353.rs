@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use hickory_resolver::config::{ResolverConfig, ResolverOpts};
-use hickory_resolver::TokioAsyncResolver;
 use hickory_resolver::proto::rr::RecordType;
+use hickory_resolver::TokioAsyncResolver;
 use secp256k1::{rand, Keypair, Secp256k1};
 
 use crate::profile::{PaymentMethod, PaymentProfile};
@@ -42,7 +42,7 @@ impl ProfileResolver for Bip353Resolver {
         if parts.len() != 2 {
             return Err(SatsPathError::AliasNotFound(alias.to_string()));
         }
-        
+
         let username = parts[0];
         let domain = parts[1];
         let lookup_domain = format!("{username}.user._bitcoin-payment.{domain}");
@@ -51,8 +51,10 @@ impl ProfileResolver for Bip353Resolver {
         opts.validate = self.dnssec_required; // Enforce DNSSEC
 
         let resolver = TokioAsyncResolver::tokio(ResolverConfig::cloudflare(), opts);
-            
-        let lookup = resolver.lookup(lookup_domain, RecordType::TXT).await
+
+        let lookup = resolver
+            .lookup(lookup_domain, RecordType::TXT)
+            .await
             .map_err(|e| SatsPathError::NetworkError(format!("BIP-353 DNS lookup failed: {e}")))?;
 
         // Find the first valid bitcoin: URI
@@ -69,14 +71,19 @@ impl ProfileResolver for Bip353Resolver {
             }
         }
 
-        let uri = payment_uri.ok_or_else(|| SatsPathError::AliasNotFound("No valid BIP-353 bitcoin URI found in TXT records".into()))?;
+        let uri = payment_uri.ok_or_else(|| {
+            SatsPathError::AliasNotFound("No valid BIP-353 bitcoin URI found in TXT records".into())
+        })?;
 
         // Parse standard BIP-353 URI into methods
         let mut methods = Vec::new();
-        
+
         // Extract base address (Onchain)
         let mut uri_parts = uri.split('?');
-        let base = uri_parts.next().unwrap_or("").trim_start_matches("bitcoin:");
+        let base = uri_parts
+            .next()
+            .unwrap_or("")
+            .trim_start_matches("bitcoin:");
         if !base.is_empty() && base != "bc1q" {
             methods.push(PaymentMethod::Onchain {
                 label: "BIP-353 Onchain".into(),
@@ -88,12 +95,12 @@ impl ProfileResolver for Bip353Resolver {
                 address_list: vec![],
             });
         }
-        
+
         // Extract query parameters (Lightning)
         if let Some(query) = uri_parts.next() {
             let mut lno = None;
             let mut b12 = None;
-            
+
             for param in query.split('&') {
                 if let Some((k, v)) = param.split_once('=') {
                     match k {
@@ -103,8 +110,8 @@ impl ProfileResolver for Bip353Resolver {
                     }
                 }
             }
-            
-        // Remove lightning_address_proof since it doesn't exist
+
+            // Remove lightning_address_proof since it doesn't exist
             if lno.is_some() || b12.is_some() {
                 methods.push(PaymentMethod::Lightning {
                     label: "BIP-353 Lightning".into(),
@@ -115,9 +122,11 @@ impl ProfileResolver for Bip353Resolver {
                 });
             }
         }
-        
+
         if methods.is_empty() {
-             return Err(SatsPathError::AliasNotFound("BIP-353 URI contained no valid methods".into()));
+            return Err(SatsPathError::AliasNotFound(
+                "BIP-353 URI contained no valid methods".into(),
+            ));
         }
 
         let secp = Secp256k1::new();
@@ -127,7 +136,10 @@ impl ProfileResolver for Bip353Resolver {
             alias: alias.to_string(),
             identity_pubkey: kp.public_key().to_string(),
             methods,
-            updated_at: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as i64,
+            updated_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64,
             expires_at: None,
             sequence: Some(1),
             preferences: vec![],
@@ -139,8 +151,9 @@ impl ProfileResolver for Bip353Resolver {
             revoked: false,
         };
 
-        let signed = crate::crypto::sign_profile(profile, &kp.secret_key())
-            .map_err(|e| SatsPathError::SerializationError(format!("failed to sign synthetic profile: {e}")))?;
+        let signed = crate::crypto::sign_profile(profile, &kp.secret_key()).map_err(|e| {
+            SatsPathError::SerializationError(format!("failed to sign synthetic profile: {e}"))
+        })?;
 
         Ok(signed)
     }

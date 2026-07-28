@@ -50,10 +50,11 @@ pub fn sign_profile_json(profile_json: &str, secret_key_hex: &str) -> String {
         Ok(b) => b,
         Err(_) => return String::new(),
     };
-    let keypair = match secp256k1::Keypair::from_seckey_slice(&secp256k1::Secp256k1::new(), &sk_bytes) {
-        Ok(kp) => kp,
-        Err(_) => return String::new(),
-    };
+    let keypair =
+        match secp256k1::Keypair::from_seckey_slice(&secp256k1::Secp256k1::new(), &sk_bytes) {
+            Ok(kp) => kp,
+            Err(_) => return String::new(),
+        };
 
     let canonical_bytes = canonical_profile_json(profile_json);
     if canonical_bytes.is_empty() {
@@ -70,7 +71,8 @@ pub fn sign_profile_json(profile_json: &str, secret_key_hex: &str) -> String {
         Err(_) => return String::new(),
     };
 
-    let sig = secp256k1::Secp256k1::new().sign_schnorr_with_rng(&msg, &keypair, &mut rand_core::OsRng);
+    let sig =
+        secp256k1::Secp256k1::new().sign_schnorr_with_rng(&msg, &keypair, &mut rand_core::OsRng);
     hex::encode(sig.as_ref())
 }
 
@@ -117,7 +119,11 @@ pub fn generate_hybrid_identity_keypair() -> HybridIdentityKeypair {
 /// Sign a canonical JSON profile using Hybrid Signature (Schnorr + ML-DSA).
 /// Returns a JSON string of the `HybridSignature` object, or empty string on error.
 #[wasm_bindgen]
-pub fn sign_hybrid_profile_json(profile_json: &str, classical_sk_hex: &str, pqc_seed_hex: &str) -> String {
+pub fn sign_hybrid_profile_json(
+    profile_json: &str,
+    classical_sk_hex: &str,
+    pqc_seed_hex: &str,
+) -> String {
     let sk_bytes = match hex::decode(classical_sk_hex) {
         Ok(b) => b,
         Err(_) => return String::new(),
@@ -126,11 +132,12 @@ pub fn sign_hybrid_profile_json(profile_json: &str, classical_sk_hex: &str, pqc_
         Ok(b) => b,
         Err(_) => return String::new(),
     };
-    
-    let kp = match satspath_pqc::hybrid_sig::HybridSigningKeyPair::from_seeds(&sk_bytes, &seed_bytes) {
-        Some(k) => k,
-        None => return String::new(),
-    };
+
+    let kp =
+        match satspath_pqc::hybrid_sig::HybridSigningKeyPair::from_seeds(&sk_bytes, &seed_bytes) {
+            Some(k) => k,
+            None => return String::new(),
+        };
 
     let canonical_bytes = canonical_profile_json(profile_json);
     if canonical_bytes.is_empty() {
@@ -165,7 +172,11 @@ pub fn verify_signed_profile(signed_json: &str) -> bool {
         Err(_) => return false,
     };
 
-    let pubkey_str = match signed.profile.get("identity_pubkey").and_then(Value::as_str) {
+    let pubkey_str = match signed
+        .profile
+        .get("identity_pubkey")
+        .and_then(Value::as_str)
+    {
         Some(s) => s,
         None => return false,
     };

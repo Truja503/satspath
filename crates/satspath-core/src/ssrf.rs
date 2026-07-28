@@ -15,8 +15,8 @@ const BLOCKED_HOSTS: &[&str] = &[
     "localhost.localdomain",
     "ip6-localhost",
     "ip6-loopback",
-    "metadata.google.internal",       // GCP metadata
-    "169.254.169.254",                 // AWS/GCP/Azure metadata endpoint
+    "metadata.google.internal", // GCP metadata
+    "169.254.169.254",          // AWS/GCP/Azure metadata endpoint
     "metadata.google.internal.",
 ];
 
@@ -28,9 +28,8 @@ const BLOCKED_HOSTS: &[&str] = &[
 /// 3. If the host is an IP literal, it must not be in a private/reserved range.
 /// 4. Port must be standard (443 for HTTPS, 80 for HTTP) or in 1024..=65535.
 pub fn validate_url(url: &str, allow_http: bool) -> Result<()> {
-    let parsed = url::Url::parse(url).map_err(|e| {
-        SatsPathError::ValidationError(format!("Invalid URL: {e}"))
-    })?;
+    let parsed = url::Url::parse(url)
+        .map_err(|e| SatsPathError::ValidationError(format!("Invalid URL: {e}")))?;
 
     // ── Scheme ────────────────────────────────────────────────────────────
     match parsed.scheme() {
@@ -44,14 +43,17 @@ pub fn validate_url(url: &str, allow_http: bool) -> Result<()> {
     }
 
     // ── Host ──────────────────────────────────────────────────────────────
-    let host = parsed.host_str().ok_or_else(|| {
-        SatsPathError::ValidationError("URL has no host".to_string())
-    })?;
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| SatsPathError::ValidationError("URL has no host".to_string()))?;
 
     let host_lower = host.to_ascii_lowercase();
 
     // Block known internal hostnames
-    if BLOCKED_HOSTS.iter().any(|blocked| host_lower == *blocked || host_lower.ends_with(&format!(".{blocked}"))) {
+    if BLOCKED_HOSTS
+        .iter()
+        .any(|blocked| host_lower == *blocked || host_lower.ends_with(&format!(".{blocked}")))
+    {
         return Err(SatsPathError::ValidationError(format!(
             "Blocked host: {host} (internal/metadata endpoint)"
         )));
@@ -84,7 +86,7 @@ pub fn validate_url(url: &str, allow_http: bool) -> Result<()> {
         // Block well-known internal service ports
         match port {
             80 | 443 | 8080 | 8443 => {} // Standard web ports — OK
-            1024..=65535 => {}             // Ephemeral/high ports — OK
+            1024..=65535 => {}           // Ephemeral/high ports — OK
             _ => {
                 return Err(SatsPathError::ValidationError(format!(
                     "Blocked port {port} — likely an internal service"

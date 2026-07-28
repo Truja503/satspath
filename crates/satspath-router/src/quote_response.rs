@@ -153,9 +153,19 @@ pub fn build_qr_payload(method: &PaymentMethod, amount_sats: u64) -> satspath_co
                     "Lightning method has no address, LNURL, or BOLT12 pointer".into(),
                 )
             })?,
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target_address = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
-            format!("bitcoin:{}?amount={}", target_address, sats_to_btc(amount_sats))
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target_address = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
+            format!(
+                "bitcoin:{}?amount={}",
+                target_address,
+                sats_to_btc(amount_sats)
+            )
         }
         PaymentMethod::Ark { server, pubkey, .. } => format!(
             "ark:{}?server={}&amount={}",
@@ -205,7 +215,7 @@ where
                 // No sender key in preview mode; invite is unsigned (no sender identity binding)
                 // TTL: 24 hours
                 invite: create_invite(recipient, amount_sats, None, 24 * 3600),
-            }
+            };
         }
     };
 
@@ -498,10 +508,7 @@ mod tests {
     #[tokio::test]
     async fn no_usable_route_returns_no_route() {
         // On-chain only, fees too high (35 > 20), no Lightning/Ark fallback.
-        let (profile, secret) = base_profile(
-            "carol@satspath.dev",
-            vec![],
-        );
+        let (profile, secret) = base_profile("carol@satspath.dev", vec![]);
         let resolver = MockResolver {
             signed: Some(sign(profile, &secret)),
         };
@@ -606,10 +613,7 @@ mod tests {
             .unwrap()
             .contains("\"status\":\"not_registered\""));
 
-        let (p, s) = base_profile(
-            "c@d.e",
-            vec![],
-        );
+        let (p, s) = base_profile("c@d.e", vec![]);
         let route_resolver = MockResolver {
             signed: Some(sign(p, &s)),
         };

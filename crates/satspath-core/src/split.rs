@@ -21,9 +21,9 @@ impl SplitPaymentRequest {
     pub fn validate(&self) -> crate::Result<()> {
         let total: u16 = self.splits.iter().map(|s| s.percent as u16).sum();
         if total != 100 {
-            return Err(crate::SatsPathError::InvalidPaymentPointer(
-                format!("split percentages sum to {total}, expected 100"),
-            ));
+            return Err(crate::SatsPathError::InvalidPaymentPointer(format!(
+                "split percentages sum to {total}, expected 100"
+            )));
         }
         if self.splits.is_empty() {
             return Err(crate::SatsPathError::InvalidPaymentPointer(
@@ -32,9 +32,10 @@ impl SplitPaymentRequest {
         }
         for split in &self.splits {
             if split.percent == 0 {
-                return Err(crate::SatsPathError::InvalidPaymentPointer(
-                    format!("split for '{}' has 0%", split.alias),
-                ));
+                return Err(crate::SatsPathError::InvalidPaymentPointer(format!(
+                    "split for '{}' has 0%",
+                    split.alias
+                )));
             }
             crate::privacy::validate_ascii_identifier(&split.alias)?;
         }

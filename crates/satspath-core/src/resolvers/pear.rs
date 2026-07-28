@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use std::process::Command;
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 use crate::resolver::ProfileResolver;
 use crate::{Result, SatsPathError, SignedPaymentProfile};
@@ -23,7 +23,7 @@ impl PearResolver {
         let mut path = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         path.push("satspath-pear");
         path.push("index.js");
-        
+
         Self {
             pear_script_path: path,
         }
@@ -61,7 +61,7 @@ impl ProfileResolver for PearResolver {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        
+
         // Parse the JSON output as a SignedPaymentProfile
         match serde_json::from_str::<SignedPaymentProfile>(stdout.trim()) {
             Ok(profile) => {
@@ -70,7 +70,7 @@ impl ProfileResolver for PearResolver {
                     return Err(SatsPathError::AliasNotFound(alias.to_string()));
                 }
                 Ok(profile)
-            },
+            }
             Err(_) => Err(SatsPathError::AliasNotFound(alias.to_string())),
         }
     }

@@ -59,7 +59,6 @@ pub enum PaymentMethod {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         opaque_uri: Option<String>,
     },
-
 }
 
 fn default_bitcoin_network() -> BitcoinNetwork {

@@ -576,7 +576,7 @@ fn verify_onchain_signature(
             "OnchainAddressSignature applied to a non-onchain method".into(),
         ));
     };
-    
+
     // The key must (a) have signed the challenge and (b) actually derive the
     // claimed address — otherwise anyone could sign with an unrelated key.
     if !verify_message_signature(message, signature, pubkey)? {
@@ -584,9 +584,12 @@ fn verify_onchain_signature(
             "on-chain signature does not verify".into(),
         ));
     }
-    
-    let target_pointer = silent_payment_pubkey.as_deref().or(address.as_deref()).unwrap_or("");
-    
+
+    let target_pointer = silent_payment_pubkey
+        .as_deref()
+        .or(address.as_deref())
+        .unwrap_or("");
+
     // HIGH-01: Reject OnchainAddressSignature for silent payments since we don't
     // fully derive/validate SP scan keys yet.
     if target_pointer.starts_with("sp1") || target_pointer.starts_with("tsp1") {
@@ -594,7 +597,7 @@ fn verify_onchain_signature(
             "Cryptographic proof for silent payments is unsupported; use ManualAttestation".into(),
         ));
     }
-    
+
     if !pubkey_controls_address(pubkey, target_pointer, *network)? {
         return Err(SatsPathError::OwnershipProofInvalid(
             "signing key does not derive the claimed address or silent payment key".into(),
@@ -778,7 +781,7 @@ pub fn pubkey_controls_address(
 
     // Silent Payments (BIP-352) basic fallback validation
     if address.starts_with("sp1") || address.starts_with("tsp1") {
-        // Full decoding requires BIP-352 crate, for now we assume true 
+        // Full decoding requires BIP-352 crate, for now we assume true
         // if it's a silent payment format and the signature was valid over the challenge
         return Ok(true);
     }
@@ -973,7 +976,12 @@ pub fn evaluate_method_trust_for_profile(
             },
             expires_at: *expires_at,
         };
-        return match crate::ark::verify_ark_ownership_proof(&profile.alias, &profile.identity_pubkey, &pointer, now) {
+        return match crate::ark::verify_ark_ownership_proof(
+            &profile.alias,
+            &profile.identity_pubkey,
+            &pointer,
+            now,
+        ) {
             Ok(true) => MethodTrust::Verified(TrustTier::Cryptographic),
             Ok(false) => MethodTrust::Unverified,
             Err(SatsPathError::InvalidPaymentPointer(m)) if m.contains("expired") => {
@@ -1925,11 +1933,20 @@ mod tests {
     const ARK_SERVER: &str = "https://ark.example.com";
     const ARK_ALIAS: &str = "alice@example.com";
 
-    fn ark_method_with_inline_proof(identity_pubkey: &str, expires_at: Option<i64>, tamper: bool) -> PaymentMethod {
+    fn ark_method_with_inline_proof(
+        identity_pubkey: &str,
+        expires_at: Option<i64>,
+        tamper: bool,
+    ) -> PaymentMethod {
         let k = key();
         let method_descriptor = format!("ark:{}", k.pubkey_hex);
-        let message =
-            crate::ark::ark_ownership_challenge(ARK_ALIAS, &identity_pubkey, ARK_SERVER, &k.pubkey_hex, &method_descriptor);
+        let message = crate::ark::ark_ownership_challenge(
+            ARK_ALIAS,
+            identity_pubkey,
+            ARK_SERVER,
+            &k.pubkey_hex,
+            &method_descriptor,
+        );
         let signature = sign_message(&message, &k.secret);
         let proof = crate::ark::ArkOwnershipProof {
             message,
@@ -1952,7 +1969,10 @@ mod tests {
         }
     }
 
-    fn profile_with(identity_pubkey: String, methods: Vec<PaymentMethod>) -> crate::profile::PaymentProfile {
+    fn profile_with(
+        identity_pubkey: String,
+        methods: Vec<PaymentMethod>,
+    ) -> crate::profile::PaymentProfile {
         crate::profile::PaymentProfile {
             alias: ARK_ALIAS.into(),
             identity_pubkey,

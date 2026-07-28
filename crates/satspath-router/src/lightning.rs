@@ -18,10 +18,7 @@ pub fn is_lightning_available(method: &PaymentMethod) -> bool {
 
 /// Check if Lightning is available for a specific amount by checking LNURL min_sendable.
 /// Returns true if the amount is >= min_sendable (or if no LNURL to check).
-pub async fn is_lightning_available_for_amount(
-    method: &PaymentMethod,
-    amount_sats: u64,
-) -> bool {
+pub async fn is_lightning_available_for_amount(method: &PaymentMethod, amount_sats: u64) -> bool {
     match method {
         PaymentMethod::Lightning {
             lightning_address: Some(addr),
@@ -36,13 +33,18 @@ pub async fn is_lightning_available_for_amount(
             }
         }
         PaymentMethod::Lightning {
-            lnurl: Some(_), lightning_address: None, bolt12: None, ..
+            lnurl: Some(_),
+            lightning_address: None,
+            bolt12: None,
+            ..
         } => {
             // LNURL present but no lightning_address - we'd need to fetch the LNURL
             // For now, assume available (could fetch in future)
             true
         }
-        PaymentMethod::Lightning { bolt12: Some(_), .. } => {
+        PaymentMethod::Lightning {
+            bolt12: Some(_), ..
+        } => {
             // BOLT12 offers don't have a min_sendable until invoice is generated
             // Assume available for now
             true
@@ -72,9 +74,14 @@ pub fn is_lightning_available_for_amount_sync(method: &PaymentMethod, amount_sat
             ..
         } => amount_sats * 1_000 >= DEFAULT_MIN_SENDABLE_MSATS,
         PaymentMethod::Lightning {
-            lnurl: Some(_), lightning_address: None, bolt12: None, ..
+            lnurl: Some(_),
+            lightning_address: None,
+            bolt12: None,
+            ..
         } => true, // Can't check without fetching
-        PaymentMethod::Lightning { bolt12: Some(_), .. } => true, // BOLT12: no min until invoice
+        PaymentMethod::Lightning {
+            bolt12: Some(_), ..
+        } => true, // BOLT12: no min until invoice
         _ => false,
     }
 }

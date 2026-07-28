@@ -1,10 +1,10 @@
-use bitcoin::secp256k1::{PublicKey, Secp256k1, SecretKey, Scalar};
-use bitcoin::Network;
-use anyhow::{Result, anyhow};
-use serde::{Deserialize, Serialize};
+use anyhow::{anyhow, Result};
 use bech32::ToBase32;
-use sha2::{Sha256, Digest};
+use bitcoin::secp256k1::{PublicKey, Scalar, Secp256k1, SecretKey};
+use bitcoin::Network;
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 /// Silent Payment (BIP-352) Scan Public Key (sp1q...)
 /// This is the scan key that allows the recipient to detect payments
@@ -74,7 +74,7 @@ pub struct SilentPayment {
 }
 
 /// BIP-352 Silent Payment derivation
-/// 
+///
 /// Silent Payment address generation:
 /// 1. Recipient has scan key (scan_pubkey) and spend key (spend_pubkey)
 /// 2. Sender creates a shared secret: sender_privkey * recipient_scan_pubkey
@@ -100,49 +100,56 @@ impl SilentPayment {
             network,
         }
     }
-    
+
     /// Create the silent payment address for the recipient
-/// This is the address the sender would use to send to the recipient
-    pub fn recipient_address(scan_pubkey: &str, spend_pubkey: &str) -> Result<String, anyhow::Error> {
+    /// This is the address the sender would use to send to the recipient
+    pub fn recipient_address(
+        scan_pubkey: &str,
+        spend_pubkey: &str,
+    ) -> Result<String, anyhow::Error> {
         // BIP-352: Silent Payment address = sp1q + bech32m(spend_pubkey + scan_pubkey)
         // This is a simplified version - full implementation needs bech32m encoding
         let combined = format!("{}{}", spend_pubkey, scan_pubkey);
         // In practice, this uses bech32m encoding with "sp" prefix
         Ok(format!("sp1q{}", combined[..70].to_lowercase())) // Placeholder
     }
-    
+
     /// Derive the tweaked public key for a silent payment output
-/// 
-/// shared_secret = sender_privkey * recipient_scan_pubkey
-/// tweaked_pubkey = recipient_spend_pubkey + hash(shared_secret) * G
-pub fn derive_tweaked_pubkey(
-    sender_privkey: &SecretKey,
-    recipient_scan_pubkey: &PublicKey,
-    recipient_spend_pubkey: &PublicKey,
-) -> Result<PublicKey, anyhow::Error> {
-    let secp = Secp256k1::new();
-    
-    // Shared secret = sender_privkey * recipient_scan_pubkey
-    let sender_scalar = Scalar::from_be_bytes(sender_privkey.secret_bytes()).map_err(|e| anyhow!("Invalid scalar: {}", e))?;
-    let shared_secret = recipient_scan_pubkey.mul_tweak(&secp, &sender_scalar)
-        .map_err(|e| anyhow!("Failed to compute shared secret: {}", e))?;
-    
-    // Hash the shared secret's x-coordinate to get a scalar for tweaking
-    let shared_secret_bytes = shared_secret.serialize();
-    let mut hasher = Sha256::new();
-    hasher.update(&shared_secret_bytes[1..]); // Skip the 0x02/0x03 prefix, use x-coordinate only
-    let tweak_bytes: [u8; 32] = hasher.finalize().into();
-    let tweak_scalar = Scalar::from_be_bytes(tweak_bytes).map_err(|e| anyhow!("Invalid tweak scalar: {}", e))?;
-    
-    // Tweaked pubkey = recipient_spend_pubkey + tweak_scalar * G
-    let tweaked = recipient_spend_pubkey.add_exp_tweak(&secp, &tweak_scalar)
-        .map_err(|e| anyhow!("Failed to tweak public key: {}", e))?;
-    
-    Ok(tweaked)
-}
-    
+    ///
+    /// shared_secret = sender_privkey * recipient_scan_pubkey
+    /// tweaked_pubkey = recipient_spend_pubkey + hash(shared_secret) * G
+    pub fn derive_tweaked_pubkey(
+        sender_privkey: &SecretKey,
+        recipient_scan_pubkey: &PublicKey,
+        recipient_spend_pubkey: &PublicKey,
+    ) -> Result<PublicKey, anyhow::Error> {
+        let secp = Secp256k1::new();
+
+        // Shared secret = sender_privkey * recipient_scan_pubkey
+        let sender_scalar = Scalar::from_be_bytes(sender_privkey.secret_bytes())
+            .map_err(|e| anyhow!("Invalid scalar: {}", e))?;
+        let shared_secret = recipient_scan_pubkey
+            .mul_tweak(&secp, &sender_scalar)
+            .map_err(|e| anyhow!("Failed to compute shared secret: {}", e))?;
+
+        // Hash the shared secret's x-coordinate to get a scalar for tweaking
+        let shared_secret_bytes = shared_secret.serialize();
+        let mut hasher = Sha256::new();
+        hasher.update(&shared_secret_bytes[1..]); // Skip the 0x02/0x03 prefix, use x-coordinate only
+        let tweak_bytes: [u8; 32] = hasher.finalize().into();
+        let tweak_scalar = Scalar::from_be_bytes(tweak_bytes)
+            .map_err(|e| anyhow!("Invalid tweak scalar: {}", e))?;
+
+        // Tweaked pubkey = recipient_spend_pubkey + tweak_scalar * G
+        let tweaked = recipient_spend_pubkey
+            .add_exp_tweak(&secp, &tweak_scalar)
+            .map_err(|e| anyhow!("Failed to tweak public key: {}", e))?;
+
+        Ok(tweaked)
+    }
+
     /// Create a silent payment output
-    /// 
+    ///
     /// The sender:
     /// 1. Computes shared secret = sender_privkey * recipient_scan_pubkey
     /// 2. Tweaks recipient's spend_pubkey with shared_secret
@@ -161,9 +168,9 @@ pub fn derive_tweaked_pubkey(
             shared_secret: None,
         })
     }
-    
+
     /// Detect silent payments addressed to the recipient
-    /// 
+    ///
     /// The recipient scans the blockchain:
     /// 1. For each transaction, compute shared_secret = scan_privkey * input_pubkey
     /// 2. For each output, check if output_pubkey == spend_pubkey + shared_secret * G
@@ -175,21 +182,22 @@ pub fn derive_tweaked_pubkey(
     ) -> Result<Vec<SilentPaymentOutput>, anyhow::Error> {
         let _secp = Secp256k1::new();
         let detected = Vec::new();
-        
+
         for (script_pubkey, _amount_sats) in tx_outputs {
             // Check if this is a P2TR output
-            if script_pubkey.starts_with("5120") { // P2TR marker
+            if script_pubkey.starts_with("5120") {
+                // P2TR marker
                 // Extract the public key from the script
                 let output_pubkey_hex = &script_pubkey[4..70]; // Skip "5120" (OP_1 OP_32)
                 let _output_pubkey = PublicKey::from_slice(&hex::decode(output_pubkey_hex)?)
                     .map_err(|e| anyhow!("Failed to parse output pubkey: {}", e))?;
-                
+
                 // We need the input pubkeys to compute shared secrets
                 // This is simplified - in practice, you'd iterate over all inputs
                 // For now, this is a placeholder
             }
         }
-        
+
         Ok(detected)
     }
 }
@@ -197,29 +205,31 @@ pub fn derive_tweaked_pubkey(
 /// Generate a new silent payment key pair (scan + spend)
 pub fn generate_silent_payment_keys() -> Result<(String, String, String, String), anyhow::Error> {
     let secp = Secp256k1::new();
-    
+
     // Generate scan key pair
     let scan_privkey = SecretKey::new(&mut OsRng);
     let scan_pubkey = PublicKey::from_secret_key(&secp, &scan_privkey);
-    
+
     // Generate spend key pair
     let spend_privkey = SecretKey::new(&mut OsRng);
     let spend_pubkey = PublicKey::from_secret_key(&secp, &spend_privkey);
-    
+
     Ok((
-        hex::encode(scan_privkey.secret_bytes()),  // scan private key
-        hex::encode(scan_pubkey.serialize()),      // scan public key
+        hex::encode(scan_privkey.secret_bytes()), // scan private key
+        hex::encode(scan_pubkey.serialize()),     // scan public key
         hex::encode(spend_privkey.secret_bytes()), // spend private key
-        hex::encode(spend_pubkey.serialize()),     // spend public key
+        hex::encode(spend_pubkey.serialize()),    // spend public key
     ))
 }
 
 /// Parse a silent payment scan public key (sp1q...)
 pub fn parse_silent_payment_scan_key(scan_key: &str) -> Result<PublicKey, anyhow::Error> {
     if !scan_key.starts_with("sp1q") {
-        return Err(anyhow!("Invalid silent payment scan key: must start with 'sp1q'"));
+        return Err(anyhow!(
+            "Invalid silent payment scan key: must start with 'sp1q'"
+        ));
     }
-    
+
     // Decode bech32m (simplified)
     // In practice, use bech32 crate
     let data = &scan_key[4..]; // Remove "sp1q" prefix
@@ -228,37 +238,39 @@ pub fn parse_silent_payment_scan_key(scan_key: &str) -> Result<PublicKey, anyhow
 }
 
 /// Create a silent payment address from scan and spend public keys
-pub fn create_silent_payment_address(scan_pubkey: &PublicKey, spend_pubkey: &PublicKey) -> Result<String, anyhow::Error> {
+pub fn create_silent_payment_address(
+    scan_pubkey: &PublicKey,
+    spend_pubkey: &PublicKey,
+) -> Result<String, anyhow::Error> {
     // BIP-352: sp1q + bech32m(spend_pubkey || scan_pubkey)
     // The silent payment address format:
     // sp1q + bech32m(spend_pubkey_bytes || scan_pubkey_bytes)
-    
+
     let mut combined = Vec::new();
     combined.extend_from_slice(&spend_pubkey.serialize());
     combined.extend_from_slice(&scan_pubkey.serialize());
-    
+
     // Encode as bech32m with "sp" prefix
     // This is a simplified version - full implementation needs bech32 crate
     let encoded = bech32::encode("sp", combined.to_base32(), bech32::Variant::Bech32m)
         .map_err(|e| anyhow!("Failed to encode silent payment address: {}", e))?;
-    
+
     Ok(encoded)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::RngCore;
-    
+
     #[test]
     fn test_generate_silent_payment_keys() {
         let (scan_priv, scan_pub, spend_priv, spend_pub) = generate_silent_payment_keys().unwrap();
         assert_eq!(scan_priv.len(), 64); // 32 bytes = 64 hex chars
-        assert_eq!(scan_pub.len(), 66);  // 33 bytes = 66 hex chars (compressed)
+        assert_eq!(scan_pub.len(), 66); // 33 bytes = 66 hex chars (compressed)
         assert_eq!(spend_priv.len(), 64);
         assert_eq!(spend_pub.len(), 66);
     }
-    
+
     #[test]
     fn test_parse_silent_payment_scan_key() {
         let (_, scan_pub, _, _) = generate_silent_payment_keys().unwrap();

@@ -9,7 +9,7 @@ use satspath_core::{
         assert_mainnet_preview_safe, validate_amount_sats, validate_bitcoin_address,
         validate_compressed_pubkey, validate_public_profile,
     },
-    BitcoinNetwork, ExecutionMode, PaymentMethod, SatsPathError, SignedPaymentProfile, 
+    BitcoinNetwork, ExecutionMode, PaymentMethod, SatsPathError, SignedPaymentProfile,
 };
 use satspath_router::{
     fetch_invoice, fetch_lnurl_metadata, lightning::verify_invoice_amount, select_route,
@@ -296,7 +296,9 @@ async fn method_preview(
             if *network != BitcoinNetwork::Mainnet {
                 anyhow::bail!("mainnet preview rejected non-mainnet on-chain address.");
             }
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             validate_bitcoin_address(&target, BitcoinNetwork::Mainnet)
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             let qr = bitcoin_uri(&target, amount_sats);

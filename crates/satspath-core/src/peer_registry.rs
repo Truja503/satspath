@@ -126,11 +126,17 @@ impl PeerRecord {
                         });
                     }
                 }
-                crate::profile::PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
+                crate::profile::PaymentMethod::Onchain {
+                    address,
+                    silent_payment_pubkey,
+                    ..
+                } => {
                     if onchain.is_none() {
                         onchain = Some(OnchainPointer {
                             network: "mainnet".into(),
-                            address: silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default()),
+                            address: silent_payment_pubkey
+                                .clone()
+                                .unwrap_or_else(|| address.clone().unwrap_or_default()),
                         });
                     }
                 }
