@@ -2,6 +2,44 @@ use async_trait::async_trait;
 
 use crate::privacy::canonical_identifier;
 use crate::{Result, SatsPathError, SignedPaymentProfile};
+use serde::{Deserialize, Serialize};
+
+use crate::transparency::{
+    IdentifierAttestation, MerkleConsistencyProof, MerkleInclusionProof, NameEvent,
+    TransparencyCheckpoint,
+};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolverSource {
+    LocalRegistry,
+    Http,
+    Bip353,
+    Nostr,
+    P2p,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationStates {
+    pub profile_signature_verified: bool,
+    pub identifier_verified: bool,
+    pub key_continuity_verified: bool,
+    pub transparency_inclusion_verified: bool,
+    pub checkpoint_consistency_verified: bool,
+    pub payment_methods_verified: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedTransparentProfile {
+    pub signed_profile: SignedPaymentProfile,
+    pub latest_event: NameEvent,
+    pub inclusion_proof: MerkleInclusionProof,
+    pub checkpoint: TransparencyCheckpoint,
+    pub consistency_proof: Option<MerkleConsistencyProof>,
+    pub identifier_attestation: Option<IdentifierAttestation>,
+    pub resolver_source: ResolverSource,
+    pub verification: VerificationStates,
+}
 
 /// A resolver capable of resolving a SatsPath alias to a `SignedPaymentProfile`.
 ///

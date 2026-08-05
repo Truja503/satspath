@@ -34,7 +34,9 @@ use satspath_core::validation::{
     validate_compressed_pubkey, validate_lightning_address,
 };
 use satspath_core::{
-    BitcoinNetwork, PaymentMethod, PaymentProfile, SatsPathError, SignedPaymentProfile,
+    BitcoinNetwork, CheckpointStore, MerkleConsistencyProof, MerkleInclusionProof, NameAction,
+    NameEvent, PaymentMethod, PaymentProfile, ResolvedTransparentProfile, ResolverSource,
+    SatsPathError, SignedPaymentProfile, TransparencyLog, VerificationStates,
 };
 use satspath_router::fees::fetch_fee_estimate;
 use satspath_router::select_priority_route;
@@ -282,6 +284,16 @@ struct ErrorResponse {
     error: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct InclusionVerifyRequest {
+    proof: MerkleInclusionProof,
+}
+
+#[derive(Debug, Deserialize)]
+struct ConsistencyVerifyRequest {
+    proof: MerkleConsistencyProof,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -374,10 +386,14 @@ fn check_auth(request: &Request) -> anyhow::Result<()> {
 
 async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let method = request.method().clone();
-    let path = request.url().split('?').next().unwrap_or("/").to_string();
+    let raw_url = request.url().to_string();
+    let path = raw_url.split('?').next().unwrap_or("/").to_string();
 
     // SEC: Auth check for profile mutations (admin)
-    if path.starts_with("/v1/profile") && method != Method::Get && method != Method::Options {
+    if (path.starts_with("/v1/profile") || path == "/v1/transparency/anchors")
+        && method != Method::Get
+        && method != Method::Options
+    {
         if let Err(e) = check_auth(&request) {
             let _ = request.respond(json_error(StatusCode(401), e));
             return Ok(());
@@ -405,6 +421,97 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         (Method::Get, "/v1/peers") => json_result(StatusCode(200), peers_response(state)),
         (Method::Get, "/v1/connections") => {
             json_result(StatusCode(200), connections_response(state))
+        }
+        (Method::Get, "/v1/transparency/status") => json_result(
+            StatusCode(200),
+            transparency_log(state).and_then(|log| log.status().map_err(Into::into)),
+        ),
+        (Method::Get, "/v1/transparency/checkpoints") => json_result(
+            StatusCode(200),
+            transparency_log(state).map(|log| paginated(&raw_url, log.checkpoints())),
+        ),
+        (Method::Get, "/v1/transparency/events") => json_result(
+            StatusCode(200),
+            transparency_log(state).map(|log| paginated(&raw_url, log.events())),
+        ),
+        (Method::Get, p) if p.starts_with("/v1/transparency/checkpoints/") => {
+            let hash = p.trim_start_matches("/v1/transparency/checkpoints/");
+            json_result(
+                StatusCode(200),
+                transparency_log(state).and_then(|log| {
+                    log.checkpoints()
+                        .iter()
+                        .find(|c| c.checkpoint_hash().ok().as_deref() == Some(hash))
+                        .cloned()
+                        .ok_or_else(|| anyhow::anyhow!("checkpoint not found"))
+                }),
+            )
+        }
+        (Method::Get, p) if p.starts_with("/v1/transparency/events/") => {
+            let hash = p.trim_start_matches("/v1/transparency/events/");
+            json_result(
+                StatusCode(200),
+                transparency_log(state).and_then(|log| {
+                    log.event(hash).map_err(Into::into).and_then(|e| {
+                        e.cloned()
+                            .ok_or_else(|| SatsPathError::AliasNotFound(hash.into()))
+                            .map_err(Into::into)
+                    })
+                }),
+            )
+        }
+        (Method::Get, p) if p.starts_with("/v1/transparency/identifiers/") => {
+            let identifier = p.trim_start_matches("/v1/transparency/identifiers/");
+            json_result(StatusCode(200), transparency_log(state).map(|log| {
+                let events: Vec<_> = log.history(identifier).into_iter().cloned().collect();
+                serde_json::json!({"identifier_hash": identifier, "latest": events.last(), "history": events})
+            }))
+        }
+        (Method::Get, p) if p.starts_with("/v1/transparency/inclusion/") => {
+            let hash = p.trim_start_matches("/v1/transparency/inclusion/");
+            json_result(
+                StatusCode(200),
+                transparency_log(state)
+                    .and_then(|log| log.inclusion(hash, None).map_err(Into::into)),
+            )
+        }
+        (Method::Get, p) if p.starts_with("/v1/transparency/anchors/") => {
+            let txid = p.trim_start_matches("/v1/transparency/anchors/");
+            json_result(
+                StatusCode(200),
+                transparency_log(state).and_then(|log| {
+                    log.checkpoints()
+                        .iter()
+                        .filter_map(|c| c.bitcoin_anchor.as_ref())
+                        .find(|a| a.txid == txid)
+                        .cloned()
+                        .ok_or_else(|| anyhow::anyhow!("anchor not found"))
+                }),
+            )
+        }
+        (Method::Post, "/v1/transparency/anchors") => match anchor_latest_checkpoint(state).await {
+            Ok(anchor) => json_response(StatusCode(200), &anchor),
+            Err(e) => json_error(StatusCode(400), e),
+        },
+        (Method::Get, "/v1/transparency/consistency") => {
+            json_result(StatusCode(200), consistency_from_query(state, &raw_url))
+        }
+        (Method::Post, "/v1/transparency/verify/inclusion") => {
+            match read_json::<InclusionVerifyRequest>(&mut request).and_then(|body| {
+                satspath_core::transparency::verify_inclusion_proof(&body.proof).map_err(Into::into)
+            }) {
+                Ok(valid) => json_response(StatusCode(200), &serde_json::json!({"valid": valid})),
+                Err(e) => json_error(StatusCode(400), e),
+            }
+        }
+        (Method::Post, "/v1/transparency/verify/consistency") => {
+            match read_json::<ConsistencyVerifyRequest>(&mut request).and_then(|body| {
+                satspath_core::transparency::verify_consistency_proof(&body.proof)
+                    .map_err(Into::into)
+            }) {
+                Ok(valid) => json_response(StatusCode(200), &serde_json::json!({"valid": valid})),
+                Err(e) => json_error(StatusCode(400), e),
+            }
         }
         (Method::Put, "/v1/profile") | (Method::Post, "/v1/profile") => {
             match read_json::<ProfileUpdateRequest>(&mut request)
@@ -474,6 +581,52 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     };
     request.respond(response)?;
     Ok(())
+}
+
+fn transparency_log(state: &AppState) -> Result<TransparencyLog> {
+    Ok(TransparencyLog::open(&state.home.join("transparency"))?)
+}
+
+fn query_u64(url: &str, name: &str) -> Option<u64> {
+    url.split_once('?')?.1.split('&').find_map(|part| {
+        let (key, value) = part.split_once('=')?;
+        (key == name).then(|| value.parse().ok()).flatten()
+    })
+}
+
+fn paginated<T: Clone + Serialize>(url: &str, items: &[T]) -> serde_json::Value {
+    let offset = query_u64(url, "offset")
+        .unwrap_or(0)
+        .min(items.len() as u64) as usize;
+    let limit = query_u64(url, "limit").unwrap_or(50).clamp(1, 200) as usize;
+    let page: Vec<_> = items.iter().skip(offset).take(limit).cloned().collect();
+    serde_json::json!({"items": page, "offset": offset, "limit": limit, "total": items.len()})
+}
+
+fn consistency_from_query(state: &AppState, url: &str) -> Result<MerkleConsistencyProof> {
+    let from = query_u64(url, "from").ok_or_else(|| anyhow::anyhow!("missing from tree size"))?;
+    let to = query_u64(url, "to").ok_or_else(|| anyhow::anyhow!("missing to tree size"))?;
+    Ok(transparency_log(state)?.consistency(from, to)?)
+}
+
+async fn anchor_latest_checkpoint(
+    state: &AppState,
+) -> Result<satspath_core::TransparencyBitcoinAnchor> {
+    let mut log = transparency_log(state)?;
+    let checkpoint = log
+        .checkpoints()
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("no checkpoint to anchor"))?;
+    let checkpoint_hash = checkpoint.checkpoint_hash()?;
+    let client = satspath_core::transparency::RegtestAnchorClient::from_env()?;
+    let anchor = client.anchor_checkpoint(&checkpoint_hash).await?;
+    if !anchor.verified {
+        anyhow::bail!("regtest anchor could not be verified after confirmation");
+    }
+    let operator = load_or_create_transparency_operator(&state.home)?;
+    log.attach_latest_anchor(anchor.clone(), &operator)?;
+    Ok(anchor)
 }
 
 fn update_profile(state: &AppState, body: ProfileUpdateRequest) -> Result<ProfileResponse> {
@@ -600,8 +753,9 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
     }
 
     let mut registry = Registry::open(home)?;
-    let current_sequence = registry
-        .resolve_alias(&alias)
+    let existing = registry.resolve_alias(&alias).ok().cloned();
+    let current_sequence = existing
+        .as_ref()
         .map(|signed| signed.profile.sequence.unwrap_or(0))
         .unwrap_or(0);
 
@@ -609,7 +763,7 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
     let t = now();
     let profile = PaymentProfile {
         sequence: Some(current_sequence + 1),
-        alias,
+        alias: alias.clone(),
         identity_pubkey,
         methods,
         updated_at: t,
@@ -623,16 +777,128 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
-    registry.update_profile(signed)?;
+    let mut log = transparency_log_at(home)?;
+    let history = log.history(&satspath_core::privacy::identifier_hash(&alias));
+    let previous_event_hash = history.last().map(|event| event.event_hash()).transpose()?;
+    let mut event = NameEvent {
+        version: 1,
+        identifier_hash: satspath_core::privacy::identifier_hash(&alias),
+        action: if history.is_empty() {
+            NameAction::Register
+        } else {
+            NameAction::UpdateProfile
+        },
+        identity_pubkey: signed.profile.identity_pubkey.clone(),
+        profile_hash: satspath_core::transparency::profile_hash(&signed)?,
+        sequence: history.len() as u64,
+        previous_event_hash,
+        created_at: t,
+        identifier_attestation_hash: None,
+        rotation: signed.profile.rotation.clone(),
+        owner_signature: String::new(),
+    };
+    event.sign(&secret)?;
+    log.append(event, &signed)?;
+    if existing.is_some() {
+        registry.update_profile_for(&alias, signed)?;
+    } else {
+        registry.register_profile_for(&alias, signed)?;
+    }
+    let operator = load_or_create_transparency_operator(home)?;
+    log.create_checkpoint(&operator)?;
     Ok(())
 }
 
-fn resolve_profile(state: &AppState, alias: &str) -> Result<SignedPaymentProfile> {
+fn transparency_log_at(home: &Path) -> Result<TransparencyLog> {
+    Ok(TransparencyLog::open(&home.join("transparency"))?)
+}
+
+fn load_or_create_transparency_operator(home: &Path) -> Result<secp256k1::SecretKey> {
+    let dir = home.join("transparency");
+    fs::create_dir_all(&dir)?;
+    let path = dir.join("operator.key");
+    if path.exists() {
+        let bytes = hex::decode(fs::read_to_string(path)?.trim())?;
+        return secp256k1::SecretKey::from_slice(&bytes).map_err(Into::into);
+    }
+    let key = generate_identity_keypair().secret_key;
+    let tmp = path.with_extension("key.tmp");
+    fs::write(&tmp, hex::encode(key.secret_bytes()))?;
+    #[cfg(unix)]
+    set_owner_only(&tmp).ok();
+    fs::rename(tmp, &path)?;
+    #[cfg(unix)]
+    set_owner_only(&path).ok();
+    Ok(key)
+}
+
+fn resolve_profile(state: &AppState, alias: &str) -> Result<ResolvedTransparentProfile> {
     let signed = Registry::open(&state.home)?.resolve_alias(alias)?.clone();
-    if !verify_signed_profile(&signed)? {
+    let profile_signature_verified = verify_signed_profile(&signed)?;
+    if !profile_signature_verified {
         anyhow::bail!("stored profile signature is invalid");
     }
-    Ok(signed)
+    let log = transparency_log(state)?;
+    let identifier_hash = satspath_core::privacy::identifier_hash(alias);
+    let history: Vec<_> = log.history(&identifier_hash).into_iter().cloned().collect();
+    satspath_core::transparency::verify_identifier_history(&history)?;
+    let latest_event = history
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("profile has no transparency history"))?;
+    if !satspath_core::transparency::verify_event_profile(&latest_event, &signed)? {
+        anyhow::bail!("profile does not match its latest transparency event");
+    }
+    let event_hash = latest_event.event_hash()?;
+    let inclusion_proof = log.inclusion(&event_hash, None)?;
+    let transparency_inclusion_verified =
+        satspath_core::transparency::verify_inclusion_proof(&inclusion_proof)?;
+    if !transparency_inclusion_verified {
+        anyhow::bail!("invalid transparency inclusion proof");
+    }
+    let checkpoint = log
+        .checkpoints()
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("transparency checkpoint unavailable"))?;
+    if !satspath_core::transparency::verify_checkpoint(&checkpoint)? {
+        anyhow::bail!("invalid checkpoint signature");
+    }
+    let pins = CheckpointStore::new(&state.home).load()?;
+    let pinned = pins
+        .iter()
+        .find(|p| p.operator_pubkey == checkpoint.operator_pubkey);
+    let consistency_proof = pinned
+        .filter(|p| p.tree_size < checkpoint.log_size)
+        .map(|p| log.consistency(p.tree_size, checkpoint.log_size))
+        .transpose()?;
+    if let Some(pin) = pinned {
+        satspath_core::transparency::verify_checkpoint_transition(
+            pin,
+            &checkpoint,
+            consistency_proof.as_ref(),
+        )?;
+    }
+    CheckpointStore::new(&state.home).pin(&checkpoint)?;
+    let payment_methods_verified = !signed.profile.methods.is_empty()
+        && signed.profile.method_verifications.len() >= signed.profile.methods.len();
+    Ok(ResolvedTransparentProfile {
+        signed_profile: signed,
+        latest_event,
+        inclusion_proof,
+        checkpoint,
+        consistency_proof,
+        identifier_attestation: None,
+        resolver_source: ResolverSource::LocalRegistry,
+        verification: VerificationStates {
+            profile_signature_verified,
+            identifier_verified: false,
+            key_continuity_verified: true,
+            transparency_inclusion_verified,
+            checkpoint_consistency_verified: true,
+            payment_methods_verified,
+        },
+    })
 }
 
 async fn quote_response(state: &AppState, body: QuoteRequest) -> satspath_router::QuoteResponse {
