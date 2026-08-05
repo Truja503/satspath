@@ -1,6 +1,8 @@
 mod anchor;
 mod attestation;
 mod checkpoint;
+#[cfg(feature = "std")]
+mod database;
 mod event;
 mod log;
 mod proof;
@@ -11,16 +13,25 @@ mod verifier;
 #[cfg(feature = "std")]
 pub use anchor::RegtestAnchorClient;
 pub use anchor::{anchor_commitment, BitcoinAnchor, MockAnchorClient};
-pub use attestation::{IdentifierAttestation, IdentifierVerificationMethod};
-pub use checkpoint::{CheckpointComparison, PinnedCheckpoint, TransparencyCheckpoint};
-pub use event::{profile_hash, NameAction, NameEvent};
-pub use log::{TransparencyLog, TransparencyStatus};
+pub use attestation::{
+    verify_attestation_binding, IdentifierAttestation, IdentifierVerificationMethod,
+    TrustedVerifier,
+};
+pub use checkpoint::{
+    CheckpointComparison, OperatorKeyRotation, PinnedCheckpoint, TransparencyCheckpoint,
+    TransparencyLogIdentity,
+};
+#[cfg(feature = "std")]
+pub use database::TransactionalTransparencyStore;
+pub use event::{payment_method_descriptor_hash, profile_hash, NameAction, NameEvent};
+pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
 pub use store::CheckpointStore;
 pub use tree::{leaf_hash, merkle_root, node_hash};
 pub use verifier::{
-    verify_checkpoint, verify_checkpoint_transition, verify_consistency_proof,
-    verify_event_profile, verify_identifier_history, verify_inclusion_proof, verify_key_continuity,
+    next_identifier_sequence, verify_checkpoint, verify_checkpoint_inclusion,
+    verify_checkpoint_transition, verify_consistency_proof, verify_event_profile,
+    verify_identifier_history, verify_inclusion_proof, verify_key_continuity,
 };
 
 use thiserror::Error;
@@ -37,6 +48,14 @@ pub enum TransparencyError {
     InvalidConsistencyProof,
     #[error("invalid inclusion proof")]
     InvalidInclusionProof,
+    #[error("inclusion proof is not bound to the signed checkpoint")]
+    CheckpointInclusionMismatch,
+    #[error("unexpected transparency operator key")]
+    UnexpectedOperatorKey,
+    #[error("invalid transparency operator rotation")]
+    InvalidOperatorRotation,
+    #[error("corrupt checkpoint chain: {0}")]
+    CorruptCheckpointChain(String),
     #[error("broken identifier history: {0}")]
     BrokenIdentifierHistory(String),
     #[error("unauthorized key replacement")]

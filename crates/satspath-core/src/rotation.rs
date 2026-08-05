@@ -212,9 +212,9 @@ pub fn rotate_identity_key(
         ));
     }
     let next_sequence = profile.profile.sequence.unwrap_or(0).saturating_add(1);
-    if sequence < next_sequence {
+    if sequence != next_sequence {
         return Err(SatsPathError::InvalidRotation(
-            "rotation sequence is not strictly greater".into(),
+            "rotation sequence must equal the canonical next sequence".into(),
         ));
     }
     let rotation = KeyRotation::create(
@@ -256,7 +256,7 @@ pub fn verify_key_rotation(
         if rotation.identifier_hash != crate::privacy::identifier_hash(&old_profile.profile.alias)
             || new_profile.profile.alias != old_profile.profile.alias
             || rotation.sequence != new_profile.profile.sequence.unwrap_or(0)
-            || rotation.sequence <= old_profile.profile.sequence.unwrap_or(0)
+            || rotation.sequence != old_profile.profile.sequence.unwrap_or(0).saturating_add(1)
         {
             return Ok(false);
         }

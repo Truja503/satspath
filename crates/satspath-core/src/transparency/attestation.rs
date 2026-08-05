@@ -20,6 +20,13 @@ pub enum IdentifierVerificationMethod {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrustedVerifier {
+    pub verifier_id: String,
+    pub public_key: String,
+    pub allowed_methods: Vec<IdentifierVerificationMethod>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdentifierAttestation {
     pub version: u16,
     pub identifier_hash: String,
@@ -31,6 +38,30 @@ pub struct IdentifierAttestation {
     pub method: IdentifierVerificationMethod,
     pub verifier_pubkey: String,
     pub verifier_signature: String,
+}
+
+pub fn verify_attestation_binding(
+    attestation: &IdentifierAttestation,
+    event: &super::NameEvent,
+    trusted: &[TrustedVerifier],
+    now: i64,
+) -> Result<bool> {
+    let Some(verifier) = trusted.iter().find(|verifier| {
+        verifier.public_key == attestation.verifier_pubkey
+            && verifier.allowed_methods.contains(&attestation.method)
+    }) else {
+        return Ok(false);
+    };
+    let attestation_hash = attestation.attestation_hash()?;
+    if verifier.verifier_id.is_empty()
+        || attestation.identifier_hash != event.identifier_hash
+        || attestation.identity_pubkey != event.identity_pubkey
+        || attestation.profile_hash != event.profile_hash
+        || event.identifier_attestation_hash.as_deref() != Some(attestation_hash.as_str())
+    {
+        return Ok(false);
+    }
+    attestation.verify(now)
 }
 
 impl IdentifierAttestation {

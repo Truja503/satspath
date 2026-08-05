@@ -55,6 +55,7 @@ fn event(
         previous_event_hash: previous,
         created_at: 1_700_000_000 + sequence as i64,
         identifier_attestation_hash: None,
+        removed_method_hashes: Vec::new(),
         rotation: signed.profile.rotation.clone(),
         owner_signature: String::new(),
     };
@@ -122,7 +123,7 @@ fn inclusion_and_consistency_cover_arbitrary_sizes_and_reject_mutation() {
             let proof = log.consistency(1, size as u64).unwrap();
             assert!(verify_consistency_proof(&proof).unwrap());
             let mut reordered = proof.clone();
-            reordered.proof.swap(0, 1);
+            reordered.audit_path.swap(0, 1);
             assert!(!verify_consistency_proof(&reordered).unwrap());
         }
     }

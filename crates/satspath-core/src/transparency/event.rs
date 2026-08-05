@@ -7,7 +7,8 @@ use crate::{Result, SignedPaymentProfile};
 
 use super::TransparencyError;
 
-pub const NAME_EVENT_DOMAIN: &[u8] = b"SatsPathNameEventV1";
+pub const NAME_EVENT_PAYLOAD_DOMAIN: &[u8] = b"SatsPathNameEventPayloadV1";
+pub const SIGNED_NAME_EVENT_DOMAIN: &[u8] = b"SatsPathSignedNameEventV1";
 pub const NAME_EVENT_SIGNATURE_DOMAIN: &str = "SatsPathNameEventSignatureV1";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -31,6 +32,8 @@ pub struct NameEvent {
     pub previous_event_hash: Option<String>,
     pub created_at: i64,
     pub identifier_attestation_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub removed_method_hashes: Vec<String>,
     pub rotation: Option<crate::rotation::KeyRotation>,
     pub owner_signature: String,
 }
@@ -46,6 +49,7 @@ struct UnsignedEvent<'a> {
     previous_event_hash: &'a Option<String>,
     created_at: i64,
     identifier_attestation_hash: &'a Option<String>,
+    removed_method_hashes: &'a [String],
     rotation: &'a Option<crate::rotation::KeyRotation>,
 }
 
@@ -61,6 +65,7 @@ impl NameEvent {
             previous_event_hash: &self.previous_event_hash,
             created_at: self.created_at,
             identifier_attestation_hash: &self.identifier_attestation_hash,
+            removed_method_hashes: &self.removed_method_hashes,
             rotation: &self.rotation,
         })?;
         Ok(canonical_json::to_string(&value)
@@ -68,18 +73,35 @@ impl NameEvent {
             .into_bytes())
     }
 
-    pub fn event_hash(&self) -> Result<String> {
+    pub fn signing_payload_hash(&self) -> Result<String> {
         let mut h = Sha256::new();
-        h.update(NAME_EVENT_DOMAIN);
+        h.update(NAME_EVENT_PAYLOAD_DOMAIN);
         h.update(self.unsigned_canonical_bytes()?);
         Ok(hex::encode(h.finalize()))
+    }
+
+    /// Hash committed by the Merkle leaf and by the next event in the chain.
+    /// Unlike the signing payload, this commits to the exact owner signature.
+    pub fn signed_event_hash(&self) -> Result<String> {
+        let value = serde_json::to_value(self)?;
+        let canonical = canonical_json::to_string(&value)
+            .map_err(|e| crate::SatsPathError::SerializationError(e.to_string()))?;
+        let mut h = Sha256::new();
+        h.update(SIGNED_NAME_EVENT_DOMAIN);
+        h.update(canonical.as_bytes());
+        Ok(hex::encode(h.finalize()))
+    }
+
+    /// Backward-compatible name. Event identity always means the signed event.
+    pub fn event_hash(&self) -> Result<String> {
+        self.signed_event_hash()
     }
 
     pub fn signing_message(&self) -> Result<String> {
         Ok(format!(
             "{}\n{}",
             NAME_EVENT_SIGNATURE_DOMAIN,
-            self.event_hash()?
+            self.signing_payload_hash()?
         ))
     }
 
@@ -87,6 +109,13 @@ impl NameEvent {
         self.owner_signature = sign_message(&self.signing_message()?, secret_key);
         Ok(())
     }
+}
+
+pub fn payment_method_descriptor_hash(descriptor: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(b"SatsPathPaymentMethodDescriptorV1");
+    h.update(descriptor.as_bytes());
+    hex::encode(h.finalize())
 }
 
 pub fn profile_hash(profile: &SignedPaymentProfile) -> Result<String> {

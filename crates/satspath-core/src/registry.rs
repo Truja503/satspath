@@ -49,7 +49,10 @@ impl Registry {
         Ok(())
     }
 
-    fn validate_write(requested_alias: &str, signed: &SignedPaymentProfile) -> Result<()> {
+    pub fn validate_profile_write(
+        requested_alias: &str,
+        signed: &SignedPaymentProfile,
+    ) -> Result<()> {
         validate_ascii_identifier(requested_alias)?;
         validate_ascii_identifier(&signed.profile.alias)?;
         let requested = canonical_identifier(requested_alias);
@@ -82,7 +85,7 @@ impl Registry {
         requested_alias: &str,
         signed: SignedPaymentProfile,
     ) -> Result<()> {
-        Self::validate_write(requested_alias, &signed)?;
+        Self::validate_profile_write(requested_alias, &signed)?;
         let alias = canonical_identifier(&signed.profile.alias);
         let key = identifier_hash(&alias);
         if self.data.profiles.contains_key(&key) || self.data.profiles.contains_key(&alias) {
@@ -103,7 +106,7 @@ impl Registry {
         requested_alias: &str,
         signed: SignedPaymentProfile,
     ) -> Result<()> {
-        Self::validate_write(requested_alias, &signed)?;
+        Self::validate_profile_write(requested_alias, &signed)?;
         let alias = canonical_identifier(&signed.profile.alias);
         let key = identifier_hash(&alias);
 
@@ -125,7 +128,7 @@ impl Registry {
                     || rotation.new_pubkey != signed.profile.identity_pubkey
                     || rotation.identifier_hash != identifier_hash(&alias)
                     || rotation.sequence != signed.profile.sequence.unwrap_or(0)
-                    || rotation.sequence <= existing.profile.sequence.unwrap_or(0)
+                    || rotation.sequence != existing.profile.sequence.unwrap_or(0).saturating_add(1)
                     || rotation.previous_event_hash.is_empty()
                     || !rotation.verify()?
                 {
@@ -144,27 +147,6 @@ impl Registry {
                     "Update rejected: incoming profile is older (updated_at: {}) than existing profile (updated_at: {})",
                     signed.profile.updated_at, existing.profile.updated_at
                 )));
-            }
-
-            // SEC-03b: Method Superset Check
-            // Prevent stripping payment methods (e.g., removing Lightning to force on-chain)
-            let existing_methods: std::collections::HashSet<_> = existing
-                .profile
-                .methods
-                .iter()
-                .map(|m| m.method_name())
-                .collect();
-            let new_methods: std::collections::HashSet<_> = signed
-                .profile
-                .methods
-                .iter()
-                .map(|m| m.method_name())
-                .collect();
-
-            if !existing_methods.is_subset(&new_methods) {
-                return Err(SatsPathError::RegistryError(
-                    "Update rejected: new profile must include all previously registered payment methods".into()
-                ));
             }
 
             // SEC-03c: Sequence Number Check (Replay Protection)

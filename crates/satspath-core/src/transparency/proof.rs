@@ -15,9 +15,10 @@ pub struct MerkleInclusionProof {
 /// A compact RFC6962 path can replace this encoding in a future version.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MerkleConsistencyProof {
+    pub version: u16,
     pub old_tree_size: u64,
     pub new_tree_size: u64,
     pub old_root: String,
     pub new_root: String,
-    pub proof: Vec<String>,
+    pub audit_path: Vec<String>,
 }

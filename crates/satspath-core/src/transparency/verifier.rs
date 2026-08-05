@@ -2,7 +2,7 @@ use crate::crypto::{verify_message_signature, verify_signed_profile};
 use crate::{Result, SignedPaymentProfile};
 
 use super::event::profile_hash;
-use super::tree::{merkle_root, node_hash};
+use super::tree::{leaf_hash, merkle_root, node_hash};
 use super::{
     MerkleConsistencyProof, MerkleInclusionProof, NameAction, NameEvent, PinnedCheckpoint,
     TransparencyCheckpoint, TransparencyError,
@@ -40,14 +40,16 @@ pub fn verify_inclusion_proof(proof: &MerkleInclusionProof) -> Result<bool> {
 }
 
 pub fn verify_consistency_proof(proof: &MerkleConsistencyProof) -> Result<bool> {
-    if proof.old_tree_size == 0
+    if proof.version != 1
+        || proof.old_tree_size == 0
         || proof.old_tree_size > proof.new_tree_size
-        || proof.proof.len() != proof.new_tree_size as usize
+        || proof.new_tree_size > super::log::MAX_V1_CONSISTENCY_LEAVES
+        || proof.audit_path.len() != proof.new_tree_size as usize
     {
         return Err(TransparencyError::InvalidConsistencyProof.into());
     }
     let leaves: Vec<[u8; 32]> = proof
-        .proof
+        .audit_path
         .iter()
         .map(|h| decode_hash(h))
         .collect::<Result<_>>()?;
@@ -58,7 +60,12 @@ pub fn verify_consistency_proof(proof: &MerkleConsistencyProof) -> Result<bool> 
 }
 
 pub fn verify_checkpoint(checkpoint: &TransparencyCheckpoint) -> Result<bool> {
-    if checkpoint.version != 1 || checkpoint.log_size == 0 {
+    if checkpoint.version != 1
+        || checkpoint.log_id.is_empty()
+        || checkpoint.log_size == 0
+        || decode_hash(&checkpoint.log_root).is_err()
+        || checkpoint.operator_pubkey.len() != 66
+    {
         return Ok(false);
     }
     verify_message_signature(
@@ -68,13 +75,52 @@ pub fn verify_checkpoint(checkpoint: &TransparencyCheckpoint) -> Result<bool> {
     )
 }
 
+pub fn verify_checkpoint_inclusion(
+    event_hash: &str,
+    proof: &MerkleInclusionProof,
+    checkpoint: &TransparencyCheckpoint,
+) -> Result<()> {
+    let event =
+        decode_hash(event_hash).map_err(|_| TransparencyError::CheckpointInclusionMismatch)?;
+    let expected_leaf = hex::encode(leaf_hash(&event));
+    if !verify_checkpoint(checkpoint)?
+        || proof.root_hash != checkpoint.log_root
+        || proof.tree_size != checkpoint.log_size
+        || proof.leaf_hash != expected_leaf
+        || !verify_inclusion_proof(proof)?
+    {
+        return Err(TransparencyError::CheckpointInclusionMismatch.into());
+    }
+    Ok(())
+}
+
 pub fn verify_checkpoint_transition(
     pinned: &PinnedCheckpoint,
     current: &TransparencyCheckpoint,
     consistency: Option<&MerkleConsistencyProof>,
 ) -> Result<()> {
-    if !verify_checkpoint(current)? || current.operator_pubkey != pinned.operator_pubkey {
+    if !verify_checkpoint(current)? || current.log_id != pinned.log_id {
         return Err(TransparencyError::InvalidCheckpointSignature.into());
+    }
+    if current.operator_pubkey != pinned.operator_pubkey {
+        let rotation = current
+            .operator_rotation
+            .as_ref()
+            .ok_or(TransparencyError::UnexpectedOperatorKey)?;
+        if rotation.log_id != pinned.log_id
+            || rotation.previous_operator_pubkey != pinned.operator_pubkey
+            || rotation.new_operator_pubkey != current.operator_pubkey
+            || rotation.previous_checkpoint_hash != pinned.checkpoint_hash
+            || rotation.sequence != pinned.operator_sequence.saturating_add(1)
+            || current.operator_sequence != rotation.sequence
+            || !rotation.verify()?
+        {
+            return Err(TransparencyError::InvalidOperatorRotation.into());
+        }
+    } else if current.operator_sequence != pinned.operator_sequence
+        || current.operator_rotation.is_some()
+    {
+        return Err(TransparencyError::InvalidOperatorRotation.into());
     }
     if current.log_size < pinned.tree_size {
         return Err(TransparencyError::CheckpointRollback.into());
@@ -171,6 +217,37 @@ pub fn verify_identifier_history(events: &[NameEvent]) -> Result<()> {
 pub fn verify_key_continuity(events: &[NameEvent]) -> Result<bool> {
     verify_identifier_history(events)?;
     Ok(true)
+}
+
+pub fn next_identifier_sequence(
+    existing_profile: Option<&SignedPaymentProfile>,
+    history: &[NameEvent],
+) -> Result<u64> {
+    match (existing_profile, history.last()) {
+        (None, None) => Ok(0),
+        (None, Some(_)) | (Some(_), None) => Err(TransparencyError::BrokenIdentifierHistory(
+            "registry profile and transparency history are misaligned".into(),
+        )
+        .into()),
+        (Some(profile), Some(latest)) => {
+            verify_identifier_history(history)?;
+            let profile_sequence = profile.profile.sequence.ok_or_else(|| {
+                TransparencyError::BrokenIdentifierHistory("profile sequence is missing".into())
+            })?;
+            if profile_sequence != latest.sequence
+                || latest.profile_hash != profile_hash(profile)?
+                || latest.identity_pubkey != profile.profile.identity_pubkey
+            {
+                return Err(TransparencyError::BrokenIdentifierHistory(
+                    "latest profile does not match latest event sequence/hash/key".into(),
+                )
+                .into());
+            }
+            latest.sequence.checked_add(1).ok_or_else(|| {
+                TransparencyError::BrokenIdentifierHistory("sequence overflow".into()).into()
+            })
+        }
+    }
 }
 
 pub fn verify_event_profile(event: &NameEvent, profile: &SignedPaymentProfile) -> Result<bool> {
