@@ -36,7 +36,8 @@ use satspath_core::validation::{
 use satspath_core::{
     BitcoinNetwork, CheckpointStore, MerkleConsistencyProof, MerkleInclusionProof, NameAction,
     NameEvent, PaymentMethod, PaymentProfile, ResolvedTransparentProfile, ResolverSource,
-    SatsPathError, SignedPaymentProfile, TransparencyLog, VerificationStates,
+    SatsPathError, SignedPaymentProfile, TransactionalTransparencyStore, TransparencyLog,
+    VerificationStates,
 };
 use satspath_router::fees::fetch_fee_estimate;
 use satspath_router::select_priority_route;
@@ -175,6 +176,8 @@ struct ProfileUpdateRequest {
     onchain_pubkey: Option<String>,
     ark_server: Option<String>,
     ark_pubkey: Option<String>,
+    #[serde(default)]
+    remove_methods: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -286,12 +289,24 @@ struct ErrorResponse {
 
 #[derive(Debug, Deserialize)]
 struct InclusionVerifyRequest {
+    event_hash: String,
     proof: MerkleInclusionProof,
+    checkpoint: satspath_core::TransparencyCheckpoint,
 }
 
 #[derive(Debug, Deserialize)]
 struct ConsistencyVerifyRequest {
     proof: MerkleConsistencyProof,
+}
+
+#[derive(Debug, Serialize)]
+struct KeyRotationResponse {
+    alias: String,
+    sequence: u64,
+    previous_fingerprint: String,
+    new_fingerprint: String,
+    event_hash: String,
+    checkpoint_hash: String,
 }
 
 #[tokio::main]
@@ -498,7 +513,13 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         }
         (Method::Post, "/v1/transparency/verify/inclusion") => {
             match read_json::<InclusionVerifyRequest>(&mut request).and_then(|body| {
-                satspath_core::transparency::verify_inclusion_proof(&body.proof).map_err(Into::into)
+                satspath_core::transparency::verify_checkpoint_inclusion(
+                    &body.event_hash,
+                    &body.proof,
+                    &body.checkpoint,
+                )
+                .map(|_| true)
+                .map_err(Into::into)
             }) {
                 Ok(valid) => json_response(StatusCode(200), &serde_json::json!({"valid": valid})),
                 Err(e) => json_error(StatusCode(400), e),
@@ -545,6 +566,10 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
                 Err(e) => json_error(StatusCode(400), e),
             }
         }
+        (Method::Post, "/v1/profile/rotate-key") => match rotate_profile_key(state) {
+            Ok(response) => json_response(StatusCode(200), &response),
+            Err(error) => json_error(StatusCode(400), error),
+        },
         (Method::Post, "/v1/resolve") => match read_json::<AliasRequest>(&mut request)
             .and_then(|body| resolve_profile(state, &body.alias))
         {
@@ -584,7 +609,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
 }
 
 fn transparency_log(state: &AppState) -> Result<TransparencyLog> {
-    Ok(TransparencyLog::open(&state.home.join("transparency"))?)
+    Ok(TransactionalTransparencyStore::open(&state.home)?.load_log()?)
 }
 
 fn query_u64(url: &str, name: &str) -> Option<u64> {
@@ -612,7 +637,7 @@ fn consistency_from_query(state: &AppState, url: &str) -> Result<MerkleConsisten
 async fn anchor_latest_checkpoint(
     state: &AppState,
 ) -> Result<satspath_core::TransparencyBitcoinAnchor> {
-    let mut log = transparency_log(state)?;
+    let log = transparency_log(state)?;
     let checkpoint = log
         .checkpoints()
         .last()
@@ -625,7 +650,11 @@ async fn anchor_latest_checkpoint(
         anyhow::bail!("regtest anchor could not be verified after confirmation");
     }
     let operator = load_or_create_transparency_operator(&state.home)?;
-    log.attach_latest_anchor(anchor.clone(), &operator)?;
+    let mut anchored = checkpoint;
+    anchored.bitcoin_anchor = Some(anchor.clone());
+    anchored.sign(&operator)?;
+    TransactionalTransparencyStore::open(&state.home)?
+        .replace_latest_checkpoint(&checkpoint_hash, &anchored)?;
     Ok(anchor)
 }
 
@@ -704,11 +733,26 @@ fn apply_method_updates(
         || body.onchain_address.is_some()
         || body.onchain_pubkey.is_some()
         || body.ark_server.is_some()
-        || body.ark_pubkey.is_some();
+        || body.ark_pubkey.is_some()
+        || !body.remove_methods.is_empty();
     if !allow_empty && !has_method {
         anyhow::bail!("provide at least one receive method");
     }
 
+    for method in &body.remove_methods {
+        match method.as_str() {
+            "lightning" => wallet.lightning_address = None,
+            "onchain" => {
+                wallet.onchain_address = None;
+                wallet.onchain_pubkey = None;
+            }
+            "ark" => {
+                wallet.ark_server = None;
+                wallet.ark_pubkey = None;
+            }
+            _ => anyhow::bail!("unknown payment method removal: {method}"),
+        }
+    }
     if let Some(addr) = body.lightning_address {
         validate_lightning_address(&addr)?;
         wallet.lightning_address = Some(addr);
@@ -752,17 +796,20 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         anyhow::bail!("profile needs at least one public receive method");
     }
 
-    let mut registry = Registry::open(home)?;
-    let existing = registry.resolve_alias(&alias).ok().cloned();
-    let current_sequence = existing
-        .as_ref()
-        .map(|signed| signed.profile.sequence.unwrap_or(0))
-        .unwrap_or(0);
+    let store = TransactionalTransparencyStore::open(home)?;
+    let existing = store.profile(&alias)?;
+    let log = store.load_log()?;
+    let history: Vec<_> = log
+        .history(&satspath_core::privacy::identifier_hash(&alias))
+        .into_iter()
+        .cloned()
+        .collect();
+    let next_sequence = satspath_core::next_identifier_sequence(existing.as_ref(), &history)?;
 
     let secret = load_identity_key(home, &identity_pubkey)?;
     let t = now();
     let profile = PaymentProfile {
-        sequence: Some(current_sequence + 1),
+        sequence: Some(next_sequence),
         alias: alias.clone(),
         identity_pubkey,
         methods,
@@ -777,8 +824,26 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
-    let mut log = transparency_log_at(home)?;
-    let history = log.history(&satspath_core::privacy::identifier_hash(&alias));
+    let new_descriptors: std::collections::HashSet<_> = signed
+        .profile
+        .methods
+        .iter()
+        .map(PaymentMethod::ownership_descriptor)
+        .collect();
+    let removed_method_hashes = existing
+        .as_ref()
+        .map(|old| {
+            old.profile
+                .methods
+                .iter()
+                .map(PaymentMethod::ownership_descriptor)
+                .filter(|descriptor| !new_descriptors.contains(descriptor))
+                .map(|descriptor| {
+                    satspath_core::transparency::payment_method_descriptor_hash(&descriptor)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     let previous_event_hash = history.last().map(|event| event.event_hash()).transpose()?;
     let mut event = NameEvent {
         version: 1,
@@ -790,27 +855,24 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         },
         identity_pubkey: signed.profile.identity_pubkey.clone(),
         profile_hash: satspath_core::transparency::profile_hash(&signed)?,
-        sequence: history.len() as u64,
+        sequence: next_sequence,
         previous_event_hash,
         created_at: t,
         identifier_attestation_hash: None,
+        removed_method_hashes,
         rotation: signed.profile.rotation.clone(),
         owner_signature: String::new(),
     };
     event.sign(&secret)?;
-    log.append(event, &signed)?;
-    if existing.is_some() {
-        registry.update_profile_for(&alias, signed)?;
-    } else {
-        registry.register_profile_for(&alias, signed)?;
-    }
+    let candidate = log.prepare_append(event.clone(), &signed)?;
     let operator = load_or_create_transparency_operator(home)?;
-    log.create_checkpoint(&operator)?;
+    let checkpoint = candidate.prepare_checkpoint(&operator)?;
+    store.commit_profile_event_checkpoint(&alias, &signed, &event, &checkpoint)?;
     Ok(())
 }
 
 fn transparency_log_at(home: &Path) -> Result<TransparencyLog> {
-    Ok(TransparencyLog::open(&home.join("transparency"))?)
+    Ok(TransactionalTransparencyStore::open(home)?.load_log()?)
 }
 
 fn load_or_create_transparency_operator(home: &Path) -> Result<secp256k1::SecretKey> {
@@ -832,8 +894,80 @@ fn load_or_create_transparency_operator(home: &Path) -> Result<secp256k1::Secret
     Ok(key)
 }
 
+fn rotate_profile_key(state: &AppState) -> Result<KeyRotationResponse> {
+    let mut wallet = load_wallet(&state.home)?;
+    let alias = wallet
+        .alias
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("profile alias is required"))?;
+    let old_pubkey = wallet
+        .identity_pubkey
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("identity is not initialized"))?;
+    let old_secret = load_identity_key(&state.home, &old_pubkey)?;
+    let store = TransactionalTransparencyStore::open(&state.home)?;
+    let existing = store
+        .profile(&alias)?
+        .ok_or_else(|| SatsPathError::AliasNotFound(alias.clone()))?;
+    if existing.profile.identity_pubkey != old_pubkey || !verify_signed_profile(&existing)? {
+        anyhow::bail!("active key does not control the current signed profile");
+    }
+    let log = store.load_log()?;
+    let identifier_hash = satspath_core::privacy::identifier_hash(&alias);
+    let history: Vec<_> = log.history(&identifier_hash).into_iter().cloned().collect();
+    let sequence = satspath_core::next_identifier_sequence(Some(&existing), &history)?;
+    let previous_event_hash = history
+        .last()
+        .ok_or_else(|| anyhow::anyhow!("rotation requires existing history"))?
+        .signed_event_hash()?;
+    let new_key = generate_identity_keypair();
+    let unsigned = satspath_core::rotate_identity_key(
+        &existing,
+        &old_secret,
+        &new_key.secret_key,
+        &previous_event_hash,
+        sequence,
+    )?;
+    let signed = sign_profile(unsigned.profile, &new_key.secret_key)?;
+    let mut event = NameEvent {
+        version: 1,
+        identifier_hash,
+        action: NameAction::RotateKey,
+        identity_pubkey: signed.profile.identity_pubkey.clone(),
+        profile_hash: satspath_core::transparency::profile_hash(&signed)?,
+        sequence,
+        previous_event_hash: Some(previous_event_hash),
+        created_at: now(),
+        identifier_attestation_hash: None,
+        removed_method_hashes: Vec::new(),
+        rotation: signed.profile.rotation.clone(),
+        owner_signature: String::new(),
+    };
+    event.sign(&old_secret)?;
+    let candidate = log.prepare_append(event.clone(), &signed)?;
+    let operator = load_or_create_transparency_operator(&state.home)?;
+    let checkpoint = candidate.prepare_checkpoint(&operator)?;
+    // Store a recoverable key backup before commit, but do not make it active.
+    save_identity_key(&state.home, &new_key.secret_key)?;
+    store.commit_profile_event_checkpoint(&alias, &signed, &event, &checkpoint)?;
+    wallet.identity_pubkey = Some(signed.profile.identity_pubkey.clone());
+    wallet.updated_at = Some(now());
+    save_wallet(&state.home, &wallet)?;
+    Ok(KeyRotationResponse {
+        alias,
+        sequence,
+        previous_fingerprint: fingerprint_pubkey(&old_pubkey)?,
+        new_fingerprint: fingerprint_pubkey(&signed.profile.identity_pubkey)?,
+        event_hash: event.signed_event_hash()?,
+        checkpoint_hash: checkpoint.checkpoint_hash()?,
+    })
+}
+
 fn resolve_profile(state: &AppState, alias: &str) -> Result<ResolvedTransparentProfile> {
-    let signed = Registry::open(&state.home)?.resolve_alias(alias)?.clone();
+    let store = TransactionalTransparencyStore::open(&state.home)?;
+    let signed = store
+        .profile(alias)?
+        .ok_or_else(|| SatsPathError::AliasNotFound(alias.into()))?;
     let profile_signature_verified = verify_signed_profile(&signed)?;
     if !profile_signature_verified {
         anyhow::bail!("stored profile signature is invalid");
@@ -851,23 +985,19 @@ fn resolve_profile(state: &AppState, alias: &str) -> Result<ResolvedTransparentP
     }
     let event_hash = latest_event.event_hash()?;
     let inclusion_proof = log.inclusion(&event_hash, None)?;
-    let transparency_inclusion_verified =
-        satspath_core::transparency::verify_inclusion_proof(&inclusion_proof)?;
-    if !transparency_inclusion_verified {
-        anyhow::bail!("invalid transparency inclusion proof");
-    }
     let checkpoint = log
         .checkpoints()
         .last()
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("transparency checkpoint unavailable"))?;
-    if !satspath_core::transparency::verify_checkpoint(&checkpoint)? {
-        anyhow::bail!("invalid checkpoint signature");
-    }
+    satspath_core::transparency::verify_checkpoint_inclusion(
+        &event_hash,
+        &inclusion_proof,
+        &checkpoint,
+    )?;
+    let transparency_inclusion_verified = true;
     let pins = CheckpointStore::new(&state.home).load()?;
-    let pinned = pins
-        .iter()
-        .find(|p| p.operator_pubkey == checkpoint.operator_pubkey);
+    let pinned = pins.iter().find(|p| p.log_id == checkpoint.log_id);
     let consistency_proof = pinned
         .filter(|p| p.tree_size < checkpoint.log_size)
         .map(|p| log.consistency(p.tree_size, checkpoint.log_size))
@@ -880,23 +1010,52 @@ fn resolve_profile(state: &AppState, alias: &str) -> Result<ResolvedTransparentP
         )?;
     }
     CheckpointStore::new(&state.home).pin(&checkpoint)?;
-    let payment_methods_verified = !signed.profile.methods.is_empty()
-        && signed.profile.method_verifications.len() >= signed.profile.methods.len();
+    let payment_method_states = satspath_core::verify_payment_method_states(&signed.profile, now());
+    let payment_methods_verified = !payment_method_states.is_empty()
+        && payment_method_states.iter().all(|state| state.verified);
+    let identifier_attestation = latest_event
+        .identifier_attestation_hash
+        .as_deref()
+        .map(|hash| store.identifier_attestation(hash))
+        .transpose()?
+        .flatten();
+    let trusted_verifiers: Vec<satspath_core::TrustedVerifier> =
+        std::env::var("SATSPATH_TRUSTED_VERIFIERS_JSON")
+            .ok()
+            .map(|json| serde_json::from_str(&json))
+            .transpose()
+            .context("invalid SATSPATH_TRUSTED_VERIFIERS_JSON")?
+            .unwrap_or_default();
+    let identifier_verified = identifier_attestation
+        .as_ref()
+        .map(|attestation| {
+            satspath_core::transparency::verify_attestation_binding(
+                attestation,
+                &latest_event,
+                &trusted_verifiers,
+                now(),
+            )
+        })
+        .transpose()?
+        .unwrap_or(false);
     Ok(ResolvedTransparentProfile {
         signed_profile: signed,
         latest_event,
         inclusion_proof,
         checkpoint,
         consistency_proof,
-        identifier_attestation: None,
+        identifier_attestation,
         resolver_source: ResolverSource::LocalRegistry,
         verification: VerificationStates {
             profile_signature_verified,
-            identifier_verified: false,
+            identifier_verified,
             key_continuity_verified: true,
             transparency_inclusion_verified,
+            checkpoint_binding_verified: true,
             checkpoint_consistency_verified: true,
+            operator_continuity_verified: true,
             payment_methods_verified,
+            payment_method_states,
         },
     })
 }
@@ -907,8 +1066,28 @@ async fn quote_response(state: &AppState, body: QuoteRequest) -> satspath_router
             reason: e.to_string(),
         };
     }
-    let resolver = resolver_chain(&state.home);
-    satspath_router::quote_with_resolver(&resolver, &body.recipient, body.amount_sats).await
+    let resolved = match resolve_profile(state, &body.recipient) {
+        Ok(resolved) => resolved,
+        Err(error) => {
+            return satspath_router::QuoteResponse::NoRoute {
+                reason: format!("transparency verification failed: {error}"),
+            }
+        }
+    };
+    let allowed: Vec<String> = resolved
+        .verification
+        .payment_method_states
+        .iter()
+        .filter(|state| state.verified)
+        .map(|state| state.descriptor.clone())
+        .collect();
+    satspath_router::quote_verified_profile(
+        resolved.signed_profile,
+        &body.recipient,
+        body.amount_sats,
+        &allowed,
+    )
+    .await
 }
 
 async fn pay_response(state: &AppState, body: PayRequest) -> PayResponse {
@@ -1018,9 +1197,10 @@ async fn dns_resolve_response(body: DnsResolveRequest) -> DnsResolveResponse {
 fn profile_response(state: &AppState) -> Result<ProfileResponse> {
     let wallet = load_wallet(&state.home)?;
     let signed_profile = match wallet.alias.as_deref() {
-        Some(alias) => Registry::open(&state.home)
-            .and_then(|registry| registry.resolve_alias(alias).cloned())
-            .ok(),
+        Some(alias) => TransactionalTransparencyStore::open(&state.home)
+            .and_then(|store| store.profile(alias))
+            .ok()
+            .flatten(),
         None => None,
     };
     let signature_valid = signed_profile
@@ -1116,8 +1296,8 @@ fn status_response(state: &AppState) -> Result<StatusResponse> {
     let wallet = load_wallet(&state.home)?;
     let mut methods = Vec::new();
     if let Some(alias) = wallet.alias.as_deref() {
-        if let Ok(registry) = Registry::open(&state.home) {
-            if let Ok(signed) = registry.resolve_alias(alias) {
+        if let Ok(store) = TransactionalTransparencyStore::open(&state.home) {
+            if let Ok(Some(signed)) = store.profile(alias) {
                 methods = signed
                     .profile
                     .methods
@@ -1692,6 +1872,115 @@ mod tests {
         assert!(!raw.contains("secret_key"));
     }
 
+    fn test_state(home: &Path) -> AppState {
+        AppState {
+            home: home.to_owned(),
+            bind: "127.0.0.1:0".parse().unwrap(),
+            network: "devnet".into(),
+            open_ui: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn quote_rejects_profile_without_transparency() {
+        let dir = tempfile::tempdir().unwrap();
+        let key = generate_identity_keypair();
+        let profile = PaymentProfile {
+            alias: "alice@example.com".into(),
+            identity_pubkey: hex::encode(key.public_key.serialize()),
+            methods: vec![PaymentMethod::Lightning {
+                label: "LN".into(),
+                lightning_address: Some("alice@example.com".into()),
+                lnurl: None,
+                bolt12: None,
+                receiver_pubkey: None,
+            }],
+            updated_at: now(),
+            expires_at: None,
+            sequence: Some(0),
+            preferences: vec![],
+            nonce: None,
+            rotation: None,
+            method_verifications: vec![],
+            hybrid_pubkey: None,
+            pqc_required: false,
+            revoked: false,
+        };
+        Registry::open(dir.path())
+            .unwrap()
+            .register_profile(sign_profile(profile, &key.secret_key).unwrap())
+            .unwrap();
+        let response = quote_response(
+            &test_state(dir.path()),
+            QuoteRequest {
+                recipient: "alice@example.com".into(),
+                amount_sats: 1_000,
+            },
+        )
+        .await;
+        assert!(
+            matches!(response, QuoteResponse::NoRoute { ref reason } if reason.contains("transparency verification failed"))
+        );
+    }
+
+    #[tokio::test]
+    async fn quote_pay_and_preview_use_transparent_resolution() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut wallet = load_or_create_identity(dir.path()).unwrap();
+        wallet.alias = Some("alice@example.com".into());
+        wallet.lightning_address = Some("alice@example.com".into());
+        sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
+        let state = test_state(dir.path());
+        let quote = quote_response(
+            &state,
+            QuoteRequest {
+                recipient: "alice@example.com".into(),
+                amount_sats: 1_000,
+            },
+        )
+        .await;
+        assert!(
+            matches!(quote, QuoteResponse::NoRoute { ref reason } if reason.contains("ownership proof"))
+        );
+        let preview = quote_response(
+            &state,
+            QuoteRequest {
+                recipient: "alice@example.com".into(),
+                amount_sats: 1_000,
+            },
+        )
+        .await;
+        assert!(matches!(preview, QuoteResponse::NoRoute { .. }));
+        let pay = pay_response(
+            &state,
+            PayRequest {
+                recipient: "alice@example.com".into(),
+                amount_sats: 1_000,
+                memo: None,
+            },
+        )
+        .await;
+        assert!(matches!(pay, PayResponse::NoRoute { .. }));
+    }
+
+    #[test]
+    fn rotation_sequence_is_consistent_across_profile_event_and_registry() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut wallet = load_or_create_identity(dir.path()).unwrap();
+        wallet.alias = Some("alice@example.com".into());
+        wallet.lightning_address = Some("alice@example.com".into());
+        sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
+        save_wallet(dir.path(), &wallet).unwrap();
+        let response = rotate_profile_key(&test_state(dir.path())).unwrap();
+        let store = TransactionalTransparencyStore::open(dir.path()).unwrap();
+        let profile = store.profile("alice@example.com").unwrap().unwrap();
+        let log = store.load_log().unwrap();
+        let latest = log.events().last().unwrap();
+        assert_eq!(response.sequence, 1);
+        assert_eq!(profile.profile.sequence, Some(latest.sequence));
+        assert_eq!(latest.rotation.as_ref().unwrap().sequence, latest.sequence);
+    }
+
     #[test]
     fn profile_signing_writes_resolvable_signed_profile() {
         let dir = tempfile::tempdir().unwrap();
@@ -1700,11 +1989,11 @@ mod tests {
         wallet.lightning_address = Some("alice@example.com".into());
         sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
 
-        let signed = Registry::open(dir.path())
+        let signed = TransactionalTransparencyStore::open(dir.path())
             .unwrap()
-            .resolve_alias("alice@example.com")
+            .profile("alice@example.com")
             .unwrap()
-            .clone();
+            .unwrap();
         assert!(verify_signed_profile(&signed).unwrap());
         assert_eq!(signed.profile.methods.len(), 1);
     }
@@ -1719,11 +2008,11 @@ mod tests {
             Some("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into());
         sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
 
-        let signed = Registry::open(dir.path())
+        let signed = TransactionalTransparencyStore::open(dir.path())
             .unwrap()
-            .resolve_alias("alice@example.com")
+            .profile("alice@example.com")
             .unwrap()
-            .clone();
+            .unwrap();
         match &signed.profile.methods[0] {
             PaymentMethod::Onchain { pubkey_hint, .. } => {
                 assert_eq!(pubkey_hint.as_deref(), wallet.onchain_pubkey.as_deref());
