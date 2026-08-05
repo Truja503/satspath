@@ -1,5 +1,7 @@
 # SatsPath Architecture
 
+The key-transparency extension is specified in [Key Transparency Architecture](key_transparency.md). Resolution is not fully verified solely because a profile self-signature validates.
+
 ## Overview
 
 SatsPath is a routing and resolution layer that sits above existing Bitcoin payment protocols.

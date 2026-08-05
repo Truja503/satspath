@@ -1,5 +1,7 @@
 # SatsPath Resolver Semantics v1
 
+Resolver provenance and verification are reported separately. A transparent result carries the signed profile, latest name event, inclusion proof, signed checkpoint, optional consistency proof and identifier attestation. Implementations expose independent states for profile signature, identifier binding, key continuity, log inclusion, checkpoint consistency and payment-method ownership; these must not be collapsed into a single `verified` boolean.
+
 SatsPath is transport-neutral. A resolver is any component that can map a SatsPath identifier to a `SignedPaymentProfile`.
 
 Resolvers do not decide whether money moves. Resolvers only discover signed profile data. The quote pipeline verifies and routes after resolution.

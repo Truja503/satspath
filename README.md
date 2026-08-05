@@ -4,6 +4,8 @@
 
 > DISCLAIMER: This is hackathon software. Do not use with real funds.
 
+The standalone daemon includes an experimental key-transparency log and Merkle explorer. It is unaudited; see [the architecture and limitations](docs/key_transparency.md).
+
 ---
 
 ## Problem

@@ -30,7 +30,11 @@ Bitcoin, Lightning, or Ark security models.
 ```
 TRUSTED:
   - User's own keypair (generated locally, never transmitted)
-  - secp256k1 / ECDSA signature validity
+  - secp256k1 Schnorr signature validity
+
+## Key transparency threats
+
+A valid self-signature proves control of the key embedded in a profile; it does not prove that a registry preserved the historic identifier-to-key mapping. The transparency subsystem treats key replacement, profile substitution, rollback, replay, split views, equivocation, compromised verifiers, compromised or lost old keys, and a malicious checkpoint operator as distinct threats. Same-size/different-root checkpoints and any tree-size rollback are critical failures. Recovery events exist in the schema but are disabled until a concrete policy is designed; email-only recovery would reduce security to the email provider.
 
 PARTIALLY TRUSTED:
   - Local registry (file system trust)
