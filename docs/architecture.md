@@ -17,7 +17,8 @@ Human-readable identifier
           v
   ┌───────────────────┐
   │  Resolver /       │
-  │  Registry         │  <── local .satspath/registry.json (prototype)
+  │  Transparent      │  <── transactional SQLite event/profile/checkpoint state
+  │  Resolver         │  <── pinned log_id + checkpoint/operator continuity
   │                   │  <── BIP-353 / HTTPS / Nostr / optional P2P
   └────────┬──────────┘
            |
@@ -32,6 +33,11 @@ Human-readable identifier
   │  - signature      │
   └────────┬──────────┘
            |
+           v
+  ┌───────────────────┐
+  │ Merkle + history  │
+  │ + ownership gate  │
+  └────────┬──────────┘
            v
   ┌───────────────────┐
   │  Route Engine     │
@@ -82,11 +88,9 @@ satspath/
 3. Decode:
    PaymentRequest { alias, amount_sats, memo, ... }
 
-4. Resolve:
-   Registry::resolve_alias("rodrigo@satspath.dev") -> SignedPaymentProfile
-
-5. Verify:
-   verify_signed_profile(signed) -> bool
+4. Resolve and verify:
+   profile -> signed event -> checkpoint-bound inclusion -> pinned consistency
+   -> operator continuity -> ownership-verified method allow-list
 
 6. Route:
    select_route(RouteRequest { alias, amount_sats, signed_profile })
@@ -112,7 +116,8 @@ satspath/
 
 - Private keys never leave the user's machine.
 - The registry stores only public data (pubkeys, addresses, signatures).
-- Signature verification happens on the receiver side before any payment.
+- Profile, history, checkpoint binding, pin/operator continuity and selected
+  method ownership verification happen before any quote/pay route.
 - The `.satspath/` directory is git-ignored.
 
 ## Pluggability

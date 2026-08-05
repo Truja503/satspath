@@ -398,6 +398,36 @@ The response MUST include a human-readable `reason` describing the selected rout
 
 Routing policy MAY evolve without changing the quote response wire shape.
 
+## Mandatory Transparency Composition
+
+The standalone daemon MUST NOT route `/v1/quote`, `/v1/pay` or `/v1/preview`
+from a self-contained signed profile alone. These endpoints use the same result
+as `/v1/resolve` and verify, in order: canonical profile signature and expiry,
+identifier history, key continuity, latest profile/event binding, inclusion in
+the exact signed checkpoint, consistency with the `log_id` pin, operator-key
+continuity, and payment-method ownership. Failure is terminal and MUST NOT fall
+back to the legacy resolver chain.
+
+Name-event hashing uses two distinct values:
+
+```text
+signing_payload_hash = SHA256("SatsPathNameEventPayloadV1" || canonical_json(unsigned_event))
+owner_signature      = Schnorr("SatsPathNameEventSignatureV1\n" || hex(signing_payload_hash))
+signed_event_hash    = SHA256("SatsPathSignedNameEventV1" || canonical_json(full_signed_event))
+leaf_hash            = SHA256(0x00 || raw(signed_event_hash))
+```
+
+All quoted strings above are exact UTF-8 bytes with no NUL separator. Hex is
+lowercase. `previous_event_hash` is the preceding `signed_event_hash`.
+Registration uses sequence 0; every accepted mutation increments exactly once,
+and profile, event and rotation sequences MUST match.
+
+An inclusion result is valid only if proof root/size equal checkpoint root/size,
+the leaf is derived from the requested signed event hash, the Merkle audit path
+verifies, and the checkpoint's 64-byte secp256k1 Schnorr signature verifies.
+Pins are keyed by stable `log_id`; a changed operator public key requires old-key
+authorization and new-key acceptance in a versioned operator rotation.
+
 ## Payment Handoff
 
 SatsPath v1 returns public payment payloads. It does not spend funds.

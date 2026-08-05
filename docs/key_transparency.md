@@ -15,7 +15,7 @@ flowchart LR
   H --> E[Versioned NameEvent]
   PH --> E
   K[Authorized identity key] -->|Schnorr owner signature| E
-  E --> F[fsync JSONL append]
+  E --> F[SQLite BEGIN IMMEDIATE]
   F --> T[RFC6962-style Merkle tree]
   T --> C[Operator-signed checkpoint]
 ```
@@ -23,12 +23,14 @@ flowchart LR
 Startup deterministically replays every history and fails closed on corruption. Checkpoints use atomic rename. Events contain `identifier_hash`, not a plaintext consumer email. Recovery exists in the enum but is disabled.
 
 ```text
-event_hash = SHA256(UTF8("SatsPathNameEventV1") || canonical_json_utf8(event_without_owner_signature))
-leaf_hash  = SHA256(0x00 || raw_32_byte_event_hash)
+signing_payload_hash = SHA256(UTF8("SatsPathNameEventPayloadV1") || canonical_json_utf8(event_without_owner_signature))
+owner_signature      = SchnorrSign(UTF8("SatsPathNameEventSignatureV1\n") || hex(signing_payload_hash))
+signed_event_hash    = SHA256(UTF8("SatsPathSignedNameEventV1") || canonical_json_utf8(full_event_including_owner_signature))
+leaf_hash            = SHA256(0x00 || raw_32_byte_signed_event_hash)
 node_hash  = SHA256(0x01 || left_32 || right_32)
 ```
 
-The owner signs the event hash under `SatsPathNameEventSignatureV1`. The exact profile and rotation encodings are in `protocol.md`.
+`previous_event_hash` and Merkle leaves use `signed_event_hash`, so the tree commits to the exact owner signature, rotation evidence, attestation hash and method-removal evidence. The exact profile and rotation encodings are in `protocol.md`.
 
 ## Resolution and proof verification
 
@@ -46,7 +48,7 @@ sequenceDiagram
   Client->>Client: verify inclusion, profile hash/signature and method ownership
 ```
 
-Inclusion proofs are compact audit paths. V1 consistency proofs intentionally carry all new-tree leaf hashes: this is bandwidth-heavy but independently proves that the old root is the exact prefix and the new root is the full tree. Compact RFC6962 consistency paths are future work.
+Inclusion verification is accepted only when proof root and size equal the exact signed checkpoint and the leaf equals `SHA256(0x00 || signed_event_hash)`. V1 consistency proofs intentionally carry all new-tree leaf hashes and are capped at 16,384 leaves; this is bandwidth-heavy but independently proves that the old root is the exact prefix and the new root is the full tree. Compact RFC 6962 consistency paths remain tracked future work and V1 is not presented as scalable.
 
 The resolver returns separate states for profile signature, identifier attestation, key continuity, inclusion, checkpoint consistency and payment-method ownership. Missing evidence never becomes a vague `verified: true`.
 
@@ -62,25 +64,25 @@ flowchart LR
   P --> V
 ```
 
-Both statements bind identifier hash, old/new keys, previous event hash, strictly increasing sequence and timestamp. Direct self-signed replacement is rejected. No emergency recovery is invented.
+Both statements bind identifier hash, old/new keys, previous signed-event hash, the exact canonical next sequence and timestamp. Registration is sequence 0 and `profile.sequence == event.sequence == rotation.sequence`. Direct self-signed replacement is rejected. No emergency recovery is invented.
 
 ## Checkpoint consistency and split views
 
 ```mermaid
 flowchart LR
   C1[Checkpoint N] -->|consistency proof| C2[Checkpoint N+k]
-  P[Pinned operator/size/root/hash] --> D{Compare C2}
+  P[Pinned log_id/operator/size/root/hash] --> D{Compare C2}
   D -->|smaller size| R[Critical rollback]
   D -->|same size, other root| S[Critical equivocation]
   D -->|invalid prefix| B[Critical inconsistency]
   D -->|valid| U[Atomic pin update]
 ```
 
-The operator signs every checkpoint field, including an optional Bitcoin receipt. `checkpoint_hash` excludes the signature and receipt to avoid a txid/checkpoint circular commitment; the post-anchor signature commits to the receipt. Operator signatures create attributable evidence, but global gossip remains future work. First contact is TOFU unless independently compared.
+Pins are indexed by a stable deployment `log_id`, never by an untrusted newly presented key. An operator key change requires a dual-signed `OperatorKeyRotation` bound to `log_id`, predecessor checkpoint hash and sequence. The operator signs every checkpoint field, including an optional Bitcoin receipt. `checkpoint_hash` excludes the signature and receipt to avoid a txid/checkpoint circular commitment; the post-anchor signature commits to the receipt. Operator signatures create attributable evidence, but global gossip remains future work. First contact is TOFU unless independently compared.
 
 ## Identifier attestations
 
-`IdentifierAttestationV1` binds identifier hash, identity key, profile hash, random nonce, issuance/expiry, method and verifier key. The verifier signs canonical JSON under `SatsPathIdentifierAttestationV1`. The current mock email challenge is not production verification; results report `identifier_verified: false` without a real attestation.
+`IdentifierAttestationV1` binds identifier hash, identity key, profile hash, random nonce, issuance/expiry, method and verifier key. The verifier signs canonical JSON under `SatsPathIdentifierAttestationV1`. Resolution checks the exact event binding and only trusts verifier keys listed in `SATSPATH_TRUSTED_VERIFIERS_JSON` with an allowed method. The current mock email challenge is not production verification; results report `identifier_verified: false` without a real trusted attestation.
 
 ## Regtest anchoring
 
@@ -115,7 +117,19 @@ The embedded daemon UI reuses the existing stack, limits event rendering, suppor
 
 ## Persistence and API
 
-Events use append-only schema-v1 JSONL with `fsync`; checkpoints and local pins use temporary files plus atomic rename. The tree is rebuilt from events, making corruption visible. This is appropriate for a local first version; multi-process locking and a database migration remain hardening work.
+Daemon security state uses `satspath-transparency-v1.sqlite3` in WAL mode with `synchronous=FULL`. A single `BEGIN IMMEDIATE` transaction inserts the event, upserts the profile, inserts the checkpoint and updates operator state; any error rolls back all four changes, and SQLite recovery discards incomplete transactions after a crash. Tables are schema-versioned for profiles, events, checkpoints, pins, anchors, attestations, operator state and migrations. On every open, deterministic replay verifies all histories plus every checkpoint signature, exact prefix root, predecessor, timestamp, operator continuity and anchor commitment. The legacy standalone registry remains for CLI compatibility but is not in the daemon quote/pay trust path.
+
+## Mandatory payment resolution
+
+The daemon uses one fail-closed flow for `/v1/resolve`, `/v1/quote`, `/v1/pay` and `/v1/preview`:
+
+```text
+identifier -> transparent profile -> profile/event binding
+-> checkpoint-bound inclusion -> pinned checkpoint consistency
+-> operator continuity -> method ownership allow-list -> router
+```
+
+The router receives only methods whose proof was cryptographically re-validated. Duplicate, expired, wrong-descriptor, wrong-network and self-asserted proofs are not selectable. If none pass, the response is `no_route`.
 
 Read APIs cover status, paginated events/checkpoints, identifier/event/checkpoint lookup, inclusion/consistency proofs, local proof verification and stored anchors. Pages are capped at 200 records. Registry mutation is not publicly exposed.
 

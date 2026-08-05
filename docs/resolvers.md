@@ -61,11 +61,10 @@ controls. Consumer email domains usually cannot publish records under their own
 domain, so those identifiers require an explicit platform challenge resolver or
 fall back to the invite flow.
 
-The Rust quote response currently exposes `identifier_verified: false` for the
-default resolver chain because resolver provenance is not yet carried through
-the `ProfileResolver` trait. Future platform or provenance-aware resolvers may
-set it to `true` only after binding the canonical identifier to the current
-signed profile identity.
+The daemon sets `identifier_verified` only when an attestation binds the exact
+identifier hash, key and profile hash in the latest event and its verifier key
+and method are explicitly trusted. Otherwise it remains false and first contact
+is TOFU.
 
 ## Local Registry Resolver
 
@@ -73,7 +72,8 @@ The local registry is a file-backed resolver used by CLI and daemon flows.
 
 Reference files:
 
-- `.satspath/registry.json`
+- `.satspath/satspath-transparency-v1.sqlite3` (daemon security state)
+- `.satspath/registry.json` (legacy CLI/local resolver compatibility only)
 - `.satspath/peers/registry.local.json`
 
 The local registry MAY store profiles created locally or imported from another transport. A profile imported into the registry MUST be verified before use.
@@ -176,7 +176,8 @@ Resolver outcome maps to quote behavior as follows:
 
 | Resolver outcome | Quote behavior |
 | --- | --- |
-| Verified profile found | Continue to route selection |
+| Profile plus all required transparency evidence verified | Continue with ownership-verified methods only |
+| Transparency, checkpoint binding or operator continuity fails | `no_route` / explicit transparency error; never route |
 | No resolver found a profile | `not_registered` |
 | Profile found but signature invalid | `invalid_signature` |
 | Profile expired | `no_route` |

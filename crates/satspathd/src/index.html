@@ -488,6 +488,21 @@
         <div class="metric"><span>Bitcoin anchor</span><strong><span id="t-anchor" class="status warn">NOT ANCHORED</span></strong></div>
 
         <section class="panel wide">
+          <h3>Verification matrix</h3>
+          <div class="explorer-grid security-matrix">
+            <div class="metric"><span>PROFILE SIGNATURE</span><strong><span id="v-profile" class="status warn">UNVERIFIED</span></strong></div>
+            <div class="metric"><span>IDENTIFIER ATTESTATION</span><strong><span id="v-identifier" class="status warn">NOT CONFIGURED</span></strong></div>
+            <div class="metric"><span>KEY CONTINUITY</span><strong><span id="v-key" class="status warn">TOFU</span></strong></div>
+            <div class="metric"><span>MERKLE INCLUSION</span><strong><span id="v-inclusion" class="status warn">UNVERIFIED</span></strong></div>
+            <div class="metric"><span>CHECKPOINT BINDING</span><strong><span id="v-binding" class="status warn">UNVERIFIED</span></strong></div>
+            <div class="metric"><span>CHECKPOINT CONSISTENCY</span><strong><span id="v-consistency" class="status warn">TOFU</span></strong></div>
+            <div class="metric"><span>OPERATOR CONTINUITY</span><strong><span id="v-operator" class="status warn">TOFU</span></strong></div>
+            <div class="metric"><span>PAYMENT METHOD OWNERSHIP</span><strong><span id="v-methods" class="status warn">UNVERIFIED</span></strong></div>
+            <div class="metric"><span>BITCOIN ANCHOR</span><strong><span id="v-bitcoin" class="status warn">NOT CONFIGURED</span></strong></div>
+          </div>
+        </section>
+
+        <section class="panel wide">
           <h3>Identifier / event search</h3>
           <div class="toolbar"><input id="t-search" aria-label="Search identifier hash or event hash" placeholder="identifier hash or event hash" /><button class="small-button" id="t-search-go">Search</button></div>
           <div id="t-search-result" class="hash">Public tree lookup never requires a plaintext email.</div>
@@ -496,16 +511,16 @@
         <section class="panel wide">
           <h3>Interactive Merkle tree</h3>
           <div class="toolbar"><button class="small-button" id="t-zoom-in">Zoom +</button><button class="small-button" id="t-zoom-out">Zoom −</button><button class="small-button" id="t-reset">Reset</button><span id="t-selected" class="hash">Select a leaf to highlight its inclusion path</span></div>
-          <svg id="merkle-canvas" viewBox="0 0 1000 330" role="img" aria-label="Interactive Merkle tree"></svg>
+          <svg id="merkle-canvas" viewBox="0 0 1000 330" role="group" aria-label="Interactive Merkle tree"></svg>
         </section>
 
         <section class="panel">
           <h3>Identifier history</h3>
-          <div id="t-history" class="timeline"><div class="reason">Select an event or search an identifier hash.</div></div>
+          <div id="t-history" class="timeline" tabindex="0" role="region" aria-label="Identifier event history"><div class="reason">Select an event or search an identifier hash.</div></div>
         </section>
         <section class="panel">
           <h3>Proof inspector</h3>
-          <textarea id="t-proof-json" spellcheck="false" aria-label="Inclusion proof JSON" placeholder='Paste {"leaf_index": ..., "audit_path": [...]}'></textarea>
+          <textarea id="t-proof-json" spellcheck="false" aria-label="Checkpoint-bound inclusion proof JSON" placeholder='Paste {"event_hash":...,"proof":...,"checkpoint":...}'></textarea>
           <button class="small-button" id="t-verify-proof">Verify inclusion proof</button>
           <span id="t-proof-result" class="status warn">WAITING</span>
           <div id="t-proof-steps" class="proof-steps"></div>
@@ -625,7 +640,7 @@
     if (b.dataset.tab === "transparency") loadTransparency();
   }));
 
-  let transparencyLoaded = false, transparencyEvents = [], treeScale = 1, treePan = 0;
+  let transparencyLoaded = false, transparencyEvents = [], transparencyCheckpoints = [], latestCheckpoint = null, treeScale = 1, treePan = 0;
   const hexBytes = h => new Uint8Array((h.match(/.{2}/g) || []).map(x => parseInt(x, 16)));
   const bytesHex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join("");
   const sha256 = async bytes => new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
@@ -657,13 +672,21 @@
       const status = await statusRes.json(), eventPage = await eventsRes.json(), checkpointPage = await checkpointsRes.json();
       if (!statusRes.ok || status.error) throw new Error(status.error || "Transparency status unavailable");
       transparencyEvents = eventPage.items || [];
+      transparencyCheckpoints = checkpointPage.items || [];
+      latestCheckpoint = transparencyCheckpoints.at(-1) || null;
       $("t-log-size").textContent = status.log_size.toLocaleString();
       $("t-root").textContent = status.log_root;
       $("t-identifiers").textContent = status.registered_identifiers;
       $("t-rotations").textContent = status.key_rotations;
       $("t-revocations").textContent = status.revocations;
       $("t-consistency").textContent = status.consistency_status.toUpperCase();
-      $("t-consistency").className = "status " + (status.consistency_status === "valid" ? "ok" : "critical");
+      $("t-consistency").className = "status " + (status.consistency_status === "valid" ? "ok" : status.consistency_status === "unanchored" ? "warn" : "critical");
+      $("v-consistency").textContent = status.consistency_status === "valid" ? "VALID" : status.consistency_status.toUpperCase();
+      $("v-consistency").className = "status " + (status.consistency_status === "valid" ? "ok" : "warn");
+      if (latestCheckpoint) {
+        $("v-operator").textContent = latestCheckpoint.operator_rotation ? "KEY CHANGED" : (transparencyCheckpoints.length > 1 ? "VALID" : "TOFU");
+        $("v-operator").className = "status " + (latestCheckpoint.operator_rotation ? "warn" : transparencyCheckpoints.length > 1 ? "ok" : "warn");
+      }
       renderCheckpoints(checkpointPage.items || []);
       await renderMerkleTree(transparencyEvents);
     } catch (e) {
@@ -682,6 +705,7 @@
       </div>`).join("");
     const latest = checkpoints[checkpoints.length-1];
     if (latest.bitcoin_anchor) { $("t-anchor").textContent = latest.bitcoin_anchor.verified ? "CONFIRMED" : "UNCONFIRMED"; $("t-anchor").className = "status " + (latest.bitcoin_anchor.verified ? "ok" : "warn"); }
+    if (latest.bitcoin_anchor) { $("v-bitcoin").textContent = latest.bitcoin_anchor.verified ? "VALID" : "UNVERIFIED"; $("v-bitcoin").className = "status " + (latest.bitcoin_anchor.verified ? "ok" : "warn"); }
   }
 
   async function buildTree(events) {
@@ -694,10 +718,15 @@
     return leaves.length ? branch(leaves) : null;
   }
 
+  function canonical(value) {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+    return value;
+  }
+
   async function eventHash(e) {
-    const copy={version:e.version,identifier_hash:e.identifier_hash,action:e.action,identity_pubkey:e.identity_pubkey,profile_hash:e.profile_hash,sequence:e.sequence,previous_event_hash:e.previous_event_hash,created_at:e.created_at,identifier_attestation_hash:e.identifier_attestation_hash,rotation:e.rotation};
-    const canonical = JSON.stringify(copy, Object.keys(copy).sort());
-    return bytesHex(await sha256(new Uint8Array([...new TextEncoder().encode("SatsPathNameEventV1"), ...new TextEncoder().encode(canonical)])));
+    const encoded = new TextEncoder().encode(JSON.stringify(canonical(e)));
+    return bytesHex(await sha256(new Uint8Array([...new TextEncoder().encode("SatsPathSignedNameEventV1"), ...encoded])));
   }
 
   async function renderMerkleTree(events, proofPath=[]) {
@@ -713,25 +742,35 @@
     const proofHashes=new Set(proofPath);
     const ns="http://www.w3.org/2000/svg", group=document.createElementNS(ns,"g"); group.setAttribute("transform",`translate(${treePan} 0) scale(${treeScale})`); svg.appendChild(group);
     links.forEach(([a,b])=>{ const line=document.createElementNS(ns,"line"); line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("class","tree-link "+(proofHashes.has(b.hash)?"proof":""));group.appendChild(line); });
-    nodes.forEach(n=>{ const c=document.createElementNS(ns,"circle");c.setAttribute("cx",n.x);c.setAttribute("cy",n.y);c.setAttribute("r",n.leaf!=null?9:7);c.setAttribute("class",`tree-node ${n.leaf!=null?'leaf':''} ${proofHashes.has(n.hash)?'proof':''}`);c.setAttribute("tabindex","0");c.setAttribute("aria-label",`${n.leaf!=null?'Leaf '+n.leaf:'Merkle node'} ${n.hash}`); if(n.leaf!=null)c.addEventListener("click",()=>selectLeaf(n));group.appendChild(c); });
+    nodes.forEach(n=>{ const c=document.createElementNS(ns,"circle");c.setAttribute("cx",n.x);c.setAttribute("cy",n.y);c.setAttribute("r",n.leaf!=null?9:7);c.setAttribute("class",`tree-node ${n.leaf!=null?'leaf':''} ${proofHashes.has(n.hash)?'proof':''}`);c.setAttribute("role",n.leaf!=null?"button":"img");c.setAttribute("aria-label",`${n.leaf!=null?'Leaf '+n.leaf:'Merkle node'} ${n.hash}`); if(n.leaf!=null){c.setAttribute("tabindex","0");c.addEventListener("click",()=>selectLeaf(n));c.addEventListener("keydown",event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLeaf(n)}});}group.appendChild(c); });
   }
 
   async function selectLeaf(node) {
     const hash=await eventHash(node.event), response=await fetch(`/v1/transparency/inclusion/${hash}`), proof=await response.json();
     if (!response.ok) throw new Error(proof.error || "Proof unavailable");
     $("t-selected").textContent=`Leaf ${proof.leaf_index} · ${hash}`;
-    $("t-proof-json").value=JSON.stringify(proof,null,2);
+    if (!latestCheckpoint) throw new Error("Signed checkpoint unavailable");
+    $("t-proof-json").value=JSON.stringify({event_hash:hash,proof,checkpoint:latestCheckpoint},null,2);
     showHistory(node.event.identifier_hash);
     await renderMerkleTree(transparencyEvents,[proof.leaf_hash,...proof.audit_path]);
   }
 
   function showHistory(identifier) {
     const events=transparencyEvents.filter(e=>e.identifier_hash===identifier);
-    $("t-history").innerHTML=events.map(e=>`<div class="timeline-item ${esc(e.action)}"><strong>${esc(e.action.replaceAll('_',' '))}</strong><div class="reason">Sequence ${e.sequence} · ${new Date(e.created_at*1000).toLocaleString()}</div><div class="hash">key ${esc(e.identity_pubkey.slice(0,20))}…<br>profile ${esc(e.profile_hash)}</div>${e.action==='rotate_key'?'<span class="status warn">OLD AUTH + NEW ACCEPTANCE</span>':''}</div>`).join("") || '<div class="reason">No matching identifier history.</div>';
+    $("t-history").innerHTML=events.map(e=>`<div class="timeline-item ${esc(e.action)}"><strong>${esc(e.action.replaceAll('_',' '))}</strong><div class="reason">Sequence ${e.sequence} · ${new Date(e.created_at*1000).toLocaleString()}</div><div class="hash">key ${esc(e.identity_pubkey.slice(0,20))}…<br>profile ${esc(e.profile_hash)}</div>${e.action==='rotate_key'?'<span class="status warn">OLD AUTH + NEW ACCEPTANCE</span>':''}${e.removed_method_hashes?.length?`<div><span class="status warn">PAYMENT METHOD REMOVED</span><div class="hash">${e.removed_method_hashes.map(esc).join('<br>')}</div></div>`:''}</div>`).join("") || '<div class="reason">No matching identifier history.</div>';
   }
 
   $("t-search-go").addEventListener("click",async()=>{ const q=$("t-search").value.trim(); if(!q)return; const byId=transparencyEvents.filter(e=>e.identifier_hash===q); if(byId.length){showHistory(q);$("t-search-result").textContent=`${byId.length} linked event(s) · latest key ${byId.at(-1).identity_pubkey}`;return;} const byEvent=await Promise.all(transparencyEvents.map(async e=>({e,h:await eventHash(e)}))); const found=byEvent.find(x=>x.h===q); $("t-search-result").textContent=found?`${found.e.action} · identifier ${found.e.identifier_hash} · profile ${found.e.profile_hash}`:"No public log match"; if(found)showHistory(found.e.identifier_hash); });
-  $("t-verify-proof").addEventListener("click",async()=>{ try { const result=await verifyProofLocal(JSON.parse($("t-proof-json").value)); $("t-proof-result").textContent=result.valid?"VALID":"INVALID";$("t-proof-result").className="status "+(result.valid?"ok":"critical");$("t-proof-steps").innerHTML=result.steps.map((s,i)=>`<div class="proof-step">${i+1}. ${esc(s)}</div>`).join("")+`<div class="proof-step">computed root: ${result.computed}</div>`; } catch(e){$("t-proof-result").textContent="INVALID";$("t-proof-result").className="status critical";$("t-proof-steps").textContent=e.message;} });
+  $("t-verify-proof").addEventListener("click",async()=>{ try {
+    const bundle=JSON.parse($("t-proof-json").value), result=await verifyProofLocal(bundle.proof);
+    const expectedLeaf=bytesHex(await hashLeaf(bundle.event_hash));
+    if (!result.valid || bundle.proof.root_hash!==bundle.checkpoint.log_root || bundle.proof.tree_size!==bundle.checkpoint.log_size || bundle.proof.leaf_hash!==expectedLeaf) throw new Error("PROFILE NOT INCLUDED — proof/checkpoint/event binding mismatch");
+    const response=await fetch("/v1/transparency/verify/inclusion",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(bundle)}), verified=await response.json();
+    if (!response.ok || !verified.valid) throw new Error(verified.error || "checkpoint signature invalid");
+    $("t-proof-result").textContent="VALID";$("t-proof-result").className="status ok";
+    $("v-inclusion").textContent="VALID";$("v-inclusion").className="status ok";$("v-binding").textContent="VALID";$("v-binding").className="status ok";
+    $("t-proof-steps").innerHTML=result.steps.map((s,i)=>`<div class="proof-step">${i+1}. ${esc(s)}</div>`).join("")+`<div class="proof-step">computed root: ${result.computed}</div><div class="proof-step">signed checkpoint binding: valid</div>`;
+  } catch(e){$("t-proof-result").textContent="INVALID";$("t-proof-result").className="status critical";$("v-inclusion").textContent="INVALID";$("v-inclusion").className="status critical";$("v-binding").textContent="PROFILE NOT INCLUDED";$("v-binding").className="status critical";$("t-proof-steps").textContent=e.message;} });
   $("t-zoom-in").onclick=()=>{treeScale=Math.min(2.5,treeScale+.2);renderMerkleTree(transparencyEvents)}; $("t-zoom-out").onclick=()=>{treeScale=Math.max(.5,treeScale-.2);renderMerkleTree(transparencyEvents)}; $("t-reset").onclick=()=>{treeScale=1;treePan=0;renderMerkleTree(transparencyEvents)};
   let dragStart=null; $("merkle-canvas").addEventListener("pointerdown",e=>dragStart=e.clientX); $("merkle-canvas").addEventListener("pointerup",e=>{if(dragStart!=null){treePan+=e.clientX-dragStart;dragStart=null;renderMerkleTree(transparencyEvents)}});
 
