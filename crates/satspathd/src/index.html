@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="referrer" content="no-referrer" />
 <title>SatsPath Dashboard</title>
-<!-- Modern typography -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #09090b;
@@ -23,8 +19,8 @@
     --onchain: #3b82f6;
     --ark: #a855f7;
     
-    --font-sans: 'Plus Jakarta Sans', sans-serif;
-    --font-mono: 'Space Grotesk', monospace;
+    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,7 +39,7 @@
 
   main {
     width: 100%;
-    max-width: 500px;
+    max-width: 1180px;
     background: var(--card-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -363,6 +359,39 @@
 
   .hidden { display: none !important; }
 
+  .explorer-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .metric, .panel { background: rgba(9,9,11,.72); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .metric { grid-column: span 3; min-height: 104px; }
+  .metric span { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .metric strong { display: block; margin-top: 10px; font: 600 20px var(--font-mono); overflow: hidden; text-overflow: ellipsis; }
+  .panel { grid-column: span 6; min-width: 0; }
+  .panel.wide { grid-column: 1 / -1; }
+  .panel h3 { font: 600 14px var(--font-mono); margin-bottom: 12px; }
+  .hash { font-family: var(--font-mono); font-size: 11px; word-break: break-all; color: #c4b5fd; }
+  .status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 9px; font: 600 10px var(--font-mono); }
+  .status.ok { color: #6ee7b7; background: rgba(16,185,129,.12); }
+  .status.warn { color: #fcd34d; background: rgba(245,158,11,.12); }
+  .status.critical { color: #fca5a5; background: rgba(239,68,68,.16); }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input { flex: 1; min-width: 210px; }
+  .small-button { cursor: pointer; border: 1px solid var(--border); border-radius: 8px; background: #27272a; color: var(--text); padding: 8px 11px; font: 600 11px var(--font-mono); }
+  #merkle-canvas { width: 100%; height: 330px; background: #050507; border: 1px solid var(--border); border-radius: 10px; cursor: grab; touch-action: none; }
+  #merkle-canvas:active { cursor: grabbing; }
+  .tree-link { stroke: #3f3f46; stroke-width: 1.5; }
+  .tree-link.proof { stroke: #fbbf24; stroke-width: 3; }
+  .tree-node { fill: #18181b; stroke: #71717a; stroke-width: 1.5; cursor: pointer; }
+  .tree-node.leaf { fill: #172554; stroke: #60a5fa; }
+  .tree-node.proof { fill: #422006; stroke: #fbbf24; stroke-width: 3; }
+  .timeline { display: grid; gap: 10px; max-height: 320px; overflow: auto; }
+  .timeline-item { border-left: 2px solid #52525b; padding: 6px 10px; }
+  .timeline-item.rotate_key { border-left-color: #fbbf24; }
+  textarea { width: 100%; min-height: 190px; resize: vertical; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: #09090b; color: #e4e4e7; font: 11px/1.5 var(--font-mono); }
+  .proof-steps { max-height: 260px; overflow: auto; display: grid; gap: 7px; margin-top: 12px; }
+  .proof-step { padding: 8px; border: 1px solid var(--border); border-radius: 7px; font: 10px var(--font-mono); word-break: break-all; }
+  .checkpoint-row { display: grid; grid-template-columns: 100px 1fr auto; gap: 12px; align-items: center; border-top: 1px solid var(--border); padding: 12px 0; }
+  @media (max-width: 760px) { body { padding: 10px; } main { padding: 18px; } nav { overflow-x: auto; } nav button { min-width: 90px; } .metric { grid-column: span 6; } .panel { grid-column: 1 / -1; } .checkpoint-row { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
   footer {
     margin-top: 32px;
     font-size: 11px;
@@ -420,6 +449,7 @@
       <button data-tab="send" class="active">Send</button>
       <button data-tab="receive">Receive</button>
       <button data-tab="profile">My Profile</button>
+      <button data-tab="transparency">Transparency</button>
     </nav>
 
     <!-- SEND -->
@@ -441,6 +471,51 @@
       
       <div class="card hidden" id="s-card"></div>
       <div class="err hidden" id="s-err"></div>
+    </section>
+
+    <section id="tab-transparency" class="hidden" aria-live="polite">
+      <h2>Transparency Registry</h2>
+      <p class="tagline">Append-only identity history · proofs verified locally · identifiers hashed by default</p>
+      <div id="t-alert" class="err hidden" role="alert"></div>
+      <div class="explorer-grid">
+        <div class="metric"><span>Log size</span><strong id="t-log-size">—</strong></div>
+        <div class="metric"><span>Merkle root</span><strong class="hash" id="t-root">—</strong></div>
+        <div class="metric"><span>Identifiers</span><strong id="t-identifiers">—</strong></div>
+        <div class="metric"><span>Consistency</span><strong><span id="t-consistency" class="status warn">UNKNOWN</span></strong></div>
+        <div class="metric"><span>Key rotations</span><strong id="t-rotations">—</strong></div>
+        <div class="metric"><span>Revocations</span><strong id="t-revocations">—</strong></div>
+        <div class="metric"><span>Map root</span><strong class="hash" id="t-map-root">not implemented</strong></div>
+        <div class="metric"><span>Bitcoin anchor</span><strong><span id="t-anchor" class="status warn">NOT ANCHORED</span></strong></div>
+
+        <section class="panel wide">
+          <h3>Identifier / event search</h3>
+          <div class="toolbar"><input id="t-search" aria-label="Search identifier hash or event hash" placeholder="identifier hash or event hash" /><button class="small-button" id="t-search-go">Search</button></div>
+          <div id="t-search-result" class="hash">Public tree lookup never requires a plaintext email.</div>
+        </section>
+
+        <section class="panel wide">
+          <h3>Interactive Merkle tree</h3>
+          <div class="toolbar"><button class="small-button" id="t-zoom-in">Zoom +</button><button class="small-button" id="t-zoom-out">Zoom −</button><button class="small-button" id="t-reset">Reset</button><span id="t-selected" class="hash">Select a leaf to highlight its inclusion path</span></div>
+          <svg id="merkle-canvas" viewBox="0 0 1000 330" role="img" aria-label="Interactive Merkle tree"></svg>
+        </section>
+
+        <section class="panel">
+          <h3>Identifier history</h3>
+          <div id="t-history" class="timeline"><div class="reason">Select an event or search an identifier hash.</div></div>
+        </section>
+        <section class="panel">
+          <h3>Proof inspector</h3>
+          <textarea id="t-proof-json" spellcheck="false" aria-label="Inclusion proof JSON" placeholder='Paste {"leaf_index": ..., "audit_path": [...]}'></textarea>
+          <button class="small-button" id="t-verify-proof">Verify inclusion proof</button>
+          <span id="t-proof-result" class="status warn">WAITING</span>
+          <div id="t-proof-steps" class="proof-steps"></div>
+        </section>
+
+        <section class="panel wide">
+          <h3>Signed checkpoints</h3>
+          <div id="t-checkpoints"><div class="reason">No checkpoints loaded.</div></div>
+        </section>
+      </div>
     </section>
 
     <!-- RECEIVE -->
@@ -546,8 +621,119 @@
   // Tab switching logic
   document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
     document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
-    ["send","receive","profile"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+    ["send","receive","profile","transparency"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+    if (b.dataset.tab === "transparency") loadTransparency();
   }));
+
+  let transparencyLoaded = false, transparencyEvents = [], treeScale = 1, treePan = 0;
+  const hexBytes = h => new Uint8Array((h.match(/.{2}/g) || []).map(x => parseInt(x, 16)));
+  const bytesHex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join("");
+  const sha256 = async bytes => new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  const hashLeaf = async eventHash => sha256(new Uint8Array([0, ...hexBytes(eventHash)]));
+  const hashNode = async (a,b) => sha256(new Uint8Array([1, ...a, ...b]));
+  const largestPowerBelow = n => { let p=1; while (p*2<n) p*=2; return p; };
+
+  async function verifyProofLocal(proof) {
+    if (!proof || proof.tree_size < 1 || proof.leaf_index >= proof.tree_size) throw new Error("Invalid index or tree size");
+    let hash = hexBytes(proof.leaf_hash), index = Number(proof.leaf_index), last = Number(proof.tree_size)-1;
+    const steps = [];
+    for (const siblingHex of proof.audit_path || []) {
+      const sibling = hexBytes(siblingHex), siblingLeft = index % 2 === 1 || index === last;
+      hash = siblingLeft ? await hashNode(sibling, hash) : await hashNode(hash, sibling);
+      steps.push(`${siblingLeft ? "sibling || current" : "current || sibling"} → ${bytesHex(hash)}`);
+      if (siblingLeft) while (index % 2 === 0 && index !== 0) { index=Math.floor(index/2); last=Math.floor(last/2); }
+      index=Math.floor(index/2); last=Math.floor(last/2);
+    }
+    return { valid: bytesHex(hash) === proof.root_hash && last === 0, computed: bytesHex(hash), steps };
+  }
+
+  async function loadTransparency() {
+    if (transparencyLoaded) return;
+    transparencyLoaded = true;
+    try {
+      const [statusRes, eventsRes, checkpointsRes] = await Promise.all([
+        fetch("/v1/transparency/status"), fetch("/v1/transparency/events?limit=200"), fetch("/v1/transparency/checkpoints?limit=100")
+      ]);
+      const status = await statusRes.json(), eventPage = await eventsRes.json(), checkpointPage = await checkpointsRes.json();
+      if (!statusRes.ok || status.error) throw new Error(status.error || "Transparency status unavailable");
+      transparencyEvents = eventPage.items || [];
+      $("t-log-size").textContent = status.log_size.toLocaleString();
+      $("t-root").textContent = status.log_root;
+      $("t-identifiers").textContent = status.registered_identifiers;
+      $("t-rotations").textContent = status.key_rotations;
+      $("t-revocations").textContent = status.revocations;
+      $("t-consistency").textContent = status.consistency_status.toUpperCase();
+      $("t-consistency").className = "status " + (status.consistency_status === "valid" ? "ok" : "critical");
+      renderCheckpoints(checkpointPage.items || []);
+      await renderMerkleTree(transparencyEvents);
+    } catch (e) {
+      $("t-alert").textContent = `SECURITY STATUS UNAVAILABLE — ${e.message}`; show($("t-alert"));
+      $("t-consistency").textContent = "FAIL CLOSED"; $("t-consistency").className = "status critical";
+    }
+  }
+
+  function renderCheckpoints(checkpoints) {
+    if (!checkpoints.length) return;
+    $("t-checkpoints").innerHTML = checkpoints.slice().reverse().map((c,i) => `
+      <div class="checkpoint-row">
+        <strong>Checkpoint #${esc(c.log_size)}</strong>
+        <div><div class="hash">${esc(c.log_root)}</div><div class="reason">${new Date(c.created_at*1000).toLocaleString()} · operator ${esc(c.operator_pubkey.slice(0,16))}…</div></div>
+        <span class="status ${i===0?'ok':'warn'}">${c.bitcoin_anchor?.verified ? 'ANCHORED' : 'SIGNED'}</span>
+      </div>`).join("");
+    const latest = checkpoints[checkpoints.length-1];
+    if (latest.bitcoin_anchor) { $("t-anchor").textContent = latest.bitcoin_anchor.verified ? "CONFIRMED" : "UNCONFIRMED"; $("t-anchor").className = "status " + (latest.bitcoin_anchor.verified ? "ok" : "warn"); }
+  }
+
+  async function buildTree(events) {
+    const leaves = await Promise.all(events.map(async (e,i) => ({hash: bytesHex(await hashLeaf(await eventHash(e))), leaf:i, event:e})));
+    async function branch(nodes) {
+      if (nodes.length === 1) return nodes[0];
+      const split=largestPowerBelow(nodes.length), left=await branch(nodes.slice(0,split)), right=await branch(nodes.slice(split));
+      return {hash:bytesHex(await hashNode(hexBytes(left.hash),hexBytes(right.hash))), left,right};
+    }
+    return leaves.length ? branch(leaves) : null;
+  }
+
+  async function eventHash(e) {
+    const copy={version:e.version,identifier_hash:e.identifier_hash,action:e.action,identity_pubkey:e.identity_pubkey,profile_hash:e.profile_hash,sequence:e.sequence,previous_event_hash:e.previous_event_hash,created_at:e.created_at,identifier_attestation_hash:e.identifier_attestation_hash,rotation:e.rotation};
+    const canonical = JSON.stringify(copy, Object.keys(copy).sort());
+    return bytesHex(await sha256(new Uint8Array([...new TextEncoder().encode("SatsPathNameEventV1"), ...new TextEncoder().encode(canonical)])));
+  }
+
+  async function renderMerkleTree(events, proofPath=[]) {
+    const svg=$("merkle-canvas"); svg.innerHTML="";
+    if (!events.length) { svg.innerHTML='<text x="500" y="165" text-anchor="middle" fill="#a1a1aa">Empty append-only log</text>'; return; }
+    const root=await buildTree(events), nodes=[], links=[];
+    let leafCounter=0;
+    function layout(n,depth=0) {
+      if (n.leaf != null) { n.x=70+leafCounter++*(860/Math.max(1,events.length-1)); n.y=285; }
+      else { layout(n.left,depth+1); layout(n.right,depth+1); n.x=(n.left.x+n.right.x)/2; n.y=35+depth*58; links.push([n,n.left],[n,n.right]); }
+      nodes.push(n);
+    } layout(root);
+    const proofHashes=new Set(proofPath);
+    const ns="http://www.w3.org/2000/svg", group=document.createElementNS(ns,"g"); group.setAttribute("transform",`translate(${treePan} 0) scale(${treeScale})`); svg.appendChild(group);
+    links.forEach(([a,b])=>{ const line=document.createElementNS(ns,"line"); line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("class","tree-link "+(proofHashes.has(b.hash)?"proof":""));group.appendChild(line); });
+    nodes.forEach(n=>{ const c=document.createElementNS(ns,"circle");c.setAttribute("cx",n.x);c.setAttribute("cy",n.y);c.setAttribute("r",n.leaf!=null?9:7);c.setAttribute("class",`tree-node ${n.leaf!=null?'leaf':''} ${proofHashes.has(n.hash)?'proof':''}`);c.setAttribute("tabindex","0");c.setAttribute("aria-label",`${n.leaf!=null?'Leaf '+n.leaf:'Merkle node'} ${n.hash}`); if(n.leaf!=null)c.addEventListener("click",()=>selectLeaf(n));group.appendChild(c); });
+  }
+
+  async function selectLeaf(node) {
+    const hash=await eventHash(node.event), response=await fetch(`/v1/transparency/inclusion/${hash}`), proof=await response.json();
+    if (!response.ok) throw new Error(proof.error || "Proof unavailable");
+    $("t-selected").textContent=`Leaf ${proof.leaf_index} · ${hash}`;
+    $("t-proof-json").value=JSON.stringify(proof,null,2);
+    showHistory(node.event.identifier_hash);
+    await renderMerkleTree(transparencyEvents,[proof.leaf_hash,...proof.audit_path]);
+  }
+
+  function showHistory(identifier) {
+    const events=transparencyEvents.filter(e=>e.identifier_hash===identifier);
+    $("t-history").innerHTML=events.map(e=>`<div class="timeline-item ${esc(e.action)}"><strong>${esc(e.action.replaceAll('_',' '))}</strong><div class="reason">Sequence ${e.sequence} · ${new Date(e.created_at*1000).toLocaleString()}</div><div class="hash">key ${esc(e.identity_pubkey.slice(0,20))}…<br>profile ${esc(e.profile_hash)}</div>${e.action==='rotate_key'?'<span class="status warn">OLD AUTH + NEW ACCEPTANCE</span>':''}</div>`).join("") || '<div class="reason">No matching identifier history.</div>';
+  }
+
+  $("t-search-go").addEventListener("click",async()=>{ const q=$("t-search").value.trim(); if(!q)return; const byId=transparencyEvents.filter(e=>e.identifier_hash===q); if(byId.length){showHistory(q);$("t-search-result").textContent=`${byId.length} linked event(s) · latest key ${byId.at(-1).identity_pubkey}`;return;} const byEvent=await Promise.all(transparencyEvents.map(async e=>({e,h:await eventHash(e)}))); const found=byEvent.find(x=>x.h===q); $("t-search-result").textContent=found?`${found.e.action} · identifier ${found.e.identifier_hash} · profile ${found.e.profile_hash}`:"No public log match"; if(found)showHistory(found.e.identifier_hash); });
+  $("t-verify-proof").addEventListener("click",async()=>{ try { const result=await verifyProofLocal(JSON.parse($("t-proof-json").value)); $("t-proof-result").textContent=result.valid?"VALID":"INVALID";$("t-proof-result").className="status "+(result.valid?"ok":"critical");$("t-proof-steps").innerHTML=result.steps.map((s,i)=>`<div class="proof-step">${i+1}. ${esc(s)}</div>`).join("")+`<div class="proof-step">computed root: ${result.computed}</div>`; } catch(e){$("t-proof-result").textContent="INVALID";$("t-proof-result").className="status critical";$("t-proof-steps").textContent=e.message;} });
+  $("t-zoom-in").onclick=()=>{treeScale=Math.min(2.5,treeScale+.2);renderMerkleTree(transparencyEvents)}; $("t-zoom-out").onclick=()=>{treeScale=Math.max(.5,treeScale-.2);renderMerkleTree(transparencyEvents)}; $("t-reset").onclick=()=>{treeScale=1;treePan=0;renderMerkleTree(transparencyEvents)};
+  let dragStart=null; $("merkle-canvas").addEventListener("pointerdown",e=>dragStart=e.clientX); $("merkle-canvas").addEventListener("pointerup",e=>{if(dragStart!=null){treePan+=e.clientX-dragStart;dragStart=null;renderMerkleTree(transparencyEvents)}});
 
   // SEND
   $("s-go").addEventListener("click", async () => {
