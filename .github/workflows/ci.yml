@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "develop", "feat/**", "fix/**", "feature/**"]
   pull_request:
-    branches: ["main", "develop"]
+    branches: ["main", "develop", "satspath-standalone"]
 
 jobs:
   test:
@@ -32,11 +32,42 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Build workspace
-        run: cargo build --workspace
+      - name: Check workspace
+        run: cargo check --workspace --all-features
 
       - name: Run all tests
-        run: cargo test --workspace --all-targets
+        run: cargo test --workspace --all-features
 
       - name: Clippy — deny warnings
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  bitcoin-regtest:
+    name: Bitcoin Core regtest anchor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Start Bitcoin Core regtest
+        run: >-
+          docker run --detach --name satspath-bitcoind --publish 18443:18443
+          bitcoin/bitcoin:27.1
+          -regtest -server -txindex=1 -fallbackfee=0.0002
+          -rpcbind=0.0.0.0 -rpcallowip=0.0.0.0/0
+          -rpcuser=satspath -rpcpassword=satspath-regtest-only
+      - name: Wait for RPC and fund test wallet
+        run: |
+          for attempt in {1..30}; do
+            if curl --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"getblockchaininfo","params":[]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/ | grep -q '"chain":"regtest"'; then break; fi
+            sleep 1
+          done
+          curl --fail --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"createwallet","params":["satspath-anchor"]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/
+          ADDRESS=$(curl --fail --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"getnewaddress","params":[]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/wallet/satspath-anchor | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"])')
+          curl --fail --silent --user satspath:satspath-regtest-only --data-binary "{\"jsonrpc\":\"2.0\",\"id\":\"ci\",\"method\":\"generatetoaddress\",\"params\":[101,\"$ADDRESS\"]}" -H 'content-type:text/plain;' http://127.0.0.1:18443/wallet/satspath-anchor
+      - name: Execute OP_RETURN anchor integration test
+        env:
+          SATSPATH_BITCOIN_NETWORK: regtest
+          SATSPATH_BITCOIN_RPC_URL: http://127.0.0.1:18443/wallet/satspath-anchor
+          SATSPATH_BITCOIN_RPC_USER: satspath
+          SATSPATH_BITCOIN_RPC_PASSWORD: satspath-regtest-only
+        run: cargo test -p satspath-core --test regtest_anchor --all-features -- --ignored --exact checkpoint_op_return_round_trip_on_bitcoin_core_regtest

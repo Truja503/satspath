@@ -36,7 +36,7 @@ Payment execution belongs to the underlying wallet or rail. SatsPath discovers a
 : Public profile data containing a receiver alias, protocol identity public key, supported payment methods, timestamps, and optional method-verification records.
 
 `SignedPaymentProfile`
-: A `PaymentProfile` plus a secp256k1 ECDSA signature made by the profile identity key.
+: A `PaymentProfile` plus a secp256k1 Schnorr signature made by the profile identity key.
 
 `PaymentMethod`
 : One public receive pointer. v1 methods are `Lightning`, `Onchain`, and `Ark`.
@@ -114,17 +114,17 @@ A `SignedPaymentProfile` wraps the profile with a signature:
     "identity_pubkey": "02...",
     "methods": []
   },
-  "signature": "3044..."
+  "signature": "<128 lowercase hex characters>"
 }
 ```
 
 ### Signing Rule
 
-The signature is computed over the SHA-256 digest of the canonical JSON serialization of `profile`.
+The signature is computed over a domain-separated SHA-256 digest of the canonical JSON serialization of `profile`.
 
 ```txt
-message = SHA256(canonical_json(profile))
-signature = secp256k1_ecdsa_sign(identity_secret_key, message)
+message = SHA256(UTF8("SatsPathProfileV1") || canonical_json_utf8(profile))
+signature = secp256k1_schnorr_sign(identity_secret_key, message)
 ```
 
 Implementations MUST keep serialization stable for the profile shape they sign. Implementations MUST NOT sign or transmit wallet seeds, xprv/tprv material, mnemonics, Lightning macaroons, Ark claim keys, refund keys, or other private spending material.
@@ -133,11 +133,40 @@ Implementations MUST keep serialization stable for the profile shape they sign. 
 
 Before using any profile for routing, an implementation MUST:
 
-1. Parse `identity_pubkey` as a compressed secp256k1 public key.
-2. Recompute `SHA256(canonical_json(profile))`.
-3. Verify the DER-encoded ECDSA signature.
-4. Reject the profile if `expires_at` is present and in the past.
-5. Reject private material if any private-key-like content is detected in public fields.
+1. Parse `identity_pubkey` from hex as exactly a 33-byte compressed secp256k1 public key (`02`/`03` prefix).
+2. Serialize with RFC 8259 JSON semantics, recursively lexicographically sorted object keys, UTF-8, and no insignificant whitespace.
+3. Recompute `SHA256(UTF8("SatsPathProfileV1") || canonical_json_utf8(profile))`.
+4. Decode `signature` as exactly 64 bytes of hex and verify secp256k1 Schnorr against the x-only projection of the compressed key. DER ECDSA MUST be rejected.
+5. Reject the profile if `expires_at` is present and in the past.
+6. Reject private material if any private-key-like content is detected in public fields.
+
+Profile schema/signature version 1 is selected by `SatsPathProfileV1`; an incompatible future profile requires a new domain.
+
+### Key Rotation V1
+
+The old key authorizes and the new key separately accepts these newline-delimited UTF-8 statements (no trailing newline):
+
+```text
+SatsPathKeyRotationAuthorizationV1
+identifier_hash
+old_pubkey
+new_pubkey
+previous_event_hash
+sequence
+rotated_at
+```
+
+```text
+SatsPathKeyRotationAcceptanceV1
+identifier_hash
+old_pubkey
+new_pubkey
+previous_event_hash
+sequence
+rotated_at
+```
+
+Each complete statement is SHA-256 hashed and signed as a 64-byte secp256k1 Schnorr signature. `identifier_hash` is `SHA256(UTF8(canonical_identifier))`.
 
 If signature verification fails, the protocol result MUST be `invalid_signature`.
 
@@ -368,6 +397,36 @@ The current reference policy is:
 The response MUST include a human-readable `reason` describing the selected route.
 
 Routing policy MAY evolve without changing the quote response wire shape.
+
+## Mandatory Transparency Composition
+
+The standalone daemon MUST NOT route `/v1/quote`, `/v1/pay` or `/v1/preview`
+from a self-contained signed profile alone. These endpoints use the same result
+as `/v1/resolve` and verify, in order: canonical profile signature and expiry,
+identifier history, key continuity, latest profile/event binding, inclusion in
+the exact signed checkpoint, consistency with the `log_id` pin, operator-key
+continuity, and payment-method ownership. Failure is terminal and MUST NOT fall
+back to the legacy resolver chain.
+
+Name-event hashing uses two distinct values:
+
+```text
+signing_payload_hash = SHA256("SatsPathNameEventPayloadV1" || canonical_json(unsigned_event))
+owner_signature      = Schnorr("SatsPathNameEventSignatureV1\n" || hex(signing_payload_hash))
+signed_event_hash    = SHA256("SatsPathSignedNameEventV1" || canonical_json(full_signed_event))
+leaf_hash            = SHA256(0x00 || raw(signed_event_hash))
+```
+
+All quoted strings above are exact UTF-8 bytes with no NUL separator. Hex is
+lowercase. `previous_event_hash` is the preceding `signed_event_hash`.
+Registration uses sequence 0; every accepted mutation increments exactly once,
+and profile, event and rotation sequences MUST match.
+
+An inclusion result is valid only if proof root/size equal checkpoint root/size,
+the leaf is derived from the requested signed event hash, the Merkle audit path
+verifies, and the checkpoint's 64-byte secp256k1 Schnorr signature verifies.
+Pins are keyed by stable `log_id`; a changed operator public key requires old-key
+authorization and new-key acceptance in a versioned operator rotation.
 
 ## Payment Handoff
 

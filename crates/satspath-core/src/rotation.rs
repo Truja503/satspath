@@ -1,56 +1,136 @@
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::{sign_message, verify_message_signature};
-use crate::{Result, SignedPaymentProfile};
+use crate::{Result, SatsPathError, SignedPaymentProfile};
+
+pub const ROTATION_AUTHORIZATION_DOMAIN: &str = "SatsPathKeyRotationAuthorizationV1";
+pub const ROTATION_ACCEPTANCE_DOMAIN: &str = "SatsPathKeyRotationAcceptanceV1";
 
 /// A proof of key rotation.
 /// If present, the `PaymentProfile::identity_pubkey` is the new key, and this object
 /// proves that the rotation was authorized by the old key.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeyRotation {
+    #[serde(default = "rotation_version")]
+    pub version: u16,
+    #[serde(default)]
+    pub identifier_hash: String,
     /// The previous identity public key (hex).
     pub previous_pubkey: String,
     /// The new identity public key (hex) - must match the profile's identity_pubkey.
     pub new_pubkey: String,
     /// Signature of the new pubkey created by the previous secret key.
     pub authorization_signature: String,
+    /// Proof that the new key is possessed by the party accepting the rotation.
+    #[serde(default)]
+    pub acceptance_signature: String,
+    #[serde(default)]
+    pub previous_event_hash: String,
+    #[serde(default)]
+    pub sequence: u64,
     /// The timestamp when the rotation occurred.
     pub rotated_at: i64,
+}
+
+const fn rotation_version() -> u16 {
+    1
 }
 
 impl KeyRotation {
     /// Create a new KeyRotation object, signing the new pubkey with the old secret key.
     pub fn create(
+        identifier_hash: String,
         previous_pubkey_hex: String,
         old_secret_key: &secp256k1::SecretKey,
         new_pubkey_hex: String,
+        new_secret_key: &secp256k1::SecretKey,
+        previous_event_hash: String,
+        sequence: u64,
     ) -> Result<Self> {
         let rotated_at = chrono::Utc::now().timestamp();
-        let message = format!(
-            "RotateSatsPathKey:{}->{}@{}",
-            previous_pubkey_hex, new_pubkey_hex, rotated_at
+        let authorization_message = rotation_message(
+            ROTATION_AUTHORIZATION_DOMAIN,
+            &identifier_hash,
+            &previous_pubkey_hex,
+            &new_pubkey_hex,
+            &previous_event_hash,
+            sequence,
+            rotated_at,
         );
-        let signature = sign_message(&message, old_secret_key);
+        let acceptance_message = rotation_message(
+            ROTATION_ACCEPTANCE_DOMAIN,
+            &identifier_hash,
+            &previous_pubkey_hex,
+            &new_pubkey_hex,
+            &previous_event_hash,
+            sequence,
+            rotated_at,
+        );
         Ok(Self {
+            version: 1,
+            identifier_hash,
             previous_pubkey: previous_pubkey_hex,
             new_pubkey: new_pubkey_hex,
-            authorization_signature: signature,
+            authorization_signature: sign_message(&authorization_message, old_secret_key),
+            acceptance_signature: sign_message(&acceptance_message, new_secret_key),
+            previous_event_hash,
+            sequence,
             rotated_at,
         })
     }
 
     /// Verify the rotation authorization signature.
     pub fn verify(&self) -> Result<bool> {
-        let message = format!(
-            "RotateSatsPathKey:{}->{}@{}",
-            self.previous_pubkey, self.new_pubkey, self.rotated_at
+        if self.version != 1
+            || self.identifier_hash.is_empty()
+            || self.previous_event_hash.is_empty()
+            || self.sequence == 0
+            || self.acceptance_signature.is_empty()
+        {
+            return Ok(false);
+        }
+        let authorization_message = rotation_message(
+            ROTATION_AUTHORIZATION_DOMAIN,
+            &self.identifier_hash,
+            &self.previous_pubkey,
+            &self.new_pubkey,
+            &self.previous_event_hash,
+            self.sequence,
+            self.rotated_at,
         );
-        verify_message_signature(
-            &message,
+        let acceptance_message = rotation_message(
+            ROTATION_ACCEPTANCE_DOMAIN,
+            &self.identifier_hash,
+            &self.previous_pubkey,
+            &self.new_pubkey,
+            &self.previous_event_hash,
+            self.sequence,
+            self.rotated_at,
+        );
+        Ok(verify_message_signature(
+            &authorization_message,
             &self.authorization_signature,
             &self.previous_pubkey,
-        )
+        )? && verify_message_signature(
+            &acceptance_message,
+            &self.acceptance_signature,
+            &self.new_pubkey,
+        )?)
     }
+}
+
+pub fn rotation_message(
+    domain: &str,
+    identifier: &str,
+    old_pubkey: &str,
+    new_pubkey: &str,
+    previous_event_hash: &str,
+    sequence: u64,
+    rotated_at: i64,
+) -> String {
+    format!(
+        "{domain}\n{identifier}\n{old_pubkey}\n{new_pubkey}\n{previous_event_hash}\n{sequence}\n{rotated_at}"
+    )
 }
 
 /// Apply a key rotation to a signed payment profile.
@@ -114,7 +194,10 @@ pub fn is_rotation_valid(profile: &SignedPaymentProfile) -> Result<bool> {
 /// Returns the new profile with the rotation applied (but not yet signed).
 pub fn rotate_identity_key(
     profile: &SignedPaymentProfile,
+    old_secret_key: &secp256k1::SecretKey,
     new_secret_key: &secp256k1::SecretKey,
+    previous_event_hash: &str,
+    sequence: u64,
 ) -> Result<SignedPaymentProfile> {
     let secp = secp256k1::Secp256k1::new();
     let new_public_key = secp256k1::PublicKey::from_secret_key(&secp, new_secret_key);
@@ -122,11 +205,32 @@ pub fn rotate_identity_key(
 
     let old_pubkey_hex = profile.profile.identity_pubkey.clone();
 
-    let rotation = KeyRotation::create(old_pubkey_hex, new_secret_key, new_pubkey_hex.clone())?;
+    let old_derived = secp256k1::PublicKey::from_secret_key(&secp, old_secret_key);
+    if hex::encode(old_derived.serialize()) != old_pubkey_hex {
+        return Err(SatsPathError::InvalidRotation(
+            "old secret key does not control the current identity key".into(),
+        ));
+    }
+    let next_sequence = profile.profile.sequence.unwrap_or(0).saturating_add(1);
+    if sequence != next_sequence {
+        return Err(SatsPathError::InvalidRotation(
+            "rotation sequence must equal the canonical next sequence".into(),
+        ));
+    }
+    let rotation = KeyRotation::create(
+        crate::privacy::identifier_hash(&profile.profile.alias),
+        old_pubkey_hex,
+        old_secret_key,
+        new_pubkey_hex.clone(),
+        new_secret_key,
+        previous_event_hash.to_owned(),
+        sequence,
+    )?;
 
     let mut new_profile = profile.profile.clone();
     new_profile.identity_pubkey = new_pubkey_hex;
     new_profile.rotation = Some(rotation);
+    new_profile.sequence = Some(sequence);
     // Clear signature since it needs to be re-signed with the new key
     // The caller must re-sign with the new secret key
     Ok(SignedPaymentProfile {
@@ -149,7 +253,14 @@ pub fn verify_key_rotation(
         if rotation.new_pubkey != new_profile.profile.identity_pubkey {
             return Ok(false);
         }
-        rotation.verify()
+        if rotation.identifier_hash != crate::privacy::identifier_hash(&old_profile.profile.alias)
+            || new_profile.profile.alias != old_profile.profile.alias
+            || rotation.sequence != new_profile.profile.sequence.unwrap_or(0)
+            || rotation.sequence != old_profile.profile.sequence.unwrap_or(0).saturating_add(1)
+        {
+            return Ok(false);
+        }
+        Ok(rotation.verify()? && crate::crypto::verify_signed_profile(new_profile)?)
     } else {
         Ok(false)
     }

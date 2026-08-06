@@ -11,12 +11,19 @@ use secp256k1::{PublicKey, Secp256k1, SecretKey};
 pub fn rotate_identity_key(
     profile: &SignedPaymentProfile,
     old_secret_key: &SecretKey,
-    new_identity_pubkey: String,
+    new_secret_key: &SecretKey,
+    previous_event_hash: &str,
 ) -> Result<KeyRotation, SatsPathError> {
+    let new_identity_pubkey =
+        hex::encode(PublicKey::from_secret_key(&Secp256k1::new(), new_secret_key).serialize());
     let rotation = KeyRotation::create(
+        satspath_core::privacy::identifier_hash(&profile.profile.alias),
         profile.profile.identity_pubkey.clone(),
         old_secret_key,
         new_identity_pubkey,
+        new_secret_key,
+        previous_event_hash.to_owned(),
+        profile.profile.sequence.unwrap_or(0) + 1,
     )?;
 
     Ok(rotation)
@@ -117,12 +124,7 @@ mod tests {
         let (profile, old_sk) = make_profile(vec![]);
         let new_kp = generate_identity_keypair();
 
-        let rotation = rotate_identity_key(
-            &profile,
-            &old_sk,
-            hex::encode(new_kp.public_key.serialize()),
-        )
-        .unwrap();
+        let rotation = rotate_identity_key(&profile, &old_sk, &new_kp.secret_key, "11aa").unwrap();
 
         assert_eq!(rotation.previous_pubkey, profile.profile.identity_pubkey);
         assert_eq!(
@@ -137,12 +139,7 @@ mod tests {
         let (profile, old_sk) = make_profile(vec![]);
         let new_kp = generate_identity_keypair();
 
-        let rotation = rotate_identity_key(
-            &profile,
-            &old_sk,
-            hex::encode(new_kp.public_key.serialize()),
-        )
-        .unwrap();
+        let rotation = rotate_identity_key(&profile, &old_sk, &new_kp.secret_key, "11aa").unwrap();
 
         let new_profile = apply_key_rotation(&profile, &rotation, &new_kp.secret_key).unwrap();
 
@@ -156,12 +153,7 @@ mod tests {
         let (profile, old_sk) = make_profile(vec![]);
         let new_kp = generate_identity_keypair();
 
-        let rotation = rotate_identity_key(
-            &profile,
-            &old_sk,
-            hex::encode(new_kp.public_key.serialize()),
-        )
-        .unwrap();
+        let rotation = rotate_identity_key(&profile, &old_sk, &new_kp.secret_key, "11aa").unwrap();
 
         // Try to apply with wrong secret key
         let wrong_kp = generate_identity_keypair();
@@ -176,12 +168,7 @@ mod tests {
         assert_eq!(original, profile.profile.identity_pubkey);
 
         let new_kp = generate_identity_keypair();
-        let rotation = rotate_identity_key(
-            &profile,
-            &old_sk,
-            hex::encode(new_kp.public_key.serialize()),
-        )
-        .unwrap();
+        let rotation = rotate_identity_key(&profile, &old_sk, &new_kp.secret_key, "11aa").unwrap();
 
         let rotated_profile = apply_key_rotation(&profile, &rotation, &new_kp.secret_key).unwrap();
         let effective = get_effective_identity_pubkey(&rotated_profile);

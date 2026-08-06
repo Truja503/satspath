@@ -43,13 +43,49 @@ impl Registry {
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        std::fs::write(&self.path, json)?;
+        let tmp = self.path.with_extension("json.tmp");
+        std::fs::write(&tmp, json)?;
+        std::fs::rename(tmp, &self.path)?;
+        Ok(())
+    }
+
+    pub fn validate_profile_write(
+        requested_alias: &str,
+        signed: &SignedPaymentProfile,
+    ) -> Result<()> {
+        validate_ascii_identifier(requested_alias)?;
+        validate_ascii_identifier(&signed.profile.alias)?;
+        let requested = canonical_identifier(requested_alias);
+        let profile_alias = canonical_identifier(&signed.profile.alias);
+        if requested != profile_alias || signed.profile.alias != profile_alias {
+            return Err(SatsPathError::RegistryError(
+                "canonical profile alias does not match requested registry key".into(),
+            ));
+        }
+        crate::validation::validate_compressed_pubkey(&signed.profile.identity_pubkey)?;
+        crate::crypto::check_profile_expiry(&signed.profile)?;
+        let canonical = crate::crypto::canonical_profile_bytes(&signed.profile)?;
+        let canonical_text = std::str::from_utf8(&canonical)
+            .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
+        crate::validation::assert_no_private_material(canonical_text)?;
+        if !crate::crypto::verify_signed_profile(signed)? {
+            return Err(SatsPathError::InvalidSignature);
+        }
         Ok(())
     }
 
     /// Register a signed profile. Fails if the alias is already taken.
     pub fn register_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
-        validate_ascii_identifier(&signed.profile.alias)?;
+        let requested = signed.profile.alias.clone();
+        self.register_profile_for(&requested, signed)
+    }
+
+    pub fn register_profile_for(
+        &mut self,
+        requested_alias: &str,
+        signed: SignedPaymentProfile,
+    ) -> Result<()> {
+        Self::validate_profile_write(requested_alias, &signed)?;
         let alias = canonical_identifier(&signed.profile.alias);
         let key = identifier_hash(&alias);
         if self.data.profiles.contains_key(&key) || self.data.profiles.contains_key(&alias) {
@@ -61,7 +97,16 @@ impl Registry {
 
     /// Update (overwrite) an existing profile entry.
     pub fn update_profile(&mut self, signed: SignedPaymentProfile) -> Result<()> {
-        validate_ascii_identifier(&signed.profile.alias)?;
+        let requested = signed.profile.alias.clone();
+        self.update_profile_for(&requested, signed)
+    }
+
+    pub fn update_profile_for(
+        &mut self,
+        requested_alias: &str,
+        signed: SignedPaymentProfile,
+    ) -> Result<()> {
+        Self::validate_profile_write(requested_alias, &signed)?;
         let alias = canonical_identifier(&signed.profile.alias);
         let key = identifier_hash(&alias);
 
@@ -73,32 +118,35 @@ impl Registry {
             .get(&key)
             .or_else(|| self.data.profiles.get(&alias))
         {
+            if signed.profile.identity_pubkey != existing.profile.identity_pubkey {
+                let rotation = signed
+                    .profile
+                    .rotation
+                    .as_ref()
+                    .ok_or(SatsPathError::UnauthorizedKeyReplacement)?;
+                if rotation.previous_pubkey != existing.profile.identity_pubkey
+                    || rotation.new_pubkey != signed.profile.identity_pubkey
+                    || rotation.identifier_hash != identifier_hash(&alias)
+                    || rotation.sequence != signed.profile.sequence.unwrap_or(0)
+                    || rotation.sequence != existing.profile.sequence.unwrap_or(0).saturating_add(1)
+                    || rotation.previous_event_hash.is_empty()
+                    || !rotation.verify()?
+                {
+                    return Err(SatsPathError::InvalidRotation(
+                        "rotation must be authorized by the old key and accepted by the new key"
+                            .into(),
+                    ));
+                }
+            } else if signed.profile.rotation.is_some() {
+                return Err(SatsPathError::InvalidRotation(
+                    "rotation proof supplied without an identity key change".into(),
+                ));
+            }
             if signed.profile.updated_at < existing.profile.updated_at {
                 return Err(SatsPathError::RegistryError(format!(
                     "Update rejected: incoming profile is older (updated_at: {}) than existing profile (updated_at: {})",
                     signed.profile.updated_at, existing.profile.updated_at
                 )));
-            }
-
-            // SEC-03b: Method Superset Check
-            // Prevent stripping payment methods (e.g., removing Lightning to force on-chain)
-            let existing_methods: std::collections::HashSet<_> = existing
-                .profile
-                .methods
-                .iter()
-                .map(|m| m.method_name())
-                .collect();
-            let new_methods: std::collections::HashSet<_> = signed
-                .profile
-                .methods
-                .iter()
-                .map(|m| m.method_name())
-                .collect();
-
-            if !existing_methods.is_subset(&new_methods) {
-                return Err(SatsPathError::RegistryError(
-                    "Update rejected: new profile must include all previously registered payment methods".into()
-                ));
             }
 
             // SEC-03c: Sequence Number Check (Replay Protection)
@@ -258,5 +306,51 @@ mod tests {
         }
         let reg2 = Registry::open(dir.path()).unwrap();
         assert!(reg2.is_registered("persist@example.com"));
+    }
+
+    #[test]
+    fn invalid_profile_never_reaches_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut reg = Registry::open(dir.path()).unwrap();
+        let mut signed = make_signed("invalid@example.com");
+        signed.signature = "00".repeat(64);
+        assert!(matches!(
+            reg.register_profile(signed),
+            Err(SatsPathError::InvalidSignature)
+        ));
+        assert!(!reg.is_registered("invalid@example.com"));
+    }
+
+    #[test]
+    fn canonical_requested_alias_must_match() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut reg = Registry::open(dir.path()).unwrap();
+        let signed = make_signed("alice@example.com");
+        assert!(reg
+            .register_profile_for("mallory@example.com", signed)
+            .is_err());
+    }
+
+    #[test]
+    fn self_signed_replacement_key_is_rejected_without_rotation() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut reg = Registry::open(dir.path()).unwrap();
+        let mut original = make_signed("alice@example.com");
+        original.profile.sequence = Some(1);
+        let original_key = generate_identity_keypair();
+        original.profile.identity_pubkey = hex::encode(original_key.public_key.serialize());
+        original = sign_profile(original.profile, &original_key.secret_key).unwrap();
+        reg.register_profile(original).unwrap();
+
+        let attacker = generate_identity_keypair();
+        let mut malicious = make_signed("alice@example.com").profile;
+        malicious.identity_pubkey = hex::encode(attacker.public_key.serialize());
+        malicious.sequence = Some(2);
+        malicious.updated_at += 1;
+        let malicious = sign_profile(malicious, &attacker.secret_key).unwrap();
+        assert!(matches!(
+            reg.update_profile(malicious),
+            Err(SatsPathError::UnauthorizedKeyReplacement)
+        ));
     }
 }

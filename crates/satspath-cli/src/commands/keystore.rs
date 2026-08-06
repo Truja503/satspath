@@ -55,22 +55,28 @@ fn derive_key(password: &str, salt: &[u8]) -> Key<Aes256Gcm> {
 
 /// Persist the protocol identity secret key. Returns the path written.
 pub fn save_identity_key(base: &Path, secret_key: &SecretKey) -> Result<PathBuf> {
+    let password = std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
+        print!("Enter a password to encrypt your identity key (or press enter for no password): ");
+        let _ = std::io::stdout().flush();
+        rpassword::read_password().unwrap_or_default()
+    });
+    save_identity_key_with_password(base, secret_key, &password)
+}
+
+fn save_identity_key_with_password(
+    base: &Path,
+    secret_key: &SecretKey,
+    password: &str,
+) -> Result<PathBuf> {
     let pubkey_hex = pubkey_hex_of(secret_key);
     let dir = identity_dir(base);
     fs::create_dir_all(&dir).context("creating identity keystore directory")?;
     let path = identity_key_path(base, &pubkey_hex);
 
-    // Prompt for password
-    let password = std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
-        print!("Enter a password to encrypt your identity key (or press enter for no password): ");
-        std::io::stdout().flush().unwrap();
-        rpassword::read_password().unwrap_or_default()
-    });
-
     let mut salt = [0u8; 16];
     rand::thread_rng().fill_bytes(&mut salt);
 
-    let key = derive_key(&password, &salt);
+    let key = derive_key(password, &salt);
     let cipher = Aes256Gcm::new(&key);
 
     let mut nonce_bytes = [0u8; 12];
@@ -93,6 +99,14 @@ pub fn save_identity_key(base: &Path, secret_key: &SecretKey) -> Result<PathBuf>
 
 /// Load the identity secret key for a given identity pubkey (hex).
 pub fn load_identity_key(base: &Path, identity_pubkey_hex: &str) -> Result<SecretKey> {
+    load_identity_key_with_password(base, identity_pubkey_hex, None)
+}
+
+fn load_identity_key_with_password(
+    base: &Path,
+    identity_pubkey_hex: &str,
+    explicit_password: Option<&str>,
+) -> Result<SecretKey> {
     let path = identity_key_path(base, identity_pubkey_hex);
     if !path.exists() {
         anyhow::bail!(
@@ -114,15 +128,16 @@ pub fn load_identity_key(base: &Path, identity_pubkey_hex: &str) -> Result<Secre
         let nonce_bytes = &bytes[16..28];
         let ciphertext = &bytes[28..];
 
-        let password = std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
-            print!(
-                "Enter password to decrypt identity key {}: ",
-                identity_pubkey_hex
-            );
-            std::io::stdout().flush().unwrap();
-            rpassword::read_password().unwrap_or_default()
+        let password = explicit_password.map(str::to_owned).unwrap_or_else(|| {
+            std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
+                print!(
+                    "Enter password to decrypt identity key {}: ",
+                    identity_pubkey_hex
+                );
+                let _ = std::io::stdout().flush();
+                rpassword::read_password().unwrap_or_default()
+            })
         });
-
         let key = derive_key(&password, salt);
         let cipher = Aes256Gcm::new(&key);
         let nonce = Nonce::from_slice(nonce_bytes);
@@ -168,13 +183,12 @@ mod tests {
         let kp = generate_identity_keypair();
         let pubkey_hex = hex::encode(kp.public_key.serialize());
 
-        std::env::set_var("SATSPATH_PASSWORD", "testpass");
-        let path = save_identity_key(dir.path(), &kp.secret_key).unwrap();
+        let path = save_identity_key_with_password(dir.path(), &kp.secret_key, "testpass").unwrap();
         assert!(path.exists());
 
-        let loaded = load_identity_key(dir.path(), &pubkey_hex).unwrap();
+        let loaded =
+            load_identity_key_with_password(dir.path(), &pubkey_hex, Some("testpass")).unwrap();
         assert_eq!(loaded.secret_bytes(), kp.secret_key.secret_bytes());
-        std::env::remove_var("SATSPATH_PASSWORD");
     }
 
     #[test]
@@ -182,7 +196,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let kp = generate_identity_keypair();
         let pubkey_hex = hex::encode(kp.public_key.serialize());
-        assert!(load_identity_key(dir.path(), &pubkey_hex).is_err());
+        assert!(
+            load_identity_key_with_password(dir.path(), &pubkey_hex, Some("testpass")).is_err()
+        );
     }
 
     #[cfg(unix)]
@@ -191,9 +207,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let kp = generate_identity_keypair();
-        std::env::set_var("SATSPATH_PASSWORD", "testpass");
-        let path = save_identity_key(dir.path(), &kp.secret_key).unwrap();
-        std::env::remove_var("SATSPATH_PASSWORD");
+        let path = save_identity_key_with_password(dir.path(), &kp.secret_key, "testpass").unwrap();
         let mode = fs::metadata(&path).unwrap().permissions().mode();
         assert_eq!(mode & 0o777, 0o600);
     }

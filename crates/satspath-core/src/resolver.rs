@@ -2,6 +2,120 @@ use async_trait::async_trait;
 
 use crate::privacy::canonical_identifier;
 use crate::{Result, SatsPathError, SignedPaymentProfile};
+use serde::{Deserialize, Serialize};
+
+use crate::transparency::{
+    IdentifierAttestation, MerkleConsistencyProof, MerkleInclusionProof, NameEvent,
+    TransparencyCheckpoint,
+};
+use crate::{MethodTrust, TrustTier};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolverSource {
+    LocalRegistry,
+    Http,
+    Bip353,
+    Nostr,
+    P2p,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationStates {
+    pub profile_signature_verified: bool,
+    pub identifier_verified: bool,
+    pub key_continuity_verified: bool,
+    pub transparency_inclusion_verified: bool,
+    pub checkpoint_binding_verified: bool,
+    pub checkpoint_consistency_verified: bool,
+    pub operator_continuity_verified: bool,
+    pub payment_methods_verified: bool,
+    pub payment_method_states: Vec<PaymentMethodVerificationState>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentMethodVerificationState {
+    pub descriptor: String,
+    pub verified: bool,
+    pub trust_tier: Option<TrustTier>,
+    pub reason: String,
+}
+
+pub fn verify_payment_method_states(
+    profile: &crate::PaymentProfile,
+    now: i64,
+) -> Vec<PaymentMethodVerificationState> {
+    profile
+        .methods
+        .iter()
+        .map(|method| {
+            let descriptor = method.ownership_descriptor();
+            let matches = profile
+                .method_verifications
+                .iter()
+                .filter(|proof| proof.method_descriptor == descriptor)
+                .count();
+            if matches > 1 {
+                return PaymentMethodVerificationState {
+                    descriptor,
+                    verified: false,
+                    trust_tier: None,
+                    reason: "duplicate ownership proofs".into(),
+                };
+            }
+            match crate::evaluate_method_trust_for_profile(profile, method, now, None) {
+                MethodTrust::Verified(tier) => PaymentMethodVerificationState {
+                    descriptor,
+                    verified: true,
+                    trust_tier: Some(tier),
+                    reason: format!("valid {} ownership proof", tier.label()),
+                },
+                MethodTrust::SelfAsserted => PaymentMethodVerificationState {
+                    descriptor,
+                    verified: false,
+                    trust_tier: Some(TrustTier::SelfAsserted),
+                    reason: "self-attestation is not independent ownership proof".into(),
+                },
+                MethodTrust::NeedsNetworkCheck(tier) => PaymentMethodVerificationState {
+                    descriptor,
+                    verified: false,
+                    trust_tier: Some(tier),
+                    reason: "domain proof requires fresh network verification".into(),
+                },
+                MethodTrust::Unverified => PaymentMethodVerificationState {
+                    descriptor,
+                    verified: false,
+                    trust_tier: None,
+                    reason: "ownership proof missing or bound to another descriptor".into(),
+                },
+                MethodTrust::Expired => PaymentMethodVerificationState {
+                    descriptor,
+                    verified: false,
+                    trust_tier: None,
+                    reason: "ownership proof expired".into(),
+                },
+                MethodTrust::Invalid(reason) => PaymentMethodVerificationState {
+                    descriptor,
+                    verified: false,
+                    trust_tier: None,
+                    reason,
+                },
+            }
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedTransparentProfile {
+    pub signed_profile: SignedPaymentProfile,
+    pub latest_event: NameEvent,
+    pub inclusion_proof: MerkleInclusionProof,
+    pub checkpoint: TransparencyCheckpoint,
+    pub consistency_proof: Option<MerkleConsistencyProof>,
+    pub identifier_attestation: Option<IdentifierAttestation>,
+    pub resolver_source: ResolverSource,
+    pub verification: VerificationStates,
+}
 
 /// A resolver capable of resolving a SatsPath alias to a `SignedPaymentProfile`.
 ///

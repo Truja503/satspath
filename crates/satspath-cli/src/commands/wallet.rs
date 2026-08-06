@@ -344,9 +344,13 @@ pub fn cmd_wallet_rotate() -> Result<()> {
 
     let t = now();
     let rotation = satspath_core::rotation::KeyRotation::create(
+        satspath_core::privacy::identifier_hash(alias),
         old_pubkey_hex.clone(),
         &old_secret,
         new_pubkey_hex.clone(),
+        &new_kp.secret_key,
+        format!("legacy-profile-sequence-{current_sequence}"),
+        current_sequence + 1,
     )?;
 
     let profile = PaymentProfile {
