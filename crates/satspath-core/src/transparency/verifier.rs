@@ -40,23 +40,42 @@ pub fn verify_inclusion_proof(proof: &MerkleInclusionProof) -> Result<bool> {
 }
 
 pub fn verify_consistency_proof(proof: &MerkleConsistencyProof) -> Result<bool> {
-    if proof.version != 1
-        || proof.old_tree_size == 0
+    if proof.old_tree_size == 0
         || proof.old_tree_size > proof.new_tree_size
         || proof.new_tree_size > super::log::MAX_V1_CONSISTENCY_LEAVES
-        || proof.audit_path.len() != proof.new_tree_size as usize
     {
         return Err(TransparencyError::InvalidConsistencyProof.into());
     }
-    let leaves: Vec<[u8; 32]> = proof
+
+    let leaves_or_nodes: Vec<[u8; 32]> = proof
         .audit_path
         .iter()
         .map(|h| decode_hash(h))
         .collect::<Result<_>>()?;
-    Ok(
-        hex::encode(merkle_root(&leaves[..proof.old_tree_size as usize])) == proof.old_root
-            && hex::encode(merkle_root(&leaves)) == proof.new_root,
-    )
+
+    let old_root_bytes = decode_hash(&proof.old_root)?;
+    let new_root_bytes = decode_hash(&proof.new_root)?;
+
+    if proof.version == 1 {
+        if proof.audit_path.len() != proof.new_tree_size as usize {
+            return Err(TransparencyError::InvalidConsistencyProof.into());
+        }
+        Ok(
+            merkle_root(&leaves_or_nodes[..proof.old_tree_size as usize]) == old_root_bytes
+                && merkle_root(&leaves_or_nodes) == new_root_bytes,
+        )
+    } else if proof.version == 2 {
+        super::tree::verify_consistency(
+            proof.old_tree_size,
+            proof.new_tree_size,
+            &old_root_bytes,
+            &new_root_bytes,
+            &leaves_or_nodes,
+        )
+        .map_err(Into::into)
+    } else {
+        Err(TransparencyError::InvalidConsistencyProof.into())
+    }
 }
 
 pub fn verify_checkpoint(checkpoint: &TransparencyCheckpoint) -> Result<bool> {

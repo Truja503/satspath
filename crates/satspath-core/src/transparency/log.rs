@@ -300,13 +300,14 @@ impl TransparencyLog {
             return Err(TransparencyError::InvalidConsistencyProof.into());
         }
         let leaves = self.leaf_hashes(new_size as usize)?;
+        let path = super::tree::consistency_proof(&leaves, old_size as usize)?;
         Ok(MerkleConsistencyProof {
-            version: 1,
+            version: 2,
             old_tree_size: old_size,
             new_tree_size: new_size,
             old_root: hex::encode(merkle_root(&leaves[..old_size as usize])),
             new_root: hex::encode(merkle_root(&leaves)),
-            audit_path: leaves.iter().map(hex::encode).collect(),
+            audit_path: path.iter().map(hex::encode).collect(),
         })
     }
 

@@ -27,7 +27,7 @@ pub use event::{payment_method_descriptor_hash, profile_hash, NameAction, NameEv
 pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
 pub use store::CheckpointStore;
-pub use tree::{leaf_hash, merkle_root, node_hash};
+pub use tree::{consistency_proof, leaf_hash, merkle_root, node_hash, verify_consistency};
 pub use verifier::{
     next_identifier_sequence, verify_checkpoint, verify_checkpoint_inclusion,
     verify_checkpoint_transition, verify_consistency_proof, verify_event_profile,

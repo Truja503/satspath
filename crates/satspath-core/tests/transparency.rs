@@ -121,10 +121,57 @@ fn inclusion_and_consistency_cover_arbitrary_sizes_and_reject_mutation() {
         }
         if size > 1 {
             let proof = log.consistency(1, size as u64).unwrap();
+            assert_eq!(proof.version, 2);
             assert!(verify_consistency_proof(&proof).unwrap());
-            let mut reordered = proof.clone();
-            reordered.audit_path.swap(0, 1);
-            assert!(!verify_consistency_proof(&reordered).unwrap());
+            if proof.audit_path.len() >= 2 {
+                let mut reordered = proof.clone();
+                reordered.audit_path.swap(0, 1);
+                assert!(!verify_consistency_proof(&reordered).unwrap());
+            }
+
+            // Test invalid roots
+            let mut bad_root = proof.clone();
+            bad_root.old_root = bad_root.new_root.clone();
+            assert!(!verify_consistency_proof(&bad_root).unwrap());
+        }
+    }
+}
+
+#[test]
+fn test_rfc6962_compact_consistency_verification_logic() {
+    // Manually construct leaves to verify the compact V2 verifier
+    use satspath_core::transparency::{consistency_proof, leaf_hash, merkle_root, verify_consistency};
+    let leaves: Vec<[u8; 32]> = (0..8).map(|i| leaf_hash(&[i])).collect();
+
+    for old_size in 1..=8 {
+        for new_size in old_size..=8 {
+            let old_root = merkle_root(&leaves[..old_size]);
+            let new_root = merkle_root(&leaves[..new_size]);
+            let proof = consistency_proof(&leaves[..new_size], old_size).unwrap();
+
+            // Should be valid
+            assert!(verify_consistency(
+                old_size as u64,
+                new_size as u64,
+                &old_root,
+                &new_root,
+                &proof
+            )
+            .unwrap());
+
+            // Should fail with corrupted proof
+            if !proof.is_empty() {
+                let mut corrupted = proof.clone();
+                corrupted[0][0] ^= 1;
+                assert!(!verify_consistency(
+                    old_size as u64,
+                    new_size as u64,
+                    &old_root,
+                    &new_root,
+                    &corrupted
+                )
+                .unwrap());
+            }
         }
     }
 }
