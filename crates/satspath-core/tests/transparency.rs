@@ -140,7 +140,9 @@ fn inclusion_and_consistency_cover_arbitrary_sizes_and_reject_mutation() {
 #[test]
 fn test_rfc6962_compact_consistency_verification_logic() {
     // Manually construct leaves to verify the compact V2 verifier
-    use satspath_core::transparency::{consistency_proof, leaf_hash, merkle_root, verify_consistency};
+    use satspath_core::transparency::{
+        consistency_proof, leaf_hash, merkle_root, verify_consistency,
+    };
     let leaves: Vec<[u8; 32]> = (0..8).map(|i| leaf_hash(&[i])).collect();
 
     for old_size in 1..=8 {
