@@ -7,10 +7,10 @@
 
 use crate::types::{HybridPublicKey, HybridSignature, PqcSuite};
 
-use ml_dsa::{MlDsa65, Signer, Verifier, Generate, Keypair as MlKeypair};
-use ml_dsa::{SigningKey, VerifyingKey, Signature};
-use secp256k1::{Secp256k1, SecretKey, PublicKey, Message, Keypair};
+use ml_dsa::{Generate, Keypair as MlKeypair, MlDsa65, Signer, Verifier};
+use ml_dsa::{Signature, SigningKey, VerifyingKey};
 use secp256k1::schnorr::Signature as SchnorrSignature;
+use secp256k1::{Keypair, Message, PublicKey, Secp256k1, SecretKey};
 use sha2::{Digest, Sha256};
 
 /// A hybrid keypair containing both classical and PQC signing keys.
@@ -45,11 +45,11 @@ impl HybridSigningKeyPair {
         let secp = Secp256k1::new();
         let classical_sk = SecretKey::from_slice(classical_sk_bytes).ok()?;
         let classical_pk = classical_sk.public_key(&secp);
-        
+
         let seed: ml_dsa::Seed = pqc_seed_bytes.try_into().ok()?;
         let pqc_sk = SigningKey::<MlDsa65>::from_seed(&seed);
         let pqc_vk = pqc_sk.verifying_key();
-        
+
         Some(Self {
             classical_sk,
             classical_pk,
@@ -100,11 +100,7 @@ pub fn hybrid_sign(message: &[u8], keypair: &HybridSigningKeyPair) -> HybridSign
 }
 
 /// Verify a hybrid signature. Returns true ONLY if BOTH components verify.
-pub fn hybrid_verify(
-    message: &[u8],
-    sig: &HybridSignature,
-    pubkey: &HybridPublicKey,
-) -> bool {
+pub fn hybrid_verify(message: &[u8], sig: &HybridSignature, pubkey: &HybridPublicKey) -> bool {
     if sig.suite != PqcSuite::MlDsa65Schnorr {
         return false;
     }
@@ -131,7 +127,7 @@ pub fn hybrid_verify(
         let vk_bytes = hex::decode(&pubkey.pqc_verification_key).ok()?;
         let vk_array = vk_bytes.as_slice().try_into().ok()?;
         let vk = VerifyingKey::<MlDsa65>::decode(&vk_array);
-        
+
         let sig_bytes = hex::decode(&sig.pqc_sig).ok()?;
         let pqc_sig = Signature::<MlDsa65>::decode(&sig_bytes.try_into().ok()?)?;
         vk.verify(message, &pqc_sig).ok()

@@ -59,7 +59,6 @@ pub enum PaymentMethod {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         opaque_uri: Option<String>,
     },
-
 }
 
 fn default_bitcoin_network() -> BitcoinNetwork {
@@ -177,6 +176,9 @@ pub struct PaymentProfile {
     /// PQC: If true, verifiers MUST check the hybrid_signature. If false, it's optional.
     #[serde(default)]
     pub pqc_required: bool,
+    /// Indicates if this profile (and identity key) has been revoked by the owner.
+    #[serde(default)]
+    pub revoked: bool,
 }
 
 /// A payment profile together with the owner's signature over its contents.

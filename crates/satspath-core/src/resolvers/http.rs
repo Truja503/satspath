@@ -76,7 +76,7 @@ impl HttpResolver {
     /// Extracted so tests can pass a mock server URL directly without
     /// needing a real DNS entry for the test domain.
     pub async fn resolve_from_url(&self, url: &str) -> Result<SignedPaymentProfile> {
-        let resp = self.client.get(url).send().await.map_err(|e| {
+        let mut resp = self.client.get(url).send().await.map_err(|e| {
             SatsPathError::NetworkError(format!("Failed to connect to {}: {}", url, e))
         })?;
 
@@ -91,7 +91,21 @@ impl HttpResolver {
             )));
         }
 
-        let signed: SignedPaymentProfile = resp.json().await.map_err(|e| {
+        let mut bytes = Vec::new();
+        let max_size = 50 * 1024; // 50 KB Limit (DoS Protection)
+
+        while let Some(chunk) = resp.chunk().await.map_err(|e| {
+            SatsPathError::NetworkError(format!("Error reading response stream: {}", e))
+        })? {
+            if bytes.len() + chunk.len() > max_size {
+                return Err(SatsPathError::NetworkError(
+                    "Payload exceeded size limit of 50KB (DoS protection)".to_string(),
+                ));
+            }
+            bytes.extend_from_slice(&chunk);
+        }
+
+        let signed: SignedPaymentProfile = serde_json::from_slice(&bytes).map_err(|e| {
             SatsPathError::SerializationError(format!("Failed to parse profile JSON: {}", e))
         })?;
 
@@ -138,6 +152,7 @@ mod tests {
             method_verifications: vec![],
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

@@ -8,10 +8,15 @@ pub fn validate_url(url: &str) -> Result<(), String> {
 
     // Must be HTTPS
     if parsed.scheme() != "https" {
-        return Err(format!("Blocked scheme '{}' — only HTTPS is allowed", parsed.scheme()));
+        return Err(format!(
+            "Blocked scheme '{}' — only HTTPS is allowed",
+            parsed.scheme()
+        ));
     }
 
-    let host = parsed.host_str().ok_or_else(|| "URL has no host".to_string())?;
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "URL has no host".to_string())?;
     let host_lower = host.to_ascii_lowercase();
 
     let blocked_hosts = [
@@ -23,19 +28,32 @@ pub fn validate_url(url: &str) -> Result<(), String> {
         "169.254.169.254",
     ];
 
-    if blocked_hosts.iter().any(|blocked| host_lower == *blocked || host_lower.ends_with(&format!(".{blocked}"))) {
+    if blocked_hosts
+        .iter()
+        .any(|blocked| host_lower == *blocked || host_lower.ends_with(&format!(".{blocked}")))
+    {
         return Err(format!("Blocked host: {host} (internal/metadata endpoint)"));
     }
 
     // Block IPv4 loopback, private, link-local, carrier-grade NAT
     if let Some(first_octet) = extract_first_octet(&host_lower) {
-        if first_octet == 127 || first_octet == 10 || first_octet == 172 || first_octet == 192 || first_octet == 169 || first_octet == 100 {
+        if first_octet == 127
+            || first_octet == 10
+            || first_octet == 172
+            || first_octet == 192
+            || first_octet == 169
+            || first_octet == 100
+        {
             return Err(format!("Blocked IP: {host} (private/reserved range)"));
         }
     }
 
     // Block IPv6 loopback
-    if host_lower == "[::1]" || host_lower.starts_with("[fe80:") || host_lower.starts_with("[fc00:") || host_lower.starts_with("[fd00:") {
+    if host_lower == "[::1]"
+        || host_lower.starts_with("[fe80:")
+        || host_lower.starts_with("[fc00:")
+        || host_lower.starts_with("[fd00:")
+    {
         return Err(format!("Blocked IPv6: {host} (private/reserved range)"));
     }
 

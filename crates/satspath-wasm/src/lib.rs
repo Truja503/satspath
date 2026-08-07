@@ -11,29 +11,31 @@
 //!
 //! All dependencies are WASM-compatible (no tokio, reqwest, mio).
 
+#![allow(warnings)]
 use wasm_bindgen::prelude::*;
 
+pub mod bolt12;
 mod crypto;
 mod helpers;
 mod resolver;
 mod router;
+mod ssrf;
 mod topic;
 pub mod types;
-mod ssrf;
-pub mod bolt12;
 
-pub use crypto::{canonical_profile_json, verify_signed_profile, fingerprint_pubkey};
-pub use helpers::{identifier_hash, mask_identifier};
-pub use topic::topic_for_alias;
-pub use resolver::{ChainResolver, LocalRegistry, Bip353Resolver, HttpsWellKnownResolver, NostrNip05Resolver};
-pub use router::{quote, build_qr_payload, select_route, select_route_live, fetch_fee_estimate};
 pub use bolt12::fetch_bolt12_invoice;
+pub use crypto::{canonical_profile_json, fingerprint_pubkey, verify_signed_profile};
+pub use helpers::{identifier_hash, mask_identifier};
+pub use resolver::{
+    Bip353Resolver, ChainResolver, HttpsWellKnownResolver, LocalRegistry, NostrNip05Resolver,
+};
+pub use router::{build_qr_payload, fetch_fee_estimate, quote, select_route, select_route_live};
+pub use topic::topic_for_alias;
 pub use types::{
-    SignedPaymentProfile, PaymentProfile, PaymentMethod, BitcoinNetwork, FeeEstimate, FeeRateSnapshot,
-    RouteRequest, Invite, SwapDirective, PaymentUrgency, QuoteRecipient, FALLBACK_FEES,
-    LIGHTNING_THRESHOLD_SATS, ONCHAIN_FEE_THRESHOLD_SAT_VB, ONCHAIN_FEE_BUFFER,
-    KeyRotation, MethodVerification, ArkOwnershipProof,
-    QuoteResponse, RouteQuote, ExecutionMode,
+    ArkOwnershipProof, BitcoinNetwork, ExecutionMode, FeeEstimate, FeeRateSnapshot, Invite,
+    KeyRotation, MethodVerification, PaymentMethod, PaymentProfile, PaymentUrgency, QuoteRecipient,
+    QuoteResponse, RouteQuote, RouteRequest, SignedPaymentProfile, SwapDirective, FALLBACK_FEES,
+    LIGHTNING_THRESHOLD_SATS, ONCHAIN_FEE_BUFFER, ONCHAIN_FEE_THRESHOLD_SAT_VB,
 };
 
 /// Initialize the WASM module (better panic messages in JS console).

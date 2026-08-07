@@ -30,6 +30,6 @@ pub async fn cmd_invite(alias: &str, amount_sats: u64) -> Result<()> {
     println!("Created at:  {}", invite.created_at);
     println!();
     println!("WARNING: {}", invite.warning);
-    
+
     Ok(())
 }

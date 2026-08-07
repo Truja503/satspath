@@ -108,7 +108,7 @@ async fn test_lnurl_error_flow_with_mock() {
 async fn test_lnurl_amount_out_of_bounds() {
     let meta = LnurlPayMetadata {
         callback: "http://dummy/callback".to_string(),
-        min_sendable: 10000, // 10 sats
+        min_sendable: 10000,  // 10 sats
         max_sendable: 100000, // 100 sats
         tag: "payRequest".to_string(),
         comment_allowed: 0,
@@ -165,7 +165,10 @@ async fn test_lnurl_callback_missing_or_empty_pr() {
 
     let result_missing = fetch_invoice(&meta_missing, 5000, None).await;
     assert!(result_missing.is_err());
-    assert!(result_missing.unwrap_err().to_string().contains("missing 'pr'"));
+    assert!(result_missing
+        .unwrap_err()
+        .to_string()
+        .contains("missing 'pr'"));
 
     let meta_empty = LnurlPayMetadata {
         callback: format!("{}/callback-empty", url),
@@ -177,7 +180,10 @@ async fn test_lnurl_callback_missing_or_empty_pr() {
 
     let result_empty = fetch_invoice(&meta_empty, 5000, None).await;
     assert!(result_empty.is_err());
-    assert!(result_empty.unwrap_err().to_string().contains("empty invoice"));
+    assert!(result_empty
+        .unwrap_err()
+        .to_string()
+        .contains("empty invoice"));
 }
 
 #[tokio::test]
@@ -187,12 +193,18 @@ async fn test_invalid_lightning_address_format() {
     // Missing domain
     let res1 = fetch_lnurl_metadata("alice").await;
     assert!(res1.is_err());
-    assert!(res1.unwrap_err().to_string().contains("invalid Lightning Address"));
+    assert!(res1
+        .unwrap_err()
+        .to_string()
+        .contains("invalid Lightning Address"));
 
     // Multiple @ symbols
     let res2 = fetch_lnurl_metadata("alice@bob@domain.com").await;
     assert!(res2.is_err());
-    assert!(res2.unwrap_err().to_string().contains("invalid Lightning Address"));
+    assert!(res2
+        .unwrap_err()
+        .to_string()
+        .contains("invalid Lightning Address"));
 }
 
 #[tokio::test]
@@ -221,5 +233,8 @@ async fn test_lnurl_invalid_tag() {
     let addr = format!("alice@{}", host);
     let result = fetch_lnurl_metadata(&addr).await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("unexpected LNURL tag"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("unexpected LNURL tag"));
 }

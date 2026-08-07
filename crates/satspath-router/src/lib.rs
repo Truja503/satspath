@@ -16,11 +16,15 @@ pub mod urgency;
 
 pub use ark_routes::{plan_ark_route, ArkRoutePlan, SenderCapabilities};
 pub use bip353_preview::quote_from_bip353_resolution;
-pub use bolt12::{parse_bolt12_offer, Bolt12Offer, Bolt12InvoiceRequest, Bolt12Invoice};
-pub use key_rotation::{apply_key_rotation, get_effective_identity_pubkey, is_rotation_valid, rotate_identity_key, verify_key_rotation};
+pub use bolt12::{parse_bolt12_offer, Bolt12Invoice, Bolt12InvoiceRequest, Bolt12Offer};
+pub use fees::{fallback_fees, fetch_fee_estimate, FeeEstimate};
+pub use key_rotation::{
+    apply_key_rotation, get_effective_identity_pubkey, is_rotation_valid, rotate_identity_key,
+    verify_key_rotation,
+};
 pub use lightning::{
-    fetch_invoice, fetch_lnurl_metadata, is_lightning_available_for_amount_sync, validate_bolt11_invoice, LnurlPayMetadata,
-    ValidatedInvoice,
+    fetch_invoice, fetch_lnurl_metadata, is_lightning_available_for_amount_sync,
+    validate_bolt11_invoice, LnurlPayMetadata, ValidatedInvoice,
 };
 pub use priority::{select_priority_route, PriorityDecision};
 pub use quote_response::{
@@ -29,7 +33,7 @@ pub use quote_response::{
 pub use router::{
     select_route, select_route_with_fees, FeeRateSnapshot, RouteQuote, RouteRequest, SwapDirective,
 };
-pub use fees::{FeeEstimate, fallback_fees, fetch_fee_estimate};
+pub use satspath_core::SplitPaymentRequest;
 pub use scoring::{
     score_routes, FeeSnapshot, PaymentRail, RouteCandidate, RouteDecision, RoutePreferences,
 };
@@ -37,6 +41,6 @@ pub use silent_payments::{
     create_silent_payment_address, generate_silent_payment_keys, parse_silent_payment_scan_key,
 };
 pub use split_payments::{
-    route_split_payment, validate_split_request, calculate_split_amounts, SplitPaymentRoute, SplitPaymentRoutingRequest, SplitPaymentRoutingResult,
+    calculate_split_amounts, route_split_payment, validate_split_request, SplitPaymentRoute,
+    SplitPaymentRoutingRequest, SplitPaymentRoutingResult,
 };
-pub use satspath_core::SplitPaymentRequest;

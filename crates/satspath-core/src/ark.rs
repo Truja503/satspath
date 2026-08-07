@@ -1,5 +1,5 @@
-use secp256k1::{Message, PublicKey, Secp256k1, XOnlyPublicKey};
 use secp256k1::schnorr::Signature;
+use secp256k1::{Message, PublicKey, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use url::Url;
@@ -18,14 +18,17 @@ use crate::validation::{assert_no_private_material, validate_compressed_pubkey};
 ///   1. `ServerPubkey`  — preferred; full Ark server URL + compressed pubkey.
 ///   2. `VtxoPointer`   — allowed when Arkade exposes a VTXO pointer string.
 ///   3. `OpaqueUri`     — allowed when Arkade only exposes an `ark1q…` address
-///                        or an `ark:` URI; always `execution: manual_wallet`.
+///      or an `ark:` URI; always `execution: manual_wallet`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "variant")]
 pub enum ArkadePointer {
     /// Full Ark server URL + compressed secp256k1 receiver pubkey.
     ServerPubkey { server: String, pubkey: String },
     /// Opaque VTXO pointer string from Arkade (server known, vtxo pointer given).
-    VtxoPointer { server: String, vtxo_pointer: String },
+    VtxoPointer {
+        server: String,
+        vtxo_pointer: String,
+    },
     /// Opaque `ark1q…` address or `ark:` URI from Arkade when only a receive
     /// string / QR is available. Always `PreviewOnly` / `manual_wallet`.
     OpaqueUri { uri: String },
@@ -34,9 +37,7 @@ pub enum ArkadePointer {
 /// Derive the routing-layer [`ArkadePointer`] variant from a `PaymentMethod::Ark`.
 ///
 /// Returns `None` when the method is not an Ark method.
-pub fn classify_ark_method(
-    method: &crate::profile::PaymentMethod,
-) -> Option<ArkadePointer> {
+pub fn classify_ark_method(method: &crate::profile::PaymentMethod) -> Option<ArkadePointer> {
     match method {
         crate::profile::PaymentMethod::Ark {
             server,
@@ -111,7 +112,10 @@ pub fn build_arkade_qr(pointer: &ArkadePointer, amount_sats: u64) -> Result<Stri
             enc.append_pair("amount", &amount_sats.to_string());
             format!("ark:{}?{}", pubkey, enc.finish())
         }
-        ArkadePointer::VtxoPointer { server, vtxo_pointer } => {
+        ArkadePointer::VtxoPointer {
+            server,
+            vtxo_pointer,
+        } => {
             let mut enc = form_urlencoded::Serializer::new(String::new());
             enc.append_pair("server", server);
             enc.append_pair("amount", &amount_sats.to_string());
@@ -272,7 +276,7 @@ pub fn verify_ark_ownership_proof(
 
     let pubkey_bytes =
         hex::decode(&proof.pubkey).map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?;
-    
+
     let x_only_public_key = if pubkey_bytes.len() == 32 {
         XOnlyPublicKey::from_slice(&pubkey_bytes)
             .map_err(|e| SatsPathError::InvalidPublicKey(e.to_string()))?
@@ -312,7 +316,13 @@ mod tests {
         let pubkey_hex = hex::encode(pubkey.serialize());
         // Use method descriptor as "nonce" for exact message matching
         let method_descriptor = format!("ark:{}", pubkey_hex);
-        let message = ark_ownership_challenge(alias, identity_pubkey, server, &pubkey_hex, &method_descriptor);
+        let message = ark_ownership_challenge(
+            alias,
+            identity_pubkey,
+            server,
+            &pubkey_hex,
+            &method_descriptor,
+        );
         let digest = Sha256::digest(message.as_bytes());
         let sig = secp.sign_schnorr(&Message::from_digest(digest.into()), &keypair);
         ArkReceivePointer {
@@ -338,7 +348,10 @@ mod tests {
             "n1",
             Some(2_000),
         );
-        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).unwrap());
+        assert!(
+            verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -353,7 +366,10 @@ mod tests {
         );
         pointer.receiver_pubkey =
             "0279be667ef9dcbbac55a0a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
+        assert!(
+            verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000)
+                .is_err()
+        );
     }
 
     #[test]
@@ -367,7 +383,10 @@ mod tests {
             Some(2_000),
         );
         pointer.server = "https://evil.example.com".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
+        assert!(
+            verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000)
+                .is_err()
+        );
     }
 
     #[test]
@@ -380,7 +399,10 @@ mod tests {
             "n1",
             Some(2_000),
         );
-        assert!(verify_ark_ownership_proof("bob@example.com", identity_pubkey, &pointer, 1_000).is_err());
+        assert!(
+            verify_ark_ownership_proof("bob@example.com", identity_pubkey, &pointer, 1_000)
+                .is_err()
+        );
     }
 
     #[test]
@@ -394,7 +416,10 @@ mod tests {
             Some(2_000),
         );
         pointer.proof.as_mut().unwrap().signature = "not-hex".into();
-        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
+        assert!(
+            verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000)
+                .is_err()
+        );
     }
 
     #[test]
@@ -407,19 +432,20 @@ mod tests {
             "n1",
             Some(999),
         );
-        assert!(verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000).is_err());
+        assert!(
+            verify_ark_ownership_proof("alice@example.com", identity_pubkey, &pointer, 1_000)
+                .is_err()
+        );
     }
 
     // ─── ArkadePointer / opaque URI tests ────────────────────────────────────
 
     #[test]
     fn arkade_opaque_uri_ark1q_accepted() {
-        assert!(
-            validate_arkade_opaque_uri(
-                "ark1qexampleaddress0000000000000000000000000000000000000000000000"
-            )
-            .is_ok()
-        );
+        assert!(validate_arkade_opaque_uri(
+            "ark1qexampleaddress0000000000000000000000000000000000000000000000"
+        )
+        .is_ok());
     }
 
     #[test]
@@ -464,11 +490,12 @@ mod tests {
     fn build_arkade_qr_server_pubkey_returns_ark_uri() {
         let pointer = ArkadePointer::ServerPubkey {
             server: "https://ark.example.com".into(),
-            pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-                .into(),
+            pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into(),
         };
         let qr = build_arkade_qr(&pointer, 42).unwrap();
-        assert!(qr.starts_with("ark:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798?"));
+        assert!(qr.starts_with(
+            "ark:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798?"
+        ));
         assert!(qr.contains("server="));
         assert!(qr.contains("amount=42"));
     }
@@ -509,8 +536,7 @@ mod tests {
         let method = PaymentMethod::Ark {
             label: "Ark".into(),
             server: "https://ark.example.com".into(),
-            pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-                .into(),
+            pubkey: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".into(),
             vtxo_pointer: None,
             proof: None,
             expires_at: None,

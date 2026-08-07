@@ -40,6 +40,10 @@ pub use bip353_publish::{
     plan_cname_delegation, plan_direct_txt, DnsPublisher, DnsUpdateAudit, DnsUpdateAuth,
     MockDnsPublisher, PublishingPlan,
 };
+pub use crypto::{
+    fingerprint_pubkey, generate_identity_keypair, generate_nonce, sign_message, sign_profile,
+    verify_message_signature, verify_signed_profile, IdentityKeypair,
+};
 pub use errors::{Result, SatsPathError};
 pub use execution::ExecutionMode;
 pub use ownership::{
@@ -54,18 +58,14 @@ pub use peer_registry::{
     canonicalize_identifier, display_hint, hash_identifier, LocalPeerRegistry, MockPeerRegistry,
     PeerPointers, PeerRecord, PeerRegistryBackend,
 };
-pub use privacy::{canonical_identifier, identifier_hash, validate_ascii_identifier};
 pub use platform::{
     EmailChallenge, EmailVerifier, ProfilePublisher, PublishReceipt, VerifiedIdentifier,
 };
 pub use pointer::{BitcoinNetwork, PaymentPointer};
+pub use privacy::{canonical_identifier, identifier_hash, validate_ascii_identifier};
 pub use profile::{
     ClaimPolicy, Invite, InviteRecord, InviteStatus, PaymentMethod, PaymentProfile, PaymentRequest,
     SignedPaymentProfile,
-};
-pub use crypto::{
-    fingerprint_pubkey, generate_identity_keypair, generate_nonce, sign_message,
-    sign_profile, verify_message_signature, verify_signed_profile, IdentityKeypair,
 };
 pub use rotation::{
     apply_key_rotation, get_effective_identity_pubkey, is_rotation_valid, rotate_identity_key,
@@ -77,7 +77,6 @@ pub use split::{SplitPaymentRequest, SplitRecipient};
 pub use resolver::{ChainResolver, ProfileResolver};
 #[cfg(feature = "std")]
 pub use resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
-
 
 /// Validate that a string looks like a Lightning Address (user@domain).
 pub fn is_valid_lightning_address(s: &str) -> bool {
@@ -98,13 +97,13 @@ pub fn create_invite(
         &alias_hash[..16],
         amount_sats
     );
-    
+
     // Build the message to sign: includes all critical invite fields
     let message = format!(
         "SatsPath Invite v1\nalias_hash={alias_hash}\namount_sats={amount_sats}\ncreated_at={now}\nexpires_at={}",
         now + ttl_seconds
     );
-    
+
     let (sender_signature, sender_pubkey) = if let Some(sk) = sender_secret_key {
         let secp = secp256k1::Secp256k1::new();
         let pubkey = secp256k1::PublicKey::from_secret_key(&secp, sk);
@@ -113,7 +112,7 @@ pub fn create_invite(
     } else {
         (None, None)
     };
-    
+
     Invite {
         alias_hash,
         amount_sats,
@@ -131,12 +130,12 @@ pub fn create_invite(
 /// Verify an invite's signature and expiry.
 pub fn verify_invite(invite: &Invite) -> Result<bool> {
     let now = chrono::Utc::now().timestamp();
-    
+
     // Check expiry
     if now >= invite.expires_at {
         return Err(SatsPathError::RegistryError("invite expired".into()));
     }
-    
+
     // If no signature, can't verify sender identity
     let Some(signature) = &invite.sender_signature else {
         return Ok(false);
@@ -144,13 +143,13 @@ pub fn verify_invite(invite: &Invite) -> Result<bool> {
     let Some(pubkey) = &invite.sender_pubkey else {
         return Ok(false);
     };
-    
+
     // Reconstruct the signed message
     let message = format!(
         "SatsPath Invite v1\nalias_hash={}\namount_sats={}\ncreated_at={}\nexpires_at={}",
         invite.alias_hash, invite.amount_sats, invite.created_at, invite.expires_at
     );
-    
+
     crate::crypto::verify_message_signature(&message, signature, pubkey)
 }
 

@@ -13,11 +13,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Key, Nonce,
+};
 use anyhow::{Context, Result};
-use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use aes_gcm::{aead::{Aead, KeyInit}, Aes256Gcm, Key, Nonce};
-use sha2::{Sha256, Digest};
 use rand::RngCore;
+use secp256k1::{PublicKey, Secp256k1, SecretKey};
+use sha2::{Digest, Sha256};
 use std::io::Write;
 
 const IDENTITY_SUBDIR: &str = "identity";
@@ -44,7 +47,7 @@ fn derive_key(password: &str, salt: &[u8]) -> Key<Aes256Gcm> {
     key.copy_from_slice(&hasher.finalize());
     for _ in 0..100_000 {
         let mut h = Sha256::new();
-        h.update(&key);
+        h.update(key);
         key.copy_from_slice(&h.finalize());
     }
     *Key::<Aes256Gcm>::from_slice(&key)
@@ -69,12 +72,13 @@ pub fn save_identity_key(base: &Path, secret_key: &SecretKey) -> Result<PathBuf>
 
     let key = derive_key(&password, &salt);
     let cipher = Aes256Gcm::new(&key);
-    
+
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
-    
-    let ciphertext = cipher.encrypt(nonce, secret_key.secret_bytes().as_ref())
+
+    let ciphertext = cipher
+        .encrypt(nonce, secret_key.secret_bytes().as_ref())
         .map_err(|e| anyhow::anyhow!("encryption failed: {:?}", e))?;
 
     let mut payload = Vec::new();
@@ -100,7 +104,7 @@ pub fn load_identity_key(base: &Path, identity_pubkey_hex: &str) -> Result<Secre
     }
     let hex_str = fs::read_to_string(&path).context("reading identity key")?;
     let bytes = hex::decode(hex_str.trim()).context("decoding identity key hex")?;
-    
+
     let secret_key = if bytes.len() == 32 {
         // Legacy plaintext hex format
         SecretKey::from_slice(&bytes).context("parsing legacy identity key")?
@@ -111,7 +115,10 @@ pub fn load_identity_key(base: &Path, identity_pubkey_hex: &str) -> Result<Secre
         let ciphertext = &bytes[28..];
 
         let password = std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
-            print!("Enter password to decrypt identity key {}: ", identity_pubkey_hex);
+            print!(
+                "Enter password to decrypt identity key {}: ",
+                identity_pubkey_hex
+            );
             std::io::stdout().flush().unwrap();
             rpassword::read_password().unwrap_or_default()
         });
@@ -119,10 +126,11 @@ pub fn load_identity_key(base: &Path, identity_pubkey_hex: &str) -> Result<Secre
         let key = derive_key(&password, salt);
         let cipher = Aes256Gcm::new(&key);
         let nonce = Nonce::from_slice(nonce_bytes);
-        
-        let plaintext = cipher.decrypt(nonce, ciphertext)
+
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext)
             .map_err(|_| anyhow::anyhow!("incorrect password or corrupted key file"))?;
-            
+
         SecretKey::from_slice(&plaintext).context("parsing decrypted identity key")?
     } else {
         anyhow::bail!("invalid key file length");

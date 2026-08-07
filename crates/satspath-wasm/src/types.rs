@@ -1,5 +1,11 @@
 //! Type definitions for WASM bindings — must match Rust satspath-core exactly
 
+#![allow(
+    dead_code,
+    clippy::new_without_default,
+    clippy::needless_borrow,
+    clippy::needless_question_mark
+)]
 use serde::{Deserialize, Serialize};
 
 /// Bitcoin network
@@ -105,6 +111,8 @@ pub struct PaymentProfile {
     /// PQC: If true, verifiers MUST check the hybrid_signature. If false, it's optional.
     #[serde(default)]
     pub pqc_required: bool,
+    #[serde(default)]
+    pub revoked: bool,
 }
 
 /// A payment profile together with the owner's signature over its contents
@@ -201,11 +209,24 @@ pub enum ExecutionMode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum SwapDirective {
-    LightningPayment { target_ln_address: Option<String> },
-    SubmarineSwap { target_invoice: Option<String> },
-    ReverseSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
-    ChainSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
-    ArkTransfer { server: String, pubkey: String },
+    LightningPayment {
+        target_ln_address: Option<String>,
+    },
+    SubmarineSwap {
+        target_invoice: Option<String>,
+    },
+    ReverseSwap {
+        target_address: Option<String>,
+        silent_payment_pubkey: Option<String>,
+    },
+    ChainSwap {
+        target_address: Option<String>,
+        silent_payment_pubkey: Option<String>,
+    },
+    ArkTransfer {
+        server: String,
+        pubkey: String,
+    },
     ArkadeManual,
 }
 
@@ -223,7 +244,8 @@ pub struct RouteQuote {
 }
 
 /// High-level quote response — matches Rust `QuoteResponse` exactly
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum QuoteResponse {
     Ok {
@@ -236,9 +258,15 @@ pub enum QuoteResponse {
         execution: ExecutionMode,
         wallet_hint: String,
     },
-    NotRegistered { invite: Invite },
-    NoRoute { reason: String },
-    InvalidSignature { recipient: QuoteRecipient },
+    NotRegistered {
+        invite: Invite,
+    },
+    NoRoute {
+        reason: String,
+    },
+    InvalidSignature {
+        recipient: QuoteRecipient,
+    },
 }
 
 /// Recipient info in quote response

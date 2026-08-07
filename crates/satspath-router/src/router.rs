@@ -1,12 +1,11 @@
-use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile, SplitPaymentRequest};
+use satspath_core::{PaymentMethod, SatsPathError, SignedPaymentProfile};
 
 use crate::ark::{first_ark_method, is_ark_available};
 use crate::fees::{fetch_fee_estimate, FeeEstimate};
-use crate::lightning::{estimate_lightning_fee_sats, is_lightning_available, is_lightning_available_for_amount_sync};
-use crate::onchain::{
-    estimate_onchain_fee_sats, first_onchain_method, is_onchain_available,
+use crate::lightning::{
+    estimate_lightning_fee_sats, is_lightning_available, is_lightning_available_for_amount_sync,
 };
-use crate::split_payments::{validate_split_request, SplitPaymentRoute};
+use crate::onchain::{estimate_onchain_fee_sats, first_onchain_method, is_onchain_available};
 
 const LIGHTNING_THRESHOLD_SATS: u64 = 100_000;
 
@@ -30,9 +29,15 @@ pub enum SwapDirective {
     /// Submarine Swap: on-chain/Ark → Lightning (requires Boltz).
     SubmarineSwap { target_invoice: Option<String> },
     /// Reverse Swap: Lightning → on-chain (requires Boltz).
-    ReverseSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
+    ReverseSwap {
+        target_address: Option<String>,
+        silent_payment_pubkey: Option<String>,
+    },
     /// Chain Swap: Ark/L1 → L1/Ark (requires Boltz).
-    ChainSwap { target_address: Option<String>, silent_payment_pubkey: Option<String> },
+    ChainSwap {
+        target_address: Option<String>,
+        silent_payment_pubkey: Option<String>,
+    },
     /// Direct Ark VTXO transfer (same Ark server).
     ArkTransfer { server: String, pubkey: String },
     /// Manual Arkade execution.
@@ -118,12 +123,16 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
     let selected_fee_rate_raw = req.urgency.select_fee_rate(&fee_est);
     let selected_fee_rate = (selected_fee_rate_raw as f64 * 1.10).ceil() as u64;
     let expected_conf = req.urgency.expected_confirmation();
-    
+
     if is_onchain_available(methods) && selected_fee_rate <= 10 {
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
         let (target_address, silent_payment_pubkey) = match &method {
-            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
+            PaymentMethod::Onchain {
+                address,
+                silent_payment_pubkey,
+                ..
+            } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -135,7 +144,10 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
+            swap_directive: SwapDirective::ChainSwap {
+                target_address,
+                silent_payment_pubkey,
+            },
             execution: None,
             wallet_hint: None,
         });
@@ -144,7 +156,12 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
         let (server, pubkey, opaque_uri) = match &method {
-            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
+            PaymentMethod::Ark {
+                server,
+                pubkey,
+                opaque_uri,
+                ..
+            } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
             _ => unreachable!(),
         };
         let reason = if is_onchain_available(methods) {
@@ -157,7 +174,11 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         };
 
         let (swap_directive, execution, wallet_hint) = if opaque_uri.is_some() {
-            (SwapDirective::ArkadeManual, Some(satspath_core::ExecutionMode::ManualWallet), Some("arkade".into()))
+            (
+                SwapDirective::ArkadeManual,
+                Some(satspath_core::ExecutionMode::ManualWallet),
+                Some("arkade".into()),
+            )
         } else {
             (SwapDirective::ArkTransfer { server, pubkey }, None, None)
         };
@@ -179,7 +200,11 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
         let (target_address, silent_payment_pubkey) = match &method {
-            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
+            PaymentMethod::Onchain {
+                address,
+                silent_payment_pubkey,
+                ..
+            } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -192,7 +217,10 @@ pub async fn select_route(req: &RouteRequest) -> satspath_core::Result<RouteQuot
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
+            swap_directive: SwapDirective::ChainSwap {
+                target_address,
+                silent_payment_pubkey,
+            },
             execution: None,
             wallet_hint: None,
         });
@@ -216,7 +244,10 @@ pub fn select_route_with_fees(
 
     // Lightning first — no fee check, but enforce dust threshold.
     if req.amount_sats < LIGHTNING_THRESHOLD_SATS {
-        if let Some(ln) = methods.iter().find(|m| is_lightning_available_for_amount_sync(m, req.amount_sats)) {
+        if let Some(ln) = methods
+            .iter()
+            .find(|m| is_lightning_available_for_amount_sync(m, req.amount_sats))
+        {
             let ln_address = match ln {
                 PaymentMethod::Lightning {
                     lightning_address, ..
@@ -256,7 +287,11 @@ pub fn select_route_with_fees(
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
         let (target_address, silent_payment_pubkey) = match &method {
-            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
+            PaymentMethod::Onchain {
+                address,
+                silent_payment_pubkey,
+                ..
+            } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -268,7 +303,10 @@ pub fn select_route_with_fees(
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
+            swap_directive: SwapDirective::ChainSwap {
+                target_address,
+                silent_payment_pubkey,
+            },
             execution: None,
             wallet_hint: None,
         });
@@ -277,12 +315,21 @@ pub fn select_route_with_fees(
     if is_ark_available(methods) {
         let method = first_ark_method(methods).unwrap().clone();
         let (server, pubkey, opaque_uri) = match &method {
-            PaymentMethod::Ark { server, pubkey, opaque_uri, .. } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
+            PaymentMethod::Ark {
+                server,
+                pubkey,
+                opaque_uri,
+                ..
+            } => (server.clone(), pubkey.clone(), opaque_uri.clone()),
             _ => unreachable!(),
         };
 
         let (swap_directive, execution, wallet_hint) = if opaque_uri.is_some() {
-            (SwapDirective::ArkadeManual, Some(satspath_core::ExecutionMode::ManualWallet), Some("arkade".into()))
+            (
+                SwapDirective::ArkadeManual,
+                Some(satspath_core::ExecutionMode::ManualWallet),
+                Some("arkade".into()),
+            )
         } else {
             (SwapDirective::ArkTransfer { server, pubkey }, None, None)
         };
@@ -306,7 +353,11 @@ pub fn select_route_with_fees(
         let method = first_onchain_method(methods).unwrap().clone();
         let fee = estimate_onchain_fee_sats(selected_fee_rate);
         let (target_address, silent_payment_pubkey) = match &method {
-            PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => (address.clone(), silent_payment_pubkey.clone()),
+            PaymentMethod::Onchain {
+                address,
+                silent_payment_pubkey,
+                ..
+            } => (address.clone(), silent_payment_pubkey.clone()),
             _ => unreachable!(),
         };
         return Ok(RouteQuote {
@@ -319,7 +370,10 @@ pub fn select_route_with_fees(
             estimated_fee_sats: Some(fee),
             estimated_confirmation: Some(expected_conf.into()),
             fee_snapshot: Some(snapshot),
-            swap_directive: SwapDirective::ChainSwap { target_address, silent_payment_pubkey },
+            swap_directive: SwapDirective::ChainSwap {
+                target_address,
+                silent_payment_pubkey,
+            },
             execution: None,
             wallet_hint: None,
         });
@@ -375,6 +429,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

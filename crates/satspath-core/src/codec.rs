@@ -67,7 +67,8 @@ mod tests {
 
     #[test]
     fn roundtrip_encoded() {
-        let uri = encode_payment_request("alice@example.com", Some(21000), Some("coffee"), None).unwrap();
+        let uri =
+            encode_payment_request("alice@example.com", Some(21000), Some("coffee"), None).unwrap();
         assert!(uri.starts_with(V1_PREFIX));
         let req = decode_payment_request(&uri).unwrap();
         assert_eq!(req.alias, "alice@example.com");

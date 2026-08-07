@@ -138,7 +138,9 @@ fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
         } => {
             println!("  - {} [On-chain]   {}", label, trust.badge());
             println!("      Network: {:?}", network);
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             println!("      Address: {}", mask_address(&target));
             if let Some(hint) = pubkey_hint {
                 println!("      Pubkey hint: {}", mask_pubkey(hint));
@@ -179,7 +181,6 @@ fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
                 }
             }
         }
-
     }
     // Surface the failure reason so a suspicious method is actionable.
     if let MethodTrust::Invalid(reason) = trust {

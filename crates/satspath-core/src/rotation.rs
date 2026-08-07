@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::crypto::{verify_message_signature, sign_message};
-use crate::{SignedPaymentProfile, Result};
+use crate::crypto::{sign_message, verify_message_signature};
+use crate::{Result, SignedPaymentProfile};
 
 /// A proof of key rotation.
 /// If present, the `PaymentProfile::identity_pubkey` is the new key, and this object
@@ -26,7 +26,10 @@ impl KeyRotation {
         new_pubkey_hex: String,
     ) -> Result<Self> {
         let rotated_at = chrono::Utc::now().timestamp();
-        let message = format!("RotateSatsPathKey:{}->{}@{}", previous_pubkey_hex, new_pubkey_hex, rotated_at);
+        let message = format!(
+            "RotateSatsPathKey:{}->{}@{}",
+            previous_pubkey_hex, new_pubkey_hex, rotated_at
+        );
         let signature = sign_message(&message, old_secret_key);
         Ok(Self {
             previous_pubkey: previous_pubkey_hex,
@@ -38,37 +41,50 @@ impl KeyRotation {
 
     /// Verify the rotation authorization signature.
     pub fn verify(&self) -> Result<bool> {
-        let message = format!("RotateSatsPathKey:{}->{}@{}", self.previous_pubkey, self.new_pubkey, self.rotated_at);
-        verify_message_signature(&message, &self.authorization_signature, &self.previous_pubkey)
+        let message = format!(
+            "RotateSatsPathKey:{}->{}@{}",
+            self.previous_pubkey, self.new_pubkey, self.rotated_at
+        );
+        verify_message_signature(
+            &message,
+            &self.authorization_signature,
+            &self.previous_pubkey,
+        )
     }
 }
 
 /// Apply a key rotation to a signed payment profile.
 /// The profile must have a valid KeyRotation, and the new pubkey must match the rotation's new_pubkey.
-pub fn apply_key_rotation(profile: &SignedPaymentProfile, new_pubkey_hex: &str) -> Result<SignedPaymentProfile> {
-    let rotation = profile.profile.rotation.as_ref()
-        .ok_or_else(|| crate::errors::SatsPathError::CryptoError("no key rotation in profile".into()))?;
-    
+pub fn apply_key_rotation(
+    profile: &SignedPaymentProfile,
+    new_pubkey_hex: &str,
+) -> Result<SignedPaymentProfile> {
+    let rotation = profile.profile.rotation.as_ref().ok_or_else(|| {
+        crate::errors::SatsPathError::CryptoError("no key rotation in profile".into())
+    })?;
+
     if rotation.new_pubkey != new_pubkey_hex {
-        return Err(crate::errors::SatsPathError::CryptoError("new pubkey doesn't match rotation".into()));
+        return Err(crate::errors::SatsPathError::CryptoError(
+            "new pubkey doesn't match rotation".into(),
+        ));
     }
-    
+
     if !rotation.verify()? {
         return Err(crate::errors::SatsPathError::InvalidSignature);
     }
-    
+
     // Create new profile with updated identity pubkey
     let mut new_profile = profile.profile.clone();
     new_profile.identity_pubkey = new_pubkey_hex.to_string();
     // Clear rotation since it's been applied
     new_profile.rotation = None;
-    
+
     // The new profile needs to be signed with the NEW secret key
     // For now, we return the profile without signature (caller must re-sign)
     Ok(SignedPaymentProfile {
         profile: new_profile,
         signature: String::new(),
-            hybrid_signature: None, // Placeholder - must be re-signed
+        hybrid_signature: None, // Placeholder - must be re-signed
     })
 }
 
@@ -103,11 +119,11 @@ pub fn rotate_identity_key(
     let secp = secp256k1::Secp256k1::new();
     let new_public_key = secp256k1::PublicKey::from_secret_key(&secp, new_secret_key);
     let new_pubkey_hex = hex::encode(new_public_key.serialize());
-    
+
     let old_pubkey_hex = profile.profile.identity_pubkey.clone();
-    
+
     let rotation = KeyRotation::create(old_pubkey_hex, new_secret_key, new_pubkey_hex.clone())?;
-    
+
     let mut new_profile = profile.profile.clone();
     new_profile.identity_pubkey = new_pubkey_hex;
     new_profile.rotation = Some(rotation);
@@ -116,12 +132,15 @@ pub fn rotate_identity_key(
     Ok(SignedPaymentProfile {
         profile: new_profile,
         signature: String::new(),
-            hybrid_signature: None,
+        hybrid_signature: None,
     })
 }
 
 /// Verify a key rotation between old and new profiles.
-pub fn verify_key_rotation(old_profile: &SignedPaymentProfile, new_profile: &SignedPaymentProfile) -> Result<bool> {
+pub fn verify_key_rotation(
+    old_profile: &SignedPaymentProfile,
+    new_profile: &SignedPaymentProfile,
+) -> Result<bool> {
     // The new profile should have a rotation pointing from old pubkey to new pubkey
     if let Some(rotation) = &new_profile.profile.rotation {
         if rotation.previous_pubkey != old_profile.profile.identity_pubkey {

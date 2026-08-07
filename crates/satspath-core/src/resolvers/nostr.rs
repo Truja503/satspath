@@ -175,19 +175,50 @@ impl NostrResolver {
 impl ProfileResolver for NostrResolver {
     async fn resolve_alias(&self, alias: &str) -> Result<SignedPaymentProfile> {
         let nip05 = self.resolve_nip05(alias).await?;
+
+        let futures: Vec<_> = nip05
+            .relays
+            .iter()
+            .map(|relay| self.query_relay(relay, &nip05.pubkey, alias))
+            .collect();
+
+        let results = futures_util::future::join_all(futures).await;
+
+        let mut best_profile: Option<SignedPaymentProfile> = None;
         let mut last_error = None;
 
-        for relay in &nip05.relays {
-            match self.query_relay(relay, &nip05.pubkey, alias).await {
-                Ok(signed) => return Ok(signed),
-                Err(SatsPathError::AliasNotFound(_)) => {}
+        for result in results {
+            match result {
+                Ok(signed) => {
+                    let current_best_seq = best_profile
+                        .as_ref()
+                        .and_then(|p| p.profile.sequence)
+                        .unwrap_or(0);
+                    let new_seq = signed.profile.sequence.unwrap_or(0);
+
+                    if best_profile.is_none() || new_seq > current_best_seq {
+                        best_profile = Some(signed);
+                    }
+                }
                 Err(e) => last_error = Some(e),
             }
         }
 
-        match last_error {
-            Some(e) => Err(e),
-            None => Err(SatsPathError::AliasNotFound(alias.to_string())),
+        match best_profile {
+            Some(profile) => {
+                if profile.profile.revoked {
+                    Err(SatsPathError::RegistryError(format!(
+                        "Alias {} has been revoked",
+                        alias
+                    )))
+                } else {
+                    Ok(profile)
+                }
+            }
+            None => match last_error {
+                Some(e) => Err(e),
+                None => Err(SatsPathError::AliasNotFound(alias.to_string())),
+            },
         }
     }
 }
@@ -289,12 +320,11 @@ pub async fn publish_profile(
     secret_key: &secp256k1::SecretKey,
     relays: Option<&[String]>,
 ) -> Result<usize> {
-    use sha2::{Digest, Sha256};
     use secp256k1::{Keypair, Secp256k1};
+    use sha2::{Digest, Sha256};
 
-    let default_relays = env_relays().unwrap_or_else(|| {
-        DEFAULT_RELAYS.iter().map(|s| s.to_string()).collect()
-    });
+    let default_relays =
+        env_relays().unwrap_or_else(|| DEFAULT_RELAYS.iter().map(|s| s.to_string()).collect());
     let relays_to_use = relays.unwrap_or(&default_relays);
 
     let secp = Secp256k1::new();
@@ -306,11 +336,12 @@ pub async fn publish_profile(
     let content = canonical_json::to_string(&content_value)
         .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
     let canonical_alias = canonicalize_identifier(&signed.profile.alias);
-    
-    let tags = vec![
-        vec!["d".to_string(), format!("satspath-profile:{}", canonical_alias)]
-    ];
-    
+
+    let tags = vec![vec![
+        "d".to_string(),
+        format!("satspath-profile:{}", canonical_alias),
+    ]];
+
     // NIP-01 ID = SHA256 of [0, pubkey, created_at, kind, tags, content]
     let id_payload = json!([
         0,
@@ -320,17 +351,17 @@ pub async fn publish_profile(
         tags,
         content
     ]);
-    
+
     // Serialize with zero whitespace as required by NIP-01
     // serde_json::to_string produces compact JSON without spaces
     let id_json = id_payload.to_string();
     let digest = Sha256::digest(id_json.as_bytes());
     let id_hex = hex::encode(digest);
-    
+
     let message = secp256k1::Message::from_digest(digest.into());
     let sig = secp.sign_schnorr(&message, &keypair);
     let sig_hex = hex::encode(sig.serialize());
-    
+
     let event = json!({
         "id": id_hex,
         "pubkey": pubkey_hex,
@@ -340,20 +371,24 @@ pub async fn publish_profile(
         "content": content,
         "sig": sig_hex
     });
-    
+
     let msg = json!(["EVENT", event]).to_string();
     let mut success_count = 0;
-    
+
     for relay in relays_to_use {
         let Ok((mut ws, _)) = connect_async(relay).await else {
             continue;
         };
-        
+
         if ws.send(Message::Text(msg.clone().into())).await.is_ok() {
             // Wait for the OK response from the relay
-            if let Ok(Some(Ok(Message::Text(resp)))) = tokio::time::timeout(std::time::Duration::from_secs(5), ws.next()).await {
+            if let Ok(Some(Ok(Message::Text(resp)))) =
+                tokio::time::timeout(std::time::Duration::from_secs(5), ws.next()).await
+            {
                 if let Ok(Value::Array(arr)) = serde_json::from_str(&resp) {
-                    if let (Some(Value::String(msg_type)), Some(Value::Bool(accepted))) = (arr.first(), arr.get(2)) {
+                    if let (Some(Value::String(msg_type)), Some(Value::Bool(accepted))) =
+                        (arr.first(), arr.get(2))
+                    {
                         if msg_type == "OK" && *accepted {
                             success_count += 1;
                         }
@@ -363,11 +398,13 @@ pub async fn publish_profile(
         }
         let _ = ws.close(None).await;
     }
-    
+
     if success_count == 0 {
-        return Err(SatsPathError::NetworkError("Failed to publish profile to any Nostr relay".into()));
+        return Err(SatsPathError::NetworkError(
+            "Failed to publish profile to any Nostr relay".into(),
+        ));
     }
-    
+
     Ok(success_count)
 }
 
@@ -398,6 +435,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

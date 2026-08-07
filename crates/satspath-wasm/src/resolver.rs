@@ -1,11 +1,11 @@
 //! WASM-compatible resolver chain — local → BIP353 → HTTPS well-known → Nostr NIP-05
 
-use crate::types::{SignedPaymentProfile, PaymentMethod, BitcoinNetwork};
+use crate::types::{BitcoinNetwork, PaymentMethod, SignedPaymentProfile};
 use serde::Deserialize;
 use std::future::Future;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response, window};
+use web_sys::{window, Request, RequestInit, RequestMode, Response};
 
 // ===== Types =====
 
@@ -50,7 +50,10 @@ struct ProfileEventContent {
 // ===== Trait for profile resolvers =====
 
 pub trait ProfileResolver {
-    fn resolve_alias(&self, alias: &str) -> impl Future<Output = Result<SignedPaymentProfile, String>> + Send;
+    fn resolve_alias(
+        &self,
+        alias: &str,
+    ) -> impl Future<Output = Result<SignedPaymentProfile, String>> + Send;
 }
 
 /// Chain resolver that tries resolvers in order
@@ -116,7 +119,9 @@ pub struct LocalRegistry {
 impl LocalRegistry {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self { profiles: Vec::new() }
+        Self {
+            profiles: Vec::new(),
+        }
     }
 
     pub async fn resolve_alias(&self, alias: &str) -> Result<String, String> {
@@ -130,13 +135,14 @@ impl LocalRegistry {
     }
 
     pub fn add_profile(&mut self, profile_json: String) -> Result<(), String> {
-        let profile: SignedPaymentProfile = serde_json::from_str(&profile_json)
-            .map_err(|e| e.to_string())?;
+        let profile: SignedPaymentProfile =
+            serde_json::from_str(&profile_json).map_err(|e| e.to_string())?;
         Err("Use JavaScript to manage profiles".to_string())
     }
 
     pub fn list_profiles(&self) -> Vec<String> {
-        self.profiles.iter()
+        self.profiles
+            .iter()
             .filter_map(|p| serde_json::to_string(p).ok())
             .collect()
     }
@@ -180,7 +186,8 @@ impl Bip353Resolver {
                     for ans in answers {
                         let txt = ans.data.trim_matches('"').replace("\\\"", "\"");
                         if txt.starts_with("bitcoin:") || txt.starts_with("BIP321:") {
-                            return Ok(serde_json::to_string(&uri_to_profile(alias, txt)).map_err(|e| e.to_string())?);
+                            return Ok(serde_json::to_string(&uri_to_profile(alias, txt))
+                                .map_err(|e| e.to_string())?);
                         }
                     }
                 }
@@ -198,7 +205,8 @@ impl Bip353Resolver {
         opts.set_method("GET");
         opts.set_mode(RequestMode::Cors);
 
-        let request = Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
+        let request =
+            Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
         let window = window().ok_or("no window")?;
         let resp_value = JsFuture::from(window.fetch_with_request(&request))
             .await
@@ -225,7 +233,9 @@ pub struct HttpsWellKnownResolver;
 #[wasm_bindgen]
 impl HttpsWellKnownResolver {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     pub async fn resolve_alias_async(&self, alias: &str) -> Result<String, String> {
         let (name, domain) = split_alias(alias)?;
@@ -238,7 +248,8 @@ impl HttpsWellKnownResolver {
         opts.set_method("GET");
         opts.set_mode(RequestMode::Cors);
 
-        let request = Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
+        let request =
+            Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
         let window = window().ok_or("no window")?;
         let resp_value = JsFuture::from(window.fetch_with_request(&request))
             .await
@@ -264,7 +275,8 @@ impl HttpsWellKnownResolver {
             profile: data.profile,
             signature: data.signature,
             hybrid_signature: None,
-        }).map_err(|e| e.to_string())
+        })
+        .map_err(|e| e.to_string())
     }
 }
 
@@ -291,7 +303,9 @@ impl NostrNip05Resolver {
 
         // 1. Fetch NIP-05
         let nip05 = self.fetch_nip05(&name, &domain).await?;
-        let pubkey = nip05.names.get(&name.to_lowercase())
+        let pubkey = nip05
+            .names
+            .get(&name.to_lowercase())
             .ok_or_else(|| format!("NIP-05 not found: {}@{}", name, domain))?;
 
         // 2. Query relays for kind 30078
@@ -312,7 +326,7 @@ impl NostrNip05Resolver {
 
     async fn fetch_nip05(&self, name: &str, domain: &str) -> Result<Nip05Response, String> {
         let url = format!("https://{}/.well-known/nostr.json?name={}", domain, name);
-        
+
         // SSRF protection
         crate::ssrf::validate_url(&url)?;
 
@@ -320,7 +334,8 @@ impl NostrNip05Resolver {
         opts.set_method("GET");
         opts.set_mode(RequestMode::Cors);
 
-        let request = Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
+        let request =
+            Request::new_with_str_and_init(&url, &opts).map_err(|e| format!("{:?}", e))?;
         let window = window().ok_or("no window")?;
         let resp_value = JsFuture::from(window.fetch_with_request(&request))
             .await
@@ -404,7 +419,11 @@ fn uri_to_profile(alias: &str, uri: String) -> SignedPaymentProfile {
                     receiver_pubkey: None,
                 }),
                 "ark_server" => {
-                    if let Some(pubkey) = parsed.query_pairs().find(|(k, _)| k == "ark_pubkey").map(|(_, v)| v.to_string()) {
+                    if let Some(pubkey) = parsed
+                        .query_pairs()
+                        .find(|(k, _)| k == "ark_pubkey")
+                        .map(|(_, v)| v.to_string())
+                    {
                         methods.push(PaymentMethod::Ark {
                             label: "Ark (BIP-353)".to_string(),
                             server: v.to_string(),
@@ -428,12 +447,17 @@ fn uri_to_profile(alias: &str, uri: String) -> SignedPaymentProfile {
         updated_at: js_sys::Date::now() as i64 / 1000,
         expires_at: None,
         sequence: None,
-        preferences: vec!["lightning".to_string(), "onchain".to_string(), "ark".to_string()],
+        preferences: vec![
+            "lightning".to_string(),
+            "onchain".to_string(),
+            "ark".to_string(),
+        ],
         nonce: None,
         rotation: None,
         method_verifications: vec![],
         hybrid_pubkey: None,
         pqc_required: false,
+        revoked: false,
     };
 
     SignedPaymentProfile {
@@ -450,7 +474,11 @@ fn is_valid_address(addr: &str) -> bool {
 fn detect_network(addr: &str) -> BitcoinNetwork {
     if addr.starts_with("bc1") || addr.starts_with("1") || addr.starts_with("3") {
         BitcoinNetwork::Mainnet
-    } else if addr.starts_with("tb1") || addr.starts_with("m") || addr.starts_with("n") || addr.starts_with("2") {
+    } else if addr.starts_with("tb1")
+        || addr.starts_with("m")
+        || addr.starts_with("n")
+        || addr.starts_with("2")
+    {
         BitcoinNetwork::Testnet
     } else if addr.starts_with("bcrt1") {
         BitcoinNetwork::Regtest
@@ -469,4 +497,3 @@ fn domain_pubkey_hash(domain: &str) -> String {
     bytes[1..].copy_from_slice(&hash[..32]);
     hex::encode(bytes)
 }
-

@@ -25,8 +25,8 @@
 //! assert_eq!(sender_secret, receiver_secret);
 //! ```
 
-use ml_kem::{MlKem768, KemCore};
-use ml_kem::kem::{Encapsulate, Decapsulate};
+use ml_kem::kem::{Decapsulate, Encapsulate};
+use ml_kem::{KemCore, MlKem768};
 use sha2::{Digest, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey, StaticSecret};
 
@@ -74,9 +74,7 @@ pub fn generate_hybrid_kem_keypair() -> (HybridKemSecretKey, HybridKemPublicKey)
 /// Encapsulate a shared secret to a receiver's hybrid public key.
 ///
 /// Returns (ciphertext, shared_secret) where shared_secret = SHA-256(x25519 || mlkem).
-pub fn hybrid_encapsulate(
-    receiver_pk: &HybridKemPublicKey,
-) -> (HybridCiphertext, [u8; 32]) {
+pub fn hybrid_encapsulate(receiver_pk: &HybridKemPublicKey) -> (HybridCiphertext, [u8; 32]) {
     let mut rng = rand::thread_rng();
 
     // Classical: X25519 ephemeral key exchange
@@ -85,7 +83,10 @@ pub fn hybrid_encapsulate(
     let x25519_shared = x25519_eph_sk.diffie_hellman(&receiver_pk.x25519);
 
     // Post-quantum: ML-KEM-768 encapsulation
-    let (mlkem_ct, mlkem_shared) = receiver_pk.mlkem.encapsulate(&mut rng).expect("ML-KEM encapsulation");
+    let (mlkem_ct, mlkem_shared) = receiver_pk
+        .mlkem
+        .encapsulate(&mut rng)
+        .expect("ML-KEM encapsulation");
 
     // Combine: SHA-256(x25519_shared || mlkem_shared)
     let combined = combine_secrets(x25519_shared.as_bytes(), mlkem_shared.as_ref());
@@ -106,10 +107,15 @@ pub fn hybrid_decapsulate(
     receiver_sk: &HybridKemSecretKey,
 ) -> [u8; 32] {
     // Classical: X25519 DH
-    let x25519_shared = receiver_sk.x25519.diffie_hellman(&ciphertext.x25519_ephemeral);
+    let x25519_shared = receiver_sk
+        .x25519
+        .diffie_hellman(&ciphertext.x25519_ephemeral);
 
     // Post-quantum: ML-KEM-768 decapsulation
-    let mlkem_shared = receiver_sk.mlkem.decapsulate(&ciphertext.mlkem_ciphertext).expect("ML-KEM decapsulation");
+    let mlkem_shared = receiver_sk
+        .mlkem
+        .decapsulate(&ciphertext.mlkem_ciphertext)
+        .expect("ML-KEM decapsulation");
 
     // Combine: SHA-256(x25519_shared || mlkem_shared)
     combine_secrets(x25519_shared.as_bytes(), mlkem_shared.as_ref())

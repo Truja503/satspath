@@ -145,7 +145,9 @@ pub fn score_routes(
                 });
                 pointers.push(PaymentPointer::OnchainAddress {
                     network: *network,
-                    address: silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default()),
+                    address: silent_payment_pubkey
+                        .clone()
+                        .unwrap_or_else(|| address.clone().unwrap_or_default()),
                     claim_policy: None,
                 });
             }
@@ -194,7 +196,9 @@ pub fn score_routes(
                 .map(|max| c.estimated_fee_sats.unwrap_or(u64::MAX) <= max)
                 .unwrap_or(true)
         })
-        .max_by_key(|(_, c)| candidate_score(c, preferences, amount_sats, &profile.profile.preferences))
+        .max_by_key(|(_, c)| {
+            candidate_score(c, preferences, amount_sats, &profile.profile.preferences)
+        })
         .map(|(idx, _)| idx)
         .ok_or_else(|| SatsPathError::NoRouteFound("no available scored route".into()))?;
 
@@ -245,7 +249,7 @@ fn candidate_score(
     if candidate.rail == PaymentRail::Ark && !preferences.allow_experimental_ark {
         score -= 1_000;
     }
-    
+
     // Apply profile preference bonus (WS-3)
     let rail_name = match candidate.rail {
         PaymentRail::Lightning => "lightning",
@@ -256,7 +260,7 @@ fn candidate_score(
         // High bonus for 1st preference (50), tapering off for subsequent ones
         score += 50i64.saturating_sub(pos as i64 * 10);
     }
-    
+
     score
 }
 
@@ -301,6 +305,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

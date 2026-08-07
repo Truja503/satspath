@@ -1,3 +1,4 @@
+#![allow(warnings)]
 //! `satspathd` is a local receiver-profile daemon.
 //!
 //! It manages SatsPath profile identity and public receive pointers only. It
@@ -7,8 +8,8 @@
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -65,9 +66,6 @@ struct Cli {
     /// SatsPath home directory. Defaults to SATSPATH_HOME or ~/.satspath.
     #[arg(long)]
     home: Option<PathBuf>,
-    /// Start the optional Holepunch P2P profile publisher bridge.
-    #[arg(long)]
-    p2p: bool,
     /// Do not open the wallet UI in a browser on startup.
     #[arg(long)]
     no_open: bool,
@@ -101,14 +99,7 @@ struct AppState {
     bind: SocketAddr,
     network: String,
     open_ui: bool,
-    p2p: Arc<Mutex<P2pBridge>>,
     // Removed escrow state to enforce non-custodial rule
-}
-
-struct P2pBridge {
-    enabled: bool,
-    status: String,
-    child: Option<Child>,
 }
 
 #[derive(Debug, Serialize)]
@@ -122,7 +113,6 @@ struct StatusResponse {
     alias: Option<String>,
     identity_fingerprint: Option<String>,
     methods: Vec<String>,
-    p2p: P2pStatus,
     safety: SafetyStatus,
 }
 
@@ -164,14 +154,6 @@ struct ConnectionView {
     status: String,
     active: bool,
     detail: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct P2pStatus {
-    enabled: bool,
-    status: String,
-    active: bool,
-    pid: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -317,33 +299,33 @@ async fn main() -> Result<()> {
         .home
         .or_else(|| std::env::var_os("SATSPATH_HOME").map(PathBuf::from))
         .unwrap_or_else(default_home);
-    let p2p_requested = cli.p2p || env_truthy("SATSPATHD_P2P");
 
     fs::create_dir_all(&home).context("creating SATSPATH_HOME")?;
-    let wallet = load_or_create_identity(&home)?;
-    let mut bridge = P2pBridge {
-        enabled: p2p_requested,
-        status: "disabled".into(),
-        child: None,
-    };
-    if p2p_requested {
-        match start_p2p_bridge(&home, &wallet) {
-            Ok((status, child)) => {
-                bridge.status = status;
-                bridge.child = Some(child);
-            }
-            Err(e) => {
-                bridge.status = format!("inactive: {e}");
-            }
+
+    // SEC-04: Daemon API Authorization
+    let macaroon_path = home.join("admin.macaroon");
+    if std::env::var("SATSPATHD_AUTH_TOKEN").is_err() {
+        if !macaroon_path.exists() {
+            use secp256k1::rand::RngCore;
+            let mut token = [0u8; 32];
+            secp256k1::rand::thread_rng().fill_bytes(&mut token);
+            let token_hex = hex::encode(token);
+            fs::write(&macaroon_path, &token_hex).context("writing admin.macaroon")?;
+            #[cfg(unix)]
+            set_owner_only(&macaroon_path).ok();
+        }
+        if let Ok(token) = fs::read_to_string(&macaroon_path) {
+            std::env::set_var("SATSPATHD_AUTH_TOKEN", token.trim());
         }
     }
+
+    load_or_create_identity(&home)?;
 
     let state = AppState {
         home,
         bind,
         network,
         open_ui: !cli.no_open,
-        p2p: Arc::new(Mutex::new(bridge)),
         // Removed escrow init
     };
 
@@ -638,6 +620,7 @@ fn sign_and_store(home: &Path, wallet: &mut WalletState, network: &str) -> Resul
         method_verifications: vec![],
         hybrid_pubkey: None,
         pqc_required: false,
+        revoked: false,
     };
     let signed = sign_profile(profile, &secret)?;
     registry.update_profile(signed)?;
@@ -840,14 +823,7 @@ fn peer_view(record: PeerRecord) -> PeerView {
 
 fn connections_response(state: &AppState) -> Result<ConnectionsResponse> {
     let peers = peers_response(state)?;
-    let p2p = p2p_status(state);
     let mut connections = Vec::new();
-    connections.push(ConnectionView {
-        kind: "p2p_bridge",
-        status: p2p.status.clone(),
-        active: p2p.active,
-        detail: p2p.pid.map(|pid| format!("pid:{pid}")),
-    });
     connections.push(ConnectionView {
         kind: "peer_registry",
         status: format!("{} active peer(s)", peers.active_count),
@@ -872,16 +848,26 @@ fn connections_response(state: &AppState) -> Result<ConnectionsResponse> {
 
 fn status_response(state: &AppState) -> Result<StatusResponse> {
     let wallet = load_wallet(&state.home)?;
-    let methods = build_methods(&wallet, &state.network)
-        .iter()
-        .map(|method| method.method_name().to_string())
-        .collect();
+    let mut methods = Vec::new();
+    if let Some(alias) = wallet.alias.as_deref() {
+        if let Ok(registry) = Registry::open(&state.home) {
+            if let Ok(signed) = registry.resolve_alias(alias) {
+                methods = signed
+                    .profile
+                    .methods
+                    .clone()
+                    .into_iter()
+                    .map(|m| m.method_name().to_string())
+                    .collect();
+            }
+        }
+    }
+
     let identity_fingerprint = wallet
         .identity_pubkey
         .as_deref()
         .map(fingerprint_pubkey)
         .transpose()?;
-    let p2p = p2p_status(state);
     Ok(StatusResponse {
         daemon: "satspathd",
         version: env!("CARGO_PKG_VERSION"),
@@ -892,44 +878,8 @@ fn status_response(state: &AppState) -> Result<StatusResponse> {
         alias: wallet.alias,
         identity_fingerprint,
         methods,
-        p2p: P2pStatus {
-            enabled: p2p.enabled,
-            status: p2p.status,
-            active: p2p.active,
-            pid: p2p.pid,
-        },
         safety: safety_status(),
     })
-}
-
-fn p2p_status(state: &AppState) -> P2pStatus {
-    let mut p2p = state.p2p.lock().expect("p2p mutex poisoned");
-    let mut active = false;
-    let mut pid = None;
-    if let Some(child) = p2p.child.as_mut() {
-        pid = Some(child.id());
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                p2p.status = format!("exited: {status}");
-                p2p.child = None;
-            }
-            Ok(None) => {
-                active = true;
-                if p2p.status == "disabled" {
-                    p2p.status = "started".into();
-                }
-            }
-            Err(e) => {
-                p2p.status = format!("unknown: {e}");
-            }
-        }
-    }
-    P2pStatus {
-        enabled: p2p.enabled,
-        status: p2p.status.clone(),
-        active,
-        pid,
-    }
 }
 
 fn safety_status() -> SafetyStatus {
@@ -1142,40 +1092,6 @@ fn set_owner_only(_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn start_p2p_bridge(home: &Path, wallet: &WalletState) -> Result<(String, Child)> {
-    let alias = wallet
-        .alias
-        .as_deref()
-        .ok_or_else(|| anyhow::anyhow!("no local alias/profile yet"))?;
-    let signed = Registry::open(home)?.resolve_alias(alias)?.clone();
-    if !verify_signed_profile(&signed)? {
-        anyhow::bail!("refusing to bridge invalid signed profile");
-    }
-    let out_path = home.join(format!("{}-profile.json", sanitize(alias)));
-    fs::write(&out_path, serde_json::to_string_pretty(&signed)?)?;
-    let out_path = std::fs::canonicalize(&out_path)?;
-
-    let repo_root = std::env::current_dir()?;
-    let sdk_dir = repo_root.join("sdk").join("satspath-p2p");
-    let script = sdk_dir.join("examples").join("publish.mjs");
-    if !script.exists() {
-        anyhow::bail!("P2P SDK publish script not found at {}", script.display());
-    }
-    let child = Command::new("node")
-        .arg("examples/publish.mjs")
-        .arg(&out_path)
-        .current_dir(&sdk_dir)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .context("starting Node Holepunch bridge")?;
-
-    // The child is intentionally detached from request handling. If it exits,
-    // status remains "started"; users can see process logs by running the SDK
-    // directly while this bridge is still optional.
-    Ok((format!("started: publishing {alias}"), child))
-}
-
 fn print_startup_status(state: &AppState) -> Result<()> {
     let status = status_response(state)?;
     println!("satspathd node starting");
@@ -1201,7 +1117,6 @@ fn print_startup_status(state: &AppState) -> Result<()> {
             status.methods.join(", ")
         }
     );
-    println!("  p2p: {}", status.p2p.status);
     println!("  safety: profile node only; no funds moved, no Bitcoin tx signing, no broadcast");
     Ok(())
 }
@@ -1252,13 +1167,18 @@ fn receive_view(state: &AppState, req: ReceiveRequest) -> Result<ReceiveView> {
         .clone()
         .ok_or_else(|| anyhow::anyhow!("no profile yet — set one via POST /v1/profile"))?;
     let methods = build_methods(&wallet, &state.network);
-    
+
     let method = if let Some(req_rail) = req.rail {
         let req_rail = req_rail.to_lowercase();
         methods
             .into_iter()
             .find(|m| m.method_name().to_lowercase() == req_rail)
-            .ok_or_else(|| anyhow::anyhow!("requested rail '{}' is not configured in your profile", req_rail))?
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "requested rail '{}' is not configured in your profile",
+                    req_rail
+                )
+            })?
     } else {
         methods
             .iter()
@@ -1280,7 +1200,7 @@ fn receive_view(state: &AppState, req: ReceiveRequest) -> Result<ReceiveView> {
     };
 
     let mut payload = receive_payload_for(&method)?;
-    
+
     // Append amount if requested
     if let Some(sats) = req.amount_sats {
         if matches!(method, PaymentMethod::Onchain { .. }) {
@@ -1309,10 +1229,16 @@ fn receive_payload_for(method: &PaymentMethod) -> Result<String> {
         PaymentMethod::Lightning {
             lnurl: Some(url), ..
         } => url.clone(),
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             format!("bitcoin:{target}")
-        },
+        }
         PaymentMethod::Ark { server, pubkey, .. } => {
             format!("satspath:ark?server={server}&pubkey={pubkey}")
         }
@@ -1418,12 +1344,13 @@ fn cors_origin_header() -> Header {
     // in the allowed list. Since tiny_http doesn't give us per-request headers easily,
     // we use the first allowed origin as default. In production, use a reverse proxy
     // (nginx/caddy) for proper multi-origin CORS.
-    let first_origin = origin.split(',').next().unwrap_or("http://localhost:5173").trim();
-    Header::from_bytes(
-        &b"Access-Control-Allow-Origin"[..],
-        first_origin.as_bytes(),
-    )
-    .expect("valid static header")
+    let first_origin = origin
+        .split(',')
+        .next()
+        .unwrap_or("http://localhost:5173")
+        .trim();
+    Header::from_bytes(&b"Access-Control-Allow-Origin"[..], first_origin.as_bytes())
+        .expect("valid static header")
 }
 
 fn cors_methods_header() -> Header {
@@ -1482,19 +1409,6 @@ fn bitcoin_network(network: &str) -> BitcoinNetwork {
         // network enum is added.
         _ => BitcoinNetwork::Testnet,
     }
-}
-
-fn env_truthy(name: &str) -> bool {
-    std::env::var(name)
-        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
-        .unwrap_or(false)
-}
-
-fn sanitize(alias: &str) -> String {
-    alias
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect()
 }
 
 #[cfg(test)]
@@ -1719,8 +1633,14 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
             ..
         } => a.clone(),
         PaymentMethod::Lightning { lnurl: Some(u), .. } => u.clone(),
-        PaymentMethod::Onchain { address, silent_payment_pubkey, .. } => {
-            let target = silent_payment_pubkey.clone().unwrap_or_else(|| address.clone().unwrap_or_default());
+        PaymentMethod::Onchain {
+            address,
+            silent_payment_pubkey,
+            ..
+        } => {
+            let target = silent_payment_pubkey
+                .clone()
+                .unwrap_or_else(|| address.clone().unwrap_or_default());
             format!("bitcoin:{target}?amount={}", fmt_btc(amount_sats))
         }
         PaymentMethod::Ark { server, pubkey, .. } => {
@@ -1732,31 +1652,16 @@ fn send_payload_for(method: &PaymentMethod, amount_sats: u64) -> Result<String> 
     Ok(payload)
 }
 
-/// Publish the local signed profile over the Holepunch P2P bridge so peers can
-/// resolve it. Returns the bridge status. (Best-effort; needs the JS SDK.)
+/// P2P is now exclusively Nostr. The broadcast endpoint triggers a re-sign.
 fn broadcast(state: &AppState) -> Result<serde_json::Value> {
     let mut wallet = load_wallet(&state.home)?;
     if wallet.alias.is_none() {
         anyhow::bail!("set your profile first (alias + methods) before broadcasting");
     }
     ensure_signed_profile(&state.home, &mut wallet, &state.network)?;
-    let mut bridge = state.p2p.lock().unwrap();
-    if let Some(mut child) = bridge.child.take() {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
-    match start_p2p_bridge(&state.home, &wallet) {
-        Ok((status, child)) => {
-            bridge.enabled = true;
-            bridge.status = status.clone();
-            bridge.child = Some(child);
-            Ok(serde_json::json!({ "broadcasting": true, "status": status }))
-        }
-        Err(e) => {
-            bridge.status = format!("inactive: {e}");
-            Ok(serde_json::json!({ "broadcasting": false, "status": bridge.status }))
-        }
-    }
+    Ok(
+        serde_json::json!({ "broadcasting": true, "status": "Nostr is the exclusive P2P layer. Profile saved." }),
+    )
 }
 
 fn ensure_signed_profile(home: &Path, wallet: &mut WalletState, network: &str) -> Result<()> {

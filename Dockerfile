@@ -5,7 +5,8 @@
 #
 # NOTE: fully-qualified image names are required for Podman compatibility.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM docker.io/lukemathwalker/cargo-chef:latest-rust-1.80-bookworm AS chef
+FROM docker.io/rust:bookworm AS chef
+RUN cargo install cargo-chef
 WORKDIR /build
 
 # ─────────────────────────────────────────────────────────────────────────────

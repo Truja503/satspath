@@ -64,37 +64,48 @@ impl Registry {
         validate_ascii_identifier(&signed.profile.alias)?;
         let alias = canonical_identifier(&signed.profile.alias);
         let key = identifier_hash(&alias);
-        
+
         // SEC-03: Downgrade Attack Mitigation
         // Ensure we do not overwrite a newer profile with an older one.
-        if let Some(existing) = self.data.profiles.get(&key).or_else(|| self.data.profiles.get(&alias)) {
+        if let Some(existing) = self
+            .data
+            .profiles
+            .get(&key)
+            .or_else(|| self.data.profiles.get(&alias))
+        {
             if signed.profile.updated_at < existing.profile.updated_at {
                 return Err(SatsPathError::RegistryError(format!(
                     "Update rejected: incoming profile is older (updated_at: {}) than existing profile (updated_at: {})",
                     signed.profile.updated_at, existing.profile.updated_at
                 )));
             }
-            
+
             // SEC-03b: Method Superset Check
             // Prevent stripping payment methods (e.g., removing Lightning to force on-chain)
-            let existing_methods: std::collections::HashSet<_> = existing.profile.methods
+            let existing_methods: std::collections::HashSet<_> = existing
+                .profile
+                .methods
                 .iter()
                 .map(|m| m.method_name())
                 .collect();
-            let new_methods: std::collections::HashSet<_> = signed.profile.methods
+            let new_methods: std::collections::HashSet<_> = signed
+                .profile
+                .methods
                 .iter()
                 .map(|m| m.method_name())
                 .collect();
-            
+
             if !existing_methods.is_subset(&new_methods) {
                 return Err(SatsPathError::RegistryError(
                     "Update rejected: new profile must include all previously registered payment methods".into()
                 ));
             }
-            
+
             // SEC-03c: Sequence Number Check (Replay Protection)
             // Each update must have a strictly higher sequence number
-            if let (Some(new_seq), Some(existing_seq)) = (signed.profile.sequence, existing.profile.sequence) {
+            if let (Some(new_seq), Some(existing_seq)) =
+                (signed.profile.sequence, existing.profile.sequence)
+            {
                 if new_seq <= existing_seq {
                     return Err(SatsPathError::RegistryError(format!(
                         "Update rejected: sequence number {} not greater than existing {}",
@@ -106,24 +117,33 @@ impl Registry {
             } else if signed.profile.sequence.is_none() && existing.profile.sequence.is_some() {
                 // Reject removing sequence once it's been added
                 return Err(SatsPathError::RegistryError(
-                    "Update rejected: cannot remove sequence number once added".into()
+                    "Update rejected: cannot remove sequence number once added".into(),
                 ));
             }
         }
-        
+
         self.data.profiles.insert(key, signed);
         self.save()
     }
 
-    /// Resolve an alias to its signed profile.
     pub fn resolve_alias(&self, alias: &str) -> Result<&SignedPaymentProfile> {
         let canonical = canonical_identifier(alias);
         let key = identifier_hash(&canonical);
-        self.data
+        let profile = self
+            .data
             .profiles
             .get(&key)
             .or_else(|| self.data.profiles.get(&canonical))
-            .ok_or(SatsPathError::AliasNotFound(canonical))
+            .ok_or_else(|| SatsPathError::AliasNotFound(canonical.clone()))?;
+
+        if profile.profile.revoked {
+            return Err(SatsPathError::RegistryError(format!(
+                "Alias {} has been revoked",
+                canonical
+            )));
+        }
+
+        Ok(profile)
     }
 
     /// Check whether an alias is already registered.
@@ -183,6 +203,7 @@ mod tests {
             method_verifications: Vec::new(),
             hybrid_pubkey: None,
             pqc_required: false,
+            revoked: false,
         };
         sign_profile(profile, &kp.secret_key).unwrap()
     }

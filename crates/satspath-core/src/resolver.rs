@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
-use crate::{Result, SatsPathError, SignedPaymentProfile};
 use crate::privacy::canonical_identifier;
+use crate::{Result, SatsPathError, SignedPaymentProfile};
 
 /// A resolver capable of resolving a SatsPath alias to a `SignedPaymentProfile`.
 ///
@@ -88,7 +88,10 @@ mod tests {
             if self.should_succeed {
                 let kp = generate_identity_keypair();
                 let pubkey_hex = hex::encode(kp.public_key.serialize());
-                let profile_alias = self.returned_alias.clone().unwrap_or_else(|| alias.to_string());
+                let profile_alias = self
+                    .returned_alias
+                    .clone()
+                    .unwrap_or_else(|| alias.to_string());
                 let profile = PaymentProfile {
                     alias: profile_alias.clone(),
                     identity_pubkey: pubkey_hex,
@@ -106,8 +109,9 @@ mod tests {
                     nonce: None,
                     rotation: None,
                     method_verifications: Vec::new(),
-            hybrid_pubkey: None,
-            pqc_required: false,
+                    hybrid_pubkey: None,
+                    pqc_required: false,
+                    revoked: false,
                 };
                 Ok(sign_profile(profile, &kp.secret_key).unwrap())
             } else {
@@ -162,10 +166,14 @@ mod tests {
         // The resolver will return "test@domain.com", which should trigger
         // the SEC-02 Profile Substitution Attack mitigation.
         let res = chain.resolve_alias("alice@domain.com").await;
-        
+
         assert!(res.is_err());
         let err = res.unwrap_err().to_string();
-        assert!(err.contains("security failure"), "Expected security failure message, got: {}", err);
+        assert!(
+            err.contains("security failure"),
+            "Expected security failure message, got: {}",
+            err
+        );
         assert!(err.contains("alice@domain.com"));
         assert!(err.contains("test@domain.com"));
     }

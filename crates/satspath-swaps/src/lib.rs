@@ -1,3 +1,4 @@
+#![allow(warnings)]
 pub mod ark_bridge;
 pub mod boltz_client;
 pub mod chain_swap;

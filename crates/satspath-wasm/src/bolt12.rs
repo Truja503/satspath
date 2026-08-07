@@ -1,14 +1,20 @@
 //! BOLT12 HTTP proxy scaffold.
-//! 
-//! Resolves BOLT12 offers to BOLT11 invoices via a configurable HTTP proxy.
-//! 
+//!
+/// Fallback default proxy for BOLT12 resolution if none is explicitly provided.
+/// In production, this would be a Cloudflare Worker or AWS Lambda instance.
+pub const DEFAULT_BOLT12_PROXY: &str = "https://satspath-bolt12-proxy.workers.dev/resolve";
 
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
 pub fn build_bolt12_proxy_url(offer: &str, amount_sats: u64, proxy_url: &str) -> String {
-    format!("{}/invoice?offer={}&amount_msats={}", proxy_url, offer, amount_sats * 1000)
+    format!(
+        "{}/invoice?offer={}&amount_msats={}",
+        proxy_url,
+        offer,
+        amount_sats * 1000
+    )
 }
 
 /// Fetch a real BOLT11 invoice for a BOLT12 offer via a proxy.
@@ -18,7 +24,7 @@ pub async fn fetch_bolt12_invoice(
     proxy_url: &str,
 ) -> Result<String, String> {
     let url = build_bolt12_proxy_url(offer, amount_sats, proxy_url);
-    
+
     let mut opts = RequestInit::new();
     opts.method("GET");
     opts.mode(RequestMode::Cors);
@@ -36,9 +42,13 @@ pub async fn fetch_bolt12_invoice(
         return Err("BOLT12 proxy fetch failed".to_string());
     }
 
-    let json_value = JsFuture::from(response.json().map_err(|e| format!("JSON failed: {:?}", e))?)
-        .await
-        .map_err(|e| format!("JSON parse failed: {:?}", e))?;
+    let json_value = JsFuture::from(
+        response
+            .json()
+            .map_err(|e| format!("JSON failed: {:?}", e))?,
+    )
+    .await
+    .map_err(|e| format!("JSON parse failed: {:?}", e))?;
 
     let inv_data: serde_json::Value = serde_wasm_bindgen::from_value(json_value)
         .map_err(|e| format!("Deserialize failed: {:?}", e))?;
@@ -58,7 +68,7 @@ mod tests {
         let offer = "lno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
         let proxy = "https://proxy.example.com";
         let amount = 500; // sats
-        
+
         let url = build_bolt12_proxy_url(offer, amount, proxy);
         assert_eq!(url, "https://proxy.example.com/invoice?offer=lno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq&amount_msats=500000");
     }
