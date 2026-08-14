@@ -40,10 +40,7 @@ pub fn verify_inclusion_proof(proof: &MerkleInclusionProof) -> Result<bool> {
 }
 
 pub fn verify_consistency_proof(proof: &MerkleConsistencyProof) -> Result<bool> {
-    if proof.old_tree_size == 0
-        || proof.old_tree_size > proof.new_tree_size
-        || proof.new_tree_size > super::log::MAX_V1_CONSISTENCY_LEAVES
-    {
+    if proof.old_tree_size == 0 || proof.old_tree_size > proof.new_tree_size {
         return Err(TransparencyError::InvalidConsistencyProof.into());
     }
 
@@ -57,6 +54,9 @@ pub fn verify_consistency_proof(proof: &MerkleConsistencyProof) -> Result<bool> 
     let new_root_bytes = decode_hash(&proof.new_root)?;
 
     if proof.version == 1 {
+        if proof.new_tree_size > super::log::MAX_V1_CONSISTENCY_LEAVES {
+            return Err(TransparencyError::InvalidConsistencyProof.into());
+        }
         if proof.audit_path.len() != proof.new_tree_size as usize {
             return Err(TransparencyError::InvalidConsistencyProof.into());
         }

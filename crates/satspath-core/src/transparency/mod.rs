@@ -10,6 +10,9 @@ mod store;
 mod tree;
 mod verifier;
 
+#[cfg(test)]
+mod consistency_tests;
+
 #[cfg(feature = "std")]
 pub use anchor::RegtestAnchorClient;
 pub use anchor::{anchor_commitment, BitcoinAnchor, MockAnchorClient};

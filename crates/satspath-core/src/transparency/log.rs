@@ -292,11 +292,7 @@ impl TransparencyLog {
     }
 
     pub fn consistency(&self, old_size: u64, new_size: u64) -> Result<MerkleConsistencyProof> {
-        if old_size == 0
-            || old_size > new_size
-            || new_size > self.events.len() as u64
-            || new_size > MAX_V1_CONSISTENCY_LEAVES
-        {
+        if old_size == 0 || old_size > new_size || new_size > self.events.len() as u64 {
             return Err(TransparencyError::InvalidConsistencyProof.into());
         }
         let leaves = self.leaf_hashes(new_size as usize)?;
