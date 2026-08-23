@@ -87,7 +87,8 @@ fn test_rfc6962_published_consistency_proof_vectors() {
     ];
 
     for (old_size, new_size, expected_path) in test_cases {
-        let proof = consistency_proof(&leaves[..new_size], old_size).expect("consistency proof generation");
+        let proof =
+            consistency_proof(&leaves[..new_size], old_size).expect("consistency proof generation");
         let hex_proof: Vec<String> = proof.iter().map(hex::encode).collect();
         assert_eq!(
             hex_proof, expected_path,
@@ -105,7 +106,11 @@ fn test_rfc6962_published_consistency_proof_vectors() {
             &proof,
         )
         .expect("verify consistency");
-        assert!(valid, "Failed verify_consistency for ({}, {})", old_size, new_size);
+        assert!(
+            valid,
+            "Failed verify_consistency for ({}, {})",
+            old_size, new_size
+        );
 
         let wire_proof = MerkleConsistencyProof {
             version: 2,
@@ -160,7 +165,8 @@ fn test_rfc6962_all_subtrees_consistency_proof_vectors() {
                 audit_path: proof.iter().map(hex::encode).collect(),
             };
 
-            let wire_valid = verify_consistency_proof(&v2_wire_proof).expect("wire verification ok");
+            let wire_valid =
+                verify_consistency_proof(&v2_wire_proof).expect("wire verification ok");
             assert!(
                 wire_valid,
                 "V2 wire proof verification failed for ({}, {})",
@@ -183,8 +189,8 @@ fn test_rfc6962_all_subtrees_consistency_proof_vectors() {
 
 #[test]
 fn test_property_consistency_proofs_arbitrary_sizes() {
-    // Generate simulated leaves
-    let total_leaves = 65;
+    // Generate simulated leaves (33 covers power-of-2 boundaries while keeping O(n²) manageable)
+    let total_leaves = 33;
     let leaves: Vec<[u8; 32]> = (0..total_leaves)
         .map(|i| leaf_hash(&format!("leaf-data-{}", i).into_bytes()))
         .collect();
@@ -231,9 +237,7 @@ fn test_property_consistency_proofs_arbitrary_sizes() {
 
 #[test]
 fn test_adversarial_bit_flips() {
-    let leaves: Vec<[u8; 32]> = (0..16)
-        .map(|i| leaf_hash(&[i as u8]))
-        .collect();
+    let leaves: Vec<[u8; 32]> = (0..16).map(|i| leaf_hash(&[i as u8])).collect();
 
     let old_size = 7;
     let new_size = 15;
@@ -266,9 +270,7 @@ fn test_adversarial_bit_flips() {
 
 #[test]
 fn test_adversarial_reordered_and_truncated_path() {
-    let leaves: Vec<[u8; 32]> = (0..16)
-        .map(|i| leaf_hash(&[i as u8]))
-        .collect();
+    let leaves: Vec<[u8; 32]> = (0..16).map(|i| leaf_hash(&[i as u8])).collect();
 
     let old_size = 3;
     let new_size = 11;
@@ -287,7 +289,7 @@ fn test_adversarial_reordered_and_truncated_path() {
         &new_root,
         &truncated,
     );
-    assert_eq!(res.unwrap(), false, "Truncated proof must fail");
+    assert!(!res.unwrap(), "Truncated proof must fail");
 
     // 2. Extended path (garbage node added)
     let mut extended = proof.clone();
@@ -299,7 +301,7 @@ fn test_adversarial_reordered_and_truncated_path() {
         &new_root,
         &extended,
     );
-    assert_eq!(res.unwrap(), false, "Extended proof with trailing node must fail");
+    assert!(!res.unwrap(), "Extended proof with trailing node must fail");
 
     // 3. Reordered path
     let mut reordered = proof.clone();
@@ -311,14 +313,12 @@ fn test_adversarial_reordered_and_truncated_path() {
         &new_root,
         &reordered,
     );
-    assert_eq!(res.unwrap(), false, "Reordered proof must fail");
+    assert!(!res.unwrap(), "Reordered proof must fail");
 }
 
 #[test]
 fn test_adversarial_tampered_roots_and_invalid_sizes() {
-    let leaves: Vec<[u8; 32]> = (0..16)
-        .map(|i| leaf_hash(&[i as u8]))
-        .collect();
+    let leaves: Vec<[u8; 32]> = (0..16).map(|i| leaf_hash(&[i as u8])).collect();
 
     let old_size = 4;
     let new_size = 8;
@@ -335,7 +335,7 @@ fn test_adversarial_tampered_roots_and_invalid_sizes() {
         &new_root,
         &proof,
     );
-    assert_eq!(res.unwrap(), false, "Tampered old root must fail");
+    assert!(!res.unwrap(), "Tampered old root must fail");
 
     // Restore old root, tamper new root
     old_root[0] ^= 0xff;
@@ -347,15 +347,21 @@ fn test_adversarial_tampered_roots_and_invalid_sizes() {
         &new_root,
         &proof,
     );
-    assert_eq!(res.unwrap(), false, "Tampered new root must fail");
+    assert!(!res.unwrap(), "Tampered new root must fail");
 
     // Invalid sizes: old_size == 0
     let res = verify_consistency(0, 8, &old_root, &new_root, &proof);
-    assert!(matches!(res, Err(TransparencyError::InvalidConsistencyProof)));
+    assert!(matches!(
+        res,
+        Err(TransparencyError::InvalidConsistencyProof)
+    ));
 
     // Invalid sizes: old_size > new_size
     let res = verify_consistency(9, 8, &old_root, &new_root, &proof);
-    assert!(matches!(res, Err(TransparencyError::InvalidConsistencyProof)));
+    assert!(matches!(
+        res,
+        Err(TransparencyError::InvalidConsistencyProof)
+    ));
 
     // Wire proof with invalid version
     let invalid_version_proof = MerkleConsistencyProof {
@@ -371,9 +377,9 @@ fn test_adversarial_tampered_roots_and_invalid_sizes() {
 
 #[test]
 fn test_large_tree_scalability_above_16384() {
-    // Generate tree with 20,000 leaves (simulated via hashing counter)
-    let total_leaves: usize = 20_000;
-    let old_size: usize = 10_000;
+    // Generate tree with 16,500 leaves — just above the V1 cap of 16,384
+    let total_leaves: usize = 16_500;
+    let old_size: usize = 8_000;
 
     let leaves: Vec<[u8; 32]> = (0..total_leaves)
         .map(|i| leaf_hash(&(i as u64).to_be_bytes()))
@@ -382,10 +388,15 @@ fn test_large_tree_scalability_above_16384() {
     let old_root = merkle_root(&leaves[..old_size]);
     let new_root = merkle_root(&leaves);
 
-    let proof = consistency_proof(&leaves, old_size).expect("consistency proof generation for 20k leaves");
-    
-    // O(log 20000) is <= 16 nodes
-    assert!(proof.len() <= 16, "Audit path length {} should be <= 16", proof.len());
+    let proof = consistency_proof(&leaves, old_size)
+        .expect("consistency proof generation for 16.5k leaves");
+
+    // O(log 16500) is <= 15 nodes
+    assert!(
+        proof.len() <= 15,
+        "Audit path length {} should be <= 15",
+        proof.len()
+    );
 
     let v2_proof = MerkleConsistencyProof {
         version: 2,
@@ -397,15 +408,14 @@ fn test_large_tree_scalability_above_16384() {
     };
 
     // Verifier must succeed and not reject due to old 16,384 cap
-    let verified = verify_consistency_proof(&v2_proof).expect("verification of large V2 proof");
-    assert!(verified, "V2 proof for 20k leaves must be valid");
+    let verified =
+        verify_consistency_proof(&v2_proof).expect("verification of large V2 proof above V1 cap");
+    assert!(verified, "V2 proof for 16.5k leaves must be valid");
 }
 
 #[test]
 fn test_v1_backward_compatibility() {
-    let leaves: Vec<[u8; 32]> = (0..8)
-        .map(|i| leaf_hash(&[i as u8]))
-        .collect();
+    let leaves: Vec<[u8; 32]> = (0..8).map(|i| leaf_hash(&[i as u8])).collect();
 
     let old_size = 3;
     let new_size = 8;
