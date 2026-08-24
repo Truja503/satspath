@@ -1,0 +1,461 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-v2-server-to-server-s2s-wire-protocol-specification}{%
+\section{SatsPath v2 Server-to-Server (S2S) Wire Protocol
+Specification}\label{satspath-v2-server-to-server-s2s-wire-protocol-specification}}
+
+\textbf{Status:} Draft / Normative Specification\\
+\textbf{Parent Epic:}
+\href{https://github.com/Truja503/satspath/issues/46}{\#46}\\
+\textbf{Issue:}
+\href{https://github.com/Truja503/satspath/issues/48}{\#48}\\
+\textbf{Depends On:}
+\href{file:///home/chelo/antigravity/PlanB/satspath/docs/s2s/trust-model-v2.md}{docs/s2s/trust-model-v2.md}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{overview-protocol-philosophy}{%
+\subsection{1. Overview \& Protocol
+Philosophy}\label{overview-protocol-philosophy}}
+
+The SatsPath v2 S2S Wire Protocol defines the HTTP and cryptographic
+interface that clients, resolvers, and peer servers use to discover
+authority, resolve identifiers, verify cryptographic proofs, and
+synchronize transparency logs.
+
+\hypertarget{core-principles}{%
+\subsubsection{Core Principles}\label{core-principles}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Self-Contained Proof Envelopes}: A resolution response carries
+  all cryptographic proofs necessary for a pure verifier to establish
+  integrity, origin, and freshness without querying secondary endpoints.
+\item
+  \textbf{Deterministic Canonicalization}: All cryptographic commitments
+  use strict domain separation (\texttt{SatsPath*V1} /
+  \texttt{SatsPath*V2}) and canonical JSON (RFC 8785) formatting.
+\item
+  \textbf{Fail-Closed Verification}: Any missing mandatory field,
+  unknown schema extension, malformed proof, or broken consistency chain
+  terminates verification immediately.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{cryptographic-encodings-domain-separation}{%
+\subsection{2. Cryptographic Encodings \& Domain
+Separation}\label{cryptographic-encodings-domain-separation}}
+
+All hashes are SHA-256 over domain-separated prefixes followed by RFC
+8785 canonical bytes.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{+{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}+{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}+}
+\NormalTok{| Domain Constant                    | Purpose                                   |}
+\NormalTok{+{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}+{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}+}
+\NormalTok{| SatsPathNamespaceDescriptorV1      | Namespace authority and endpoint metadata |}
+\NormalTok{| SatsPathNameEventPayloadV1         | Owner{-}signed name lifecycle action        |}
+\NormalTok{| SatsPathSignedNameEventV1          | Merkle leaf commit over signed event      |}
+\NormalTok{| SatsPathTransparencyCheckpointV1   | Operator signed log \& state checkpoint    |}
+\NormalTok{| SatsPathWitnessCosignatureV1       | Witness cosignature committing checkpoint |}
+\NormalTok{| SatsPathCurrentStateEntryV1        | Authenticated current{-}state map entry     |}
+\NormalTok{+{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}+{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}{-}+}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{protocol-data-objects-rust-json-schemas}{%
+\subsection{3. Protocol Data Objects (Rust \& JSON
+Schemas)}\label{protocol-data-objects-rust-json-schemas}}
+
+\hypertarget{namespace-descriptor-namespacedescriptor}{%
+\subsubsection{\texorpdfstring{3.1. Namespace Descriptor
+(\texttt{NamespaceDescriptor})}{3.1. Namespace Descriptor (NamespaceDescriptor)}}\label{namespace-descriptor-namespacedescriptor}}
+
+Discovered via DNS TXT or \texttt{/.well-known/satspath-authority}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{\#[}\NormalTok{derive}\AttributeTok{(}\BuiltInTok{Debug}\OperatorTok{,} \BuiltInTok{Clone}\OperatorTok{,}\NormalTok{ Serialize}\OperatorTok{,}\NormalTok{ Deserialize}\OperatorTok{,} \BuiltInTok{PartialEq}\OperatorTok{,} \BuiltInTok{Eq}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{struct}\NormalTok{ NamespaceDescriptor }\OperatorTok{\{}
+    \KeywordTok{pub}\NormalTok{ version}\OperatorTok{:} \DataTypeTok{u16}\OperatorTok{,}                    \CommentTok{// Must be 2}
+    \KeywordTok{pub}\NormalTok{ domain}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}                  \CommentTok{// Canonical domain name (e.g. "example.com")}
+    \KeywordTok{pub}\NormalTok{ log\_id}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}                  \CommentTok{// Unique Log ID (hex SHA{-}256)}
+    \KeywordTok{pub}\NormalTok{ authority\_pubkey}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}        \CommentTok{// Compressed secp256k1 hex (66 chars)}
+    \KeywordTok{pub}\NormalTok{ endpoint\_urls}\OperatorTok{:} \DataTypeTok{Vec}\OperatorTok{\textless{}}\DataTypeTok{String}\OperatorTok{\textgreater{},}      \CommentTok{// HTTPS endpoints (e.g. ["https://s2s.example.com"])}
+    \KeywordTok{pub}\NormalTok{ witness\_quorum}\OperatorTok{:} \DataTypeTok{u8}\OperatorTok{,}              \CommentTok{// Minimum witness count required (e.g. 2)}
+    \KeywordTok{pub}\NormalTok{ witness\_pubkeys}\OperatorTok{:} \DataTypeTok{Vec}\OperatorTok{\textless{}}\DataTypeTok{String}\OperatorTok{\textgreater{},}    \CommentTok{// Authorized witness public keys}
+    \KeywordTok{pub}\NormalTok{ valid\_from}\OperatorTok{:} \DataTypeTok{i64}\OperatorTok{,}                 \CommentTok{// UNIX timestamp (seconds)}
+    \KeywordTok{pub}\NormalTok{ expires\_at}\OperatorTok{:} \DataTypeTok{i64}\OperatorTok{,}                 \CommentTok{// UNIX timestamp (seconds)}
+    \KeywordTok{pub}\NormalTok{ signature}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}               \CommentTok{// Signature by authority\_pubkey}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{witness-cosignature-witnesscosignature}{%
+\subsubsection{\texorpdfstring{3.2. Witness Cosignature
+(\texttt{WitnessCosignature})}{3.2. Witness Cosignature (WitnessCosignature)}}\label{witness-cosignature-witnesscosignature}}
+
+Guarantees global consistency and split-view prevention.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{\#[}\NormalTok{derive}\AttributeTok{(}\BuiltInTok{Debug}\OperatorTok{,} \BuiltInTok{Clone}\OperatorTok{,}\NormalTok{ Serialize}\OperatorTok{,}\NormalTok{ Deserialize}\OperatorTok{,} \BuiltInTok{PartialEq}\OperatorTok{,} \BuiltInTok{Eq}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{struct}\NormalTok{ WitnessCosignature }\OperatorTok{\{}
+    \KeywordTok{pub}\NormalTok{ version}\OperatorTok{:} \DataTypeTok{u16}\OperatorTok{,}
+    \KeywordTok{pub}\NormalTok{ witness\_id}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}              \CommentTok{// Witness identifier or URL}
+    \KeywordTok{pub}\NormalTok{ witness\_pubkey}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}          \CommentTok{// Compressed secp256k1 hex}
+    \KeywordTok{pub}\NormalTok{ checkpoint\_hash}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}         \CommentTok{// Hash of TransparencyCheckpoint}
+    \KeywordTok{pub}\NormalTok{ tree\_size}\OperatorTok{:} \DataTypeTok{u64}\OperatorTok{,}                  \CommentTok{// Committed tree size}
+    \KeywordTok{pub}\NormalTok{ timestamp}\OperatorTok{:} \DataTypeTok{i64}\OperatorTok{,}                  \CommentTok{// Witness observation timestamp}
+    \KeywordTok{pub}\NormalTok{ signature}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}               \CommentTok{// Signature over checkpoint\_hash + tree\_size + timestamp}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{resolution-envelope-resolutionenvelope}{%
+\subsubsection{\texorpdfstring{3.3. Resolution Envelope
+(\texttt{ResolutionEnvelope})}{3.3. Resolution Envelope (ResolutionEnvelope)}}\label{resolution-envelope-resolutionenvelope}}
+
+The comprehensive proof payload returned on resolution.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{\#[}\NormalTok{derive}\AttributeTok{(}\BuiltInTok{Debug}\OperatorTok{,} \BuiltInTok{Clone}\OperatorTok{,}\NormalTok{ Serialize}\OperatorTok{,}\NormalTok{ Deserialize}\OperatorTok{,} \BuiltInTok{PartialEq}\OperatorTok{,} \BuiltInTok{Eq}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{struct}\NormalTok{ ResolutionEnvelope }\OperatorTok{\{}
+    \KeywordTok{pub}\NormalTok{ version}\OperatorTok{:} \DataTypeTok{u16}\OperatorTok{,}                                \CommentTok{// Must be 2}
+    \KeywordTok{pub}\NormalTok{ identifier}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,}                          \CommentTok{// Canonical identifier (e.g. "alice@example.com")}
+    \KeywordTok{pub}\NormalTok{ namespace\_descriptor}\OperatorTok{:}\NormalTok{ NamespaceDescriptor}\OperatorTok{,}   \CommentTok{// Authority descriptor}
+    \KeywordTok{pub}\NormalTok{ signed\_profile}\OperatorTok{:}\NormalTok{ SignedPaymentProfile}\OperatorTok{,}        \CommentTok{// Resolved payment profile}
+    \KeywordTok{pub}\NormalTok{ name\_events}\OperatorTok{:} \DataTypeTok{Vec}\OperatorTok{\textless{}}\NormalTok{NameEvent}\OperatorTok{\textgreater{},}                 \CommentTok{// Monotonic event chain (0..N)}
+    \KeywordTok{pub}\NormalTok{ inclusion\_proof}\OperatorTok{:}\NormalTok{ MerkleInclusionProof}\OperatorTok{,}       \CommentTok{// RFC 6962 leaf inclusion proof}
+    \KeywordTok{pub}\NormalTok{ checkpoint}\OperatorTok{:}\NormalTok{ TransparencyCheckpoint}\OperatorTok{,}          \CommentTok{// Log operator signed checkpoint}
+    \KeywordTok{pub}\NormalTok{ consistency\_proof}\OperatorTok{:} \DataTypeTok{Option}\OperatorTok{\textless{}}\NormalTok{MerkleConsistencyProof}\OperatorTok{\textgreater{},} \CommentTok{// Proof from client\textquotesingle{}s pinned tree}
+    \KeywordTok{pub}\NormalTok{ current\_state\_proof}\OperatorTok{:} \DataTypeTok{Option}\OperatorTok{\textless{}}\NormalTok{CurrentStateProof}\OperatorTok{\textgreater{},} \CommentTok{// Non{-}inclusion / current pointer proof}
+    \KeywordTok{pub}\NormalTok{ witness\_cosignatures}\OperatorTok{:} \DataTypeTok{Vec}\OperatorTok{\textless{}}\NormalTok{WitnessCosignature}\OperatorTok{\textgreater{},}  \CommentTok{// Cosignatures meeting quorum}
+    \KeywordTok{pub}\NormalTok{ served\_at}\OperatorTok{:} \DataTypeTok{i64}\OperatorTok{,}                              \CommentTok{// Response timestamp}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{http-endpoints-api-surface}{%
+\subsection{4. HTTP Endpoints \& API
+Surface}\label{http-endpoints-api-surface}}
+
+All endpoints use
+\texttt{Content-Type:\ application/vnd.satspath.v2+json;\ charset=utf-8}.
+
+\hypertarget{authority-discovery}{%
+\subsubsection{4.1. Authority Discovery}\label{authority-discovery}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Endpoint}: \texttt{GET\ /.well-known/satspath-authority}
+\item
+  \textbf{Query Parameters}: None
+\item
+  \textbf{Response}: \texttt{200\ OK} with \texttt{NamespaceDescriptor}
+\item
+  \textbf{Caching}:
+  \texttt{Cache-Control:\ public,\ max-age=3600,\ stale-while-revalidate=86400}
+\end{itemize}
+
+\hypertarget{proof-carrying-identifier-resolution}{%
+\subsubsection{4.2. Proof-Carrying Identifier
+Resolution}\label{proof-carrying-identifier-resolution}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Endpoint}: \texttt{GET\ /v2/resolve}
+\item
+  \textbf{Query Parameters}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{identifier} (required): Canonical format
+    \texttt{user@domain.com} (lowercase, UTF-8).
+  \item
+    \texttt{pinned\_tree\_size} (optional): Client's last observed tree
+    size to request inline consistency proof.
+  \item
+    \texttt{include\_history} (optional): \texttt{true} / \texttt{false}
+    (defaults to \texttt{true}).
+  \end{itemize}
+\item
+  \textbf{Alternative}: \texttt{POST\ /v2/resolve} with JSON body
+  \texttt{\{"identifier":\ "...",\ "pinned\_tree\_size":\ ...\}} to
+  avoid URL proxy logging of private sub-identifiers.
+\item
+  \textbf{Response}: \texttt{200\ OK} with \texttt{ResolutionEnvelope}.
+\item
+  \textbf{Errors}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{404\ Not\ Found}: Identifier does not exist (returns
+    cryptographically signed non-inclusion proof).
+  \item
+    \texttt{400\ Bad\ Request}: Malformed identifier syntax.
+  \item
+    \texttt{503\ Service\ Unavailable}: Log synchronization in progress.
+  \end{itemize}
+\end{itemize}
+
+\hypertarget{checkpoint-retrieval}{%
+\subsubsection{4.3. Checkpoint Retrieval}\label{checkpoint-retrieval}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Endpoint}: \texttt{GET\ /v2/checkpoint}
+\item
+  \textbf{Response}: \texttt{200\ OK} with latest
+  \texttt{TransparencyCheckpoint} and attached
+  \texttt{witness\_cosignatures}.
+\item
+  \textbf{Caching}: \texttt{Cache-Control:\ public,\ max-age=15}
+\end{itemize}
+
+\hypertarget{consistency-proof-retrieval}{%
+\subsubsection{4.4. Consistency Proof
+Retrieval}\label{consistency-proof-retrieval}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Endpoint}: \texttt{GET\ /v2/proof/consistency}
+\item
+  \textbf{Query Parameters}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{old} (required): Previous tree size \(N_1\).
+  \item
+    \texttt{new} (required): Target tree size \(N_2\) (\(N_2 \ge N_1\)).
+  \end{itemize}
+\item
+  \textbf{Response}: \texttt{200\ OK} with
+  \texttt{MerkleConsistencyProof} (RFC 6962 format).
+\end{itemize}
+
+\hypertarget{monitor-entry-stream}{%
+\subsubsection{4.5. Monitor Entry Stream}\label{monitor-entry-stream}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Endpoint}: \texttt{GET\ /v2/entries}
+\item
+  \textbf{Query Parameters}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{from} (required): Start leaf index (inclusive, 0-indexed).
+  \item
+    \texttt{to} (required): End leaf index (inclusive, max delta: 1000).
+  \end{itemize}
+\item
+  \textbf{Response}: \texttt{200\ OK} with JSON array of
+  \texttt{NameEvent} leaves.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pure-verification-algorithm-normative}{%
+\subsection{5. Pure Verification Algorithm
+(Normative)}\label{pure-verification-algorithm-normative}}
+
+A compliant SatsPath v2 verifier executes the following ordered
+sequence:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{[1. Namespace Verification]}
+\NormalTok{    ├── Validate DNSSEC on \_satspath.domain.com OR check WebPKI / Pin.}
+\NormalTok{    ├── Verify namespace\_descriptor.signature against authority\_pubkey.}
+\NormalTok{    └── Check namespace\_descriptor expiration: expires\_at \textgreater{} now.}
+
+\NormalTok{[2. Profile \& Event Chain Verification]}
+\NormalTok{    ├── Verify signed\_profile signature with profile.identity\_pubkey.}
+\NormalTok{    ├── Compute profile\_hash = H(SatsPathSignedPaymentProfileV1 || canonical\_profile || signature).}
+\NormalTok{    ├── Verify name\_events sequence (0..N) monotonic hash chain.}
+\NormalTok{    ├── Assert name\_events[N].profile\_hash == profile\_hash.}
+\NormalTok{    └── Assert name\_events[N].identity\_pubkey == signed\_profile.identity\_pubkey.}
+
+\NormalTok{[3. Merkle Leaf \& Checkpoint Inclusion]}
+\NormalTok{    ├── Compute leaf\_hash = H(0x00 || H(SatsPathSignedNameEventV1 || canonical(name\_events[N]))).}
+\NormalTok{    ├── Verify inclusion\_proof connects leaf\_hash to checkpoint.log\_root at log\_size.}
+\NormalTok{    └── Verify checkpoint.operator\_signature using checkpoint.operator\_pubkey.}
+
+\NormalTok{[4. Checkpoint Extension \& Consistency]}
+\NormalTok{    ├── If client has pinned checkpoint (size S\_old, root R\_old):}
+\NormalTok{    │     ├── If checkpoint.log\_size \textless{} S\_old: FAIL(ERR\_CHECKPOINT\_ROLLBACK).}
+\NormalTok{    │     ├── If checkpoint.log\_size == S\_old: Assert checkpoint.log\_root == R\_old.}
+\NormalTok{    │     └── If checkpoint.log\_size \textgreater{} S\_old: Verify consistency\_proof(S\_old, S\_new, R\_old, R\_new).}
+\NormalTok{    └── If operator\_pubkey changed: Verify operator\_rotation dual{-}signatures.}
+
+\NormalTok{[5. Witness Quorum Verification]}
+\NormalTok{    ├── Filter witness\_cosignatures matching namespace\_descriptor.witness\_pubkeys.}
+\NormalTok{    ├── Verify each witness signature over checkpoint\_hash and tree\_size.}
+\NormalTok{    └── Assert valid\_witness\_count \textgreater{}= namespace\_descriptor.witness\_quorum.}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{limits-timeouts-error-mapping}{%
+\subsection{6. Limits, Timeouts \& Error
+Mapping}\label{limits-timeouts-error-mapping}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Parameter
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Limit / Policy
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Max Resolution Envelope Size & 65,536 bytes (64 KiB) \\
+Max History Events in Response & 256 events (older history retrieved via
+\texttt{/v2/entries}) \\
+Max S2S Request Timeout & 5000 ms \\
+Max Allowed Clock Skew & \(\pm 300\) seconds (5 minutes) \\
+Allowed Compression & \texttt{gzip}, \texttt{zstd}, \texttt{br} \\
+\end{longtable}
+
+\hypertarget{terminal-error-mapping}{%
+\subsubsection{Terminal Error Mapping}\label{terminal-error-mapping}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{HTTP 400 Bad Request           {-}\textgreater{} ERR\_MALFORMED\_ENVELOPE / ERR\_PAYLOAD\_TOO\_LARGE}
+\NormalTok{HTTP 404 Not Found             {-}\textgreater{} ERR\_NON\_INCLUSION\_UNVERIFIED (or valid authenticated non{-}existence)}
+\NormalTok{HTTP 422 Unprocessable Entity  {-}\textgreater{} ERR\_BROKEN\_HISTORY\_CHAIN / ERR\_INCLUSION\_MISMATCH}
+\NormalTok{HTTP 502 Bad Gateway           {-}\textgreater{} ERR\_SERVER\_UNAVAILABLE}
+\NormalTok{HTTP 504 Gateway Timeout       {-}\textgreater{} ERR\_SERVER\_UNAVAILABLE}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}

@@ -106,15 +106,14 @@ Future Mitigation
 \texttt{alice@bank.com} before Alice & First-come-first-served local
 registry; no domain verification & Domain-ownership proof via BIP-353
 DNS TXT records; DKIM-signed registration challenges \\
-\textbf{Server/registry tampering} & Registry file modified to replace
-Alice's pubkey with attacker's & All profiles are signed by the identity
-key; signature verified before payment & Decentralized registry (Nostr,
-DHT) with append-only semantics; client-side signature pinning \\
-\textbf{Key replacement attack} & Attacker replaces
-\texttt{identity\_pubkey} in a profile & Signature covers the entire
-profile including the pubkey; swapping the key breaks the signature &
-Pinned pubkey in BIP-353 DNS record; certificate transparency for pubkey
-changes \\
+\textbf{Server/registry tampering} & Registry replaces Alice's
+key/profile & Mandatory signed-event history, checkpoint-bound Merkle
+inclusion and local checkpoint pinning before quote/pay & Witness gossip
+and independent monitors \\
+\textbf{Key replacement attack} & Attacker self-signs a profile with a
+replacement key & Updates reject key changes; rotation requires old
+authorization plus new acceptance at one canonical sequence &
+Independent identifier attestations and witnesses \\
 \textbf{Email takeover} & Attacker takes over alice@example.com and
 re-registers & Registry does not verify email ownership at MVP & DKIM
 challenge during registration; WebAuthn-based domain binding \\
@@ -144,9 +143,10 @@ fee data sources; user-configurable fee source; local fee estimation \\
 \texttt{updated\_at} timestamp in profile; profiles can be revoked by
 re-signing & Nonce in payment requests; short-lived payment intents with
 expiry \\
-\textbf{Profile downgrade} & Attacker strips Lightning method to force
-on-chain & Profile is signed; removing methods breaks signature &
-Version-pinned profiles; minimum method count enforcement \\
+\textbf{Profile downgrade} & Attacker strips or replaces a method &
+Authorized removal is permitted but signed, sequenced, logged and
+displayed; router selects only ownership-verified methods & User policy
+for change warnings \\
 \end{longtable}
 
 \hypertarget{trust-model}{%
@@ -155,14 +155,25 @@ Version-pinned profiles; minimum method count enforcement \\
 \begin{verbatim}
 TRUSTED:
   - User's own keypair (generated locally, never transmitted)
-  - secp256k1 / ECDSA signature validity
+  - secp256k1 Schnorr signature validity
+
+## Key transparency threats
+
+A valid self-signature proves control of the key embedded in a profile; it does not prove that a registry preserved the historic identifier-to-key mapping. The transparency subsystem treats key replacement, profile substitution, rollback, replay, split views, equivocation, compromised verifiers, compromised or lost old keys, and a malicious checkpoint operator as distinct threats. Same-size/different-root checkpoints and any tree-size rollback are critical failures. Recovery events exist in the schema but are disabled until a concrete policy is designed; email-only recovery would reduce security to the email provider.
+
+Pins use a stable `log_id`. Presenting a new operator key does not create a new
+TOFU namespace: it is a critical error unless a dual-signed operator rotation is
+bound to the prior checkpoint. SQLite transactions prevent an event, profile or
+checkpoint from advancing alone. Startup replay fails closed if any persisted
+checkpoint signature, root, size, predecessor, operator transition or anchor
+commitment is corrupt.
 
 PARTIALLY TRUSTED:
-  - Local registry (file system trust)
+  - Initial transparency checkpoint (TOFU until independently compared)
   - mempool.space fee API (falls back to mock on failure)
 
 NOT TRUSTED (at MVP):
-  - Email ownership
+  - Unconfigured email/identifier verifiers
   - Domain ownership
   - Ark server
   - LNURL endpoint content

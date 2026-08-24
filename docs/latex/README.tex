@@ -113,6 +113,12 @@ protocol.}
 DISCLAIMER: This is hackathon software. Do not use with real funds.
 \end{quote}
 
+The standalone daemon includes an experimental key-transparency log and
+Merkle explorer. Quote, pay and preview fail closed unless the profile
+is included in the exact signed checkpoint and consistent with the local
+\texttt{log\_id} pin. It is unaudited; see
+\href{docs/key_transparency.md}{the architecture and limitations}.
+
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
 \hypertarget{problem}{%

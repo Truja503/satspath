@@ -164,7 +164,7 @@ Public profile data containing a receiver alias, protocol identity
 public key, supported payment methods, timestamps, and optional
 method-verification records.
 \item[\texttt{SignedPaymentProfile}]
-A \texttt{PaymentProfile} plus a secp256k1 ECDSA signature made by the
+A \texttt{PaymentProfile} plus a secp256k1 Schnorr signature made by the
 profile identity key.
 \item[\texttt{PaymentMethod}]
 One public receive pointer. v1 methods are \texttt{Lightning},
@@ -260,7 +260,7 @@ A \texttt{SignedPaymentProfile} wraps the profile with a signature:
     \DataTypeTok{"identity\_pubkey"}\FunctionTok{:} \StringTok{"02..."}\FunctionTok{,}
     \DataTypeTok{"methods"}\FunctionTok{:} \OtherTok{[]}
   \FunctionTok{\},}
-  \DataTypeTok{"signature"}\FunctionTok{:} \StringTok{"3044..."}
+  \DataTypeTok{"signature"}\FunctionTok{:} \StringTok{"\textless{}128 lowercase hex characters\textgreater{}"}
 \FunctionTok{\}}
 \end{Highlighting}
 \end{Shaded}
@@ -268,13 +268,13 @@ A \texttt{SignedPaymentProfile} wraps the profile with a signature:
 \hypertarget{signing-rule}{%
 \subsubsection{Signing Rule}\label{signing-rule}}
 
-The signature is computed over the SHA-256 digest of the canonical JSON
-serialization of \texttt{profile}.
+The signature is computed over a domain-separated SHA-256 digest of the
+canonical JSON serialization of \texttt{profile}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{message = SHA256(canonical\_json(profile))}
-\NormalTok{signature = secp256k1\_ecdsa\_sign(identity\_secret\_key, message)}
+\NormalTok{message = SHA256(UTF8("SatsPathProfileV1") || canonical\_json\_utf8(profile))}
+\NormalTok{signature = secp256k1\_schnorr\_sign(identity\_secret\_key, message)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -292,17 +292,62 @@ Before using any profile for routing, an implementation MUST:
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  Parse \texttt{identity\_pubkey} as a compressed secp256k1 public key.
+  Parse \texttt{identity\_pubkey} from hex as exactly a 33-byte
+  compressed secp256k1 public key (\texttt{02}/\texttt{03} prefix).
 \item
-  Recompute \texttt{SHA256(canonical\_json(profile))}.
+  Serialize with RFC 8259 JSON semantics, recursively lexicographically
+  sorted object keys, UTF-8, and no insignificant whitespace.
 \item
-  Verify the DER-encoded ECDSA signature.
+  Recompute
+  \texttt{SHA256(UTF8("SatsPathProfileV1")\ \textbar{}\textbar{}\ canonical\_json\_utf8(profile))}.
+\item
+  Decode \texttt{signature} as exactly 64 bytes of hex and verify
+  secp256k1 Schnorr against the x-only projection of the compressed key.
+  DER ECDSA MUST be rejected.
 \item
   Reject the profile if \texttt{expires\_at} is present and in the past.
 \item
   Reject private material if any private-key-like content is detected in
   public fields.
 \end{enumerate}
+
+Profile schema/signature version 1 is selected by
+\texttt{SatsPathProfileV1}; an incompatible future profile requires a
+new domain.
+
+\hypertarget{key-rotation-v1}{%
+\subsubsection{Key Rotation V1}\label{key-rotation-v1}}
+
+The old key authorizes and the new key separately accepts these
+newline-delimited UTF-8 statements (no trailing newline):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{SatsPathKeyRotationAuthorizationV1}
+\NormalTok{identifier\_hash}
+\NormalTok{old\_pubkey}
+\NormalTok{new\_pubkey}
+\NormalTok{previous\_event\_hash}
+\NormalTok{sequence}
+\NormalTok{rotated\_at}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{SatsPathKeyRotationAcceptanceV1}
+\NormalTok{identifier\_hash}
+\NormalTok{old\_pubkey}
+\NormalTok{new\_pubkey}
+\NormalTok{previous\_event\_hash}
+\NormalTok{sequence}
+\NormalTok{rotated\_at}
+\end{Highlighting}
+\end{Shaded}
+
+Each complete statement is SHA-256 hashed and signed as a 64-byte
+secp256k1 Schnorr signature. \texttt{identifier\_hash} is
+\texttt{SHA256(UTF8(canonical\_identifier))}.
 
 If signature verification fails, the protocol result MUST be
 \texttt{invalid\_signature}.
@@ -642,6 +687,44 @@ the selected route.
 
 Routing policy MAY evolve without changing the quote response wire
 shape.
+
+\hypertarget{mandatory-transparency-composition}{%
+\subsection{Mandatory Transparency
+Composition}\label{mandatory-transparency-composition}}
+
+The standalone daemon MUST NOT route \texttt{/v1/quote},
+\texttt{/v1/pay} or \texttt{/v1/preview} from a self-contained signed
+profile alone. These endpoints use the same result as
+\texttt{/v1/resolve} and verify, in order: canonical profile signature
+and expiry, identifier history, key continuity, latest profile/event
+binding, inclusion in the exact signed checkpoint, consistency with the
+\texttt{log\_id} pin, operator-key continuity, and payment-method
+ownership. Failure is terminal and MUST NOT fall back to the legacy
+resolver chain.
+
+Name-event hashing uses two distinct values:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{signing\_payload\_hash = SHA256("SatsPathNameEventPayloadV1" || canonical\_json(unsigned\_event))}
+\NormalTok{owner\_signature      = Schnorr("SatsPathNameEventSignatureV1\textbackslash{}n" || hex(signing\_payload\_hash))}
+\NormalTok{signed\_event\_hash    = SHA256("SatsPathSignedNameEventV1" || canonical\_json(full\_signed\_event))}
+\NormalTok{leaf\_hash            = SHA256(0x00 || raw(signed\_event\_hash))}
+\end{Highlighting}
+\end{Shaded}
+
+All quoted strings above are exact UTF-8 bytes with no NUL separator.
+Hex is lowercase. \texttt{previous\_event\_hash} is the preceding
+\texttt{signed\_event\_hash}. Registration uses sequence 0; every
+accepted mutation increments exactly once, and profile, event and
+rotation sequences MUST match.
+
+An inclusion result is valid only if proof root/size equal checkpoint
+root/size, the leaf is derived from the requested signed event hash, the
+Merkle audit path verifies, and the checkpoint's 64-byte secp256k1
+Schnorr signature verifies. Pins are keyed by stable \texttt{log\_id}; a
+changed operator public key requires old-key authorization and new-key
+acceptance in a versioned operator rotation.
 
 \hypertarget{payment-handoff}{%
 \subsection{Payment Handoff}\label{payment-handoff}}

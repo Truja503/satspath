@@ -1,0 +1,373 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-key-transparency-architecture}{%
+\section{SatsPath Key Transparency
+Architecture}\label{satspath-key-transparency-architecture}}
+
+\hypertarget{problem}{%
+\subsection{Problem}\label{problem}}
+
+\texttt{self-signed\ profile\ !=\ authenticated\ human-readable\ identity}.
+A malicious registry can replace Alice's key with an attacker key and
+return a profile correctly self-signed by that attacker.
+Profile-signature validity alone cannot detect the substitution.
+
+V1 adds a per-identifier hash chain inside a global append-only Merkle
+log, signed checkpoints, client pinning, dual-signature rotation,
+identifier-to-key attestations and an opt-in Bitcoin Core regtest
+anchor. The authenticated current-state map is not implemented: state is
+replayed from the log and \texttt{map\_root} is \texttt{null}.
+
+\hypertarget{event-creation-and-merkle-construction}{%
+\subsection{Event creation and Merkle
+construction}\label{event-creation-and-merkle-construction}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{flowchart LR}
+\NormalTok{  I[Canonical identifier] {-}{-}\textgreater{} H[SHA{-}256 identifier hash]}
+\NormalTok{  P[Canonical signed profile] {-}{-}\textgreater{} PH[Profile hash]}
+\NormalTok{  H {-}{-}\textgreater{} E[Versioned NameEvent]}
+\NormalTok{  PH {-}{-}\textgreater{} E}
+\NormalTok{  K[Authorized identity key] {-}{-}\textgreater{}|Schnorr owner signature| E}
+\NormalTok{  E {-}{-}\textgreater{} F[SQLite BEGIN IMMEDIATE]}
+\NormalTok{  F {-}{-}\textgreater{} T[RFC6962{-}style Merkle tree]}
+\NormalTok{  T {-}{-}\textgreater{} C[Operator{-}signed checkpoint]}
+\end{Highlighting}
+\end{Shaded}
+
+Startup deterministically replays every history and fails closed on
+corruption. Checkpoints use atomic rename. Events contain
+\texttt{identifier\_hash}, not a plaintext consumer email. Recovery
+exists in the enum but is disabled.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{signing\_payload\_hash = SHA256(UTF8("SatsPathNameEventPayloadV1") || canonical\_json\_utf8(event\_without\_owner\_signature))}
+\NormalTok{owner\_signature      = SchnorrSign(UTF8("SatsPathNameEventSignatureV1\textbackslash{}n") || hex(signing\_payload\_hash))}
+\NormalTok{signed\_event\_hash    = SHA256(UTF8("SatsPathSignedNameEventV1") || canonical\_json\_utf8(full\_event\_including\_owner\_signature))}
+\NormalTok{leaf\_hash            = SHA256(0x00 || raw\_32\_byte\_signed\_event\_hash)}
+\NormalTok{node\_hash  = SHA256(0x01 || left\_32 || right\_32)}
+\end{Highlighting}
+\end{Shaded}
+
+\texttt{previous\_event\_hash} and Merkle leaves use
+\texttt{signed\_event\_hash}, so the tree commits to the exact owner
+signature, rotation evidence, attestation hash and method-removal
+evidence. The exact profile and rotation encodings are in
+\texttt{protocol.md}.
+
+\hypertarget{resolution-and-proof-verification}{%
+\subsection{Resolution and proof
+verification}\label{resolution-and-proof-verification}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sequenceDiagram}
+\NormalTok{  participant Client}
+\NormalTok{  participant Resolver}
+\NormalTok{  participant Log}
+\NormalTok{  Client{-}\textgreater{}\textgreater{}Resolver: identifier}
+\NormalTok{  Resolver{-}\textgreater{}\textgreater{}Log: profile + event + proofs + checkpoint}
+\NormalTok{  Log{-}{-}\textgreater{}\textgreater{}Client: provenance bundle}
+\NormalTok{  Client{-}\textgreater{}\textgreater{}Client: verify operator signature and pinned checkpoint}
+\NormalTok{  Client{-}\textgreater{}\textgreater{}Client: verify append{-}only consistency}
+\NormalTok{  Client{-}\textgreater{}\textgreater{}Client: replay identifier history/key continuity}
+\NormalTok{  Client{-}\textgreater{}\textgreater{}Client: verify inclusion, profile hash/signature and method ownership}
+\end{Highlighting}
+\end{Shaded}
+
+Inclusion verification is accepted only when proof root and size equal
+the exact signed checkpoint and the leaf equals
+\texttt{SHA256(0x00\ \textbar{}\textbar{}\ signed\_event\_hash)}.
+Consistency proofs use version 2 compact RFC 6962 audit paths with
+\texttt{O(log\ n)} bandwidth to independently prove that the old root is
+the exact prefix and the new root is the full tree. Bounded V1
+consistency proofs (which carry all new-tree leaf hashes up to a cap of
+16,384 leaves) are still verified for backward compatibility but are not
+generated by the daemon.
+
+The resolver returns separate states for profile signature, identifier
+attestation, key continuity, inclusion, checkpoint consistency and
+payment-method ownership. Missing evidence never becomes a vague
+\texttt{verified:\ true}.
+
+\hypertarget{key-rotation}{%
+\subsection{Key rotation}\label{key-rotation}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{flowchart LR}
+\NormalTok{  K1[Old key K1] {-}{-}\textgreater{}|AuthorizationV1| R[Rotation statement]}
+\NormalTok{  K2[New key K2] {-}{-}\textgreater{}|AcceptanceV1| R}
+\NormalTok{  R {-}{-}\textgreater{} E[RotateKey event signed by K1]}
+\NormalTok{  K2 {-}{-}\textgreater{}|signs new profile| P[New profile]}
+\NormalTok{  E {-}{-}\textgreater{} V\{Verifier\}}
+\NormalTok{  P {-}{-}\textgreater{} V}
+\end{Highlighting}
+\end{Shaded}
+
+Both statements bind identifier hash, old/new keys, previous
+signed-event hash, the exact canonical next sequence and timestamp.
+Registration is sequence 0 and
+\texttt{profile.sequence\ ==\ event.sequence\ ==\ rotation.sequence}.
+Direct self-signed replacement is rejected. No emergency recovery is
+invented.
+
+\hypertarget{checkpoint-consistency-and-split-views}{%
+\subsection{Checkpoint consistency and split
+views}\label{checkpoint-consistency-and-split-views}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{flowchart LR}
+\NormalTok{  C1[Checkpoint N] {-}{-}\textgreater{}|consistency proof| C2[Checkpoint N+k]}
+\NormalTok{  P[Pinned log\_id/operator/size/root/hash] {-}{-}\textgreater{} D\{Compare C2\}}
+\NormalTok{  D {-}{-}\textgreater{}|smaller size| R[Critical rollback]}
+\NormalTok{  D {-}{-}\textgreater{}|same size, other root| S[Critical equivocation]}
+\NormalTok{  D {-}{-}\textgreater{}|invalid prefix| B[Critical inconsistency]}
+\NormalTok{  D {-}{-}\textgreater{}|valid| U[Atomic pin update]}
+\end{Highlighting}
+\end{Shaded}
+
+Pins are indexed by a stable deployment \texttt{log\_id}, never by an
+untrusted newly presented key. An operator key change requires a
+dual-signed \texttt{OperatorKeyRotation} bound to \texttt{log\_id},
+predecessor checkpoint hash and sequence. The operator signs every
+checkpoint field, including an optional Bitcoin receipt.
+\texttt{checkpoint\_hash} excludes the signature and receipt to avoid a
+txid/checkpoint circular commitment; the post-anchor signature commits
+to the receipt. Operator signatures create attributable evidence, but
+global gossip remains future work. First contact is TOFU unless
+independently compared.
+
+\hypertarget{identifier-attestations}{%
+\subsection{Identifier attestations}\label{identifier-attestations}}
+
+\texttt{IdentifierAttestationV1} binds identifier hash, identity key,
+profile hash, random nonce, issuance/expiry, method and verifier key.
+The verifier signs canonical JSON under
+\texttt{SatsPathIdentifierAttestationV1}. Resolution checks the exact
+event binding and only trusts verifier keys listed in
+\texttt{SATSPATH\_TRUSTED\_VERIFIERS\_JSON} with an allowed method. The
+current mock email challenge is not production verification; results
+report \texttt{identifier\_verified:\ false} without a real trusted
+attestation.
+
+\hypertarget{regtest-anchoring}{%
+\subsection{Regtest anchoring}\label{regtest-anchoring}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sequenceDiagram}
+\NormalTok{  participant Daemon}
+\NormalTok{  participant Core as Bitcoin Core regtest}
+\NormalTok{  Daemon{-}\textgreater{}\textgreater{}Daemon: SHA256("SatsPathCheckpointAnchorV1" || checkpoint\_hash)}
+\NormalTok{  Daemon{-}\textgreater{}\textgreater{}Core: OP\_RETURN transaction}
+\NormalTok{  Daemon{-}\textgreater{}\textgreater{}Core: fund, wallet{-}sign, broadcast, mine one block}
+\NormalTok{  Daemon{-}\textgreater{}\textgreater{}Core: fetch verbose transaction}
+\NormalTok{  Core{-}{-}\textgreater{}\textgreater{}Daemon: script + block + confirmations}
+\NormalTok{  Daemon{-}\textgreater{}\textgreater{}Daemon: verify commitment}
+\end{Highlighting}
+\end{Shaded}
+
+Anchoring is never automatic. Authenticated
+\texttt{POST\ /v1/transparency/anchors} requires
+\texttt{SATSPATH\_BITCOIN\_NETWORK=regtest} plus
+\texttt{SATSPATH\_BITCOIN\_RPC\_URL},
+\texttt{SATSPATH\_BITCOIN\_RPC\_USER} and
+\texttt{SATSPATH\_BITCOIN\_RPC\_PASSWORD}. Mainnet is rejected and
+credentials are never logged. OP\_RETURN provides public evidence but
+unrelated anchors do not fully prevent split views. Future Catena-style
+chaining would make transaction N spend a continuation output from N-1;
+it is not implemented.
+
+\hypertarget{explorer-data-flow}{%
+\subsection{Explorer data flow}\label{explorer-data-flow}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{flowchart TB}
+\NormalTok{  API[Paginated read{-}only APIs] {-}{-}\textgreater{} D[Dashboard]}
+\NormalTok{  API {-}{-}\textgreater{} M[Bounded Merkle view]}
+\NormalTok{  API {-}{-}\textgreater{} H[Identifier history]}
+\NormalTok{  API {-}{-}\textgreater{} C[Checkpoint explorer]}
+\NormalTok{  API {-}{-}\textgreater{} P[Proof JSON]}
+\NormalTok{  P {-}{-}\textgreater{} W[Browser WebCrypto verification]}
+\NormalTok{  W {-}{-}\textgreater{} O[Hash steps + computed root]}
+\end{Highlighting}
+\end{Shaded}
+
+The embedded daemon UI reuses the existing stack, limits event
+rendering, supports pan/zoom and leaf selection, highlights proof
+material and verifies pasted inclusion proofs locally. It sends no
+private material to the browser.
+
+\hypertarget{persistence-and-api}{%
+\subsection{Persistence and API}\label{persistence-and-api}}
+
+Daemon security state uses \texttt{satspath-transparency-v1.sqlite3} in
+WAL mode with \texttt{synchronous=FULL}. A single
+\texttt{BEGIN\ IMMEDIATE} transaction inserts the event, upserts the
+profile, inserts the checkpoint and updates operator state; any error
+rolls back all four changes, and SQLite recovery discards incomplete
+transactions after a crash. Tables are schema-versioned for profiles,
+events, checkpoints, pins, anchors, attestations, operator state and
+migrations. On every open, deterministic replay verifies all histories
+plus every checkpoint signature, exact prefix root, predecessor,
+timestamp, operator continuity and anchor commitment. The legacy
+standalone registry remains for CLI compatibility but is not in the
+daemon quote/pay trust path.
+
+\hypertarget{mandatory-payment-resolution}{%
+\subsection{Mandatory payment
+resolution}\label{mandatory-payment-resolution}}
+
+The daemon uses one fail-closed flow for \texttt{/v1/resolve},
+\texttt{/v1/quote}, \texttt{/v1/pay} and \texttt{/v1/preview}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{identifier {-}\textgreater{} transparent profile {-}\textgreater{} profile/event binding}
+\NormalTok{{-}\textgreater{} checkpoint{-}bound inclusion {-}\textgreater{} pinned checkpoint consistency}
+\NormalTok{{-}\textgreater{} operator continuity {-}\textgreater{} method ownership allow{-}list {-}\textgreater{} router}
+\end{Highlighting}
+\end{Shaded}
+
+The router receives only methods whose proof was cryptographically
+re-validated. Duplicate, expired, wrong-descriptor, wrong-network and
+self-asserted proofs are not selectable. If none pass, the response is
+\texttt{no\_route}.
+
+Read APIs cover status, paginated events/checkpoints,
+identifier/event/checkpoint lookup, inclusion/consistency proofs, local
+proof verification and stored anchors. Pages are capped at 200 records.
+Registry mutation is not publicly exposed.
+
+\hypertarget{threats-and-limitations}{%
+\subsection{Threats and limitations}\label{threats-and-limitations}}
+
+\begin{itemize}
+\tightlist
+\item
+  Initial registration still needs an external identity attestation.
+\item
+  First contact is TOFU unless a checkpoint/key fingerprint is
+  independently verified.
+\item
+  A compromised verifier can attest a false binding.
+\item
+  A compromised current key can update, revoke or authorize rotation;
+  transparency makes this visible but cannot undo it.
+\item
+  A lost key has no recovery in V1. Email recovery reduces security to
+  the email provider.
+\item
+  A malicious operator can attempt split views; pinning detects local
+  rollback/conflict, while gossip is future work.
+\item
+  Bitcoin provides auditable evidence; unrelated OP\_RETURNs do not
+  provide Catena's single-history property.
+\item
+  An authenticated current-state/non-inclusion map remains future work.
+\item
+  This is experimental and unaudited. Do not use it with real funds.
+\end{itemize}
+
+Conceptual prior art: Zooko's Triangle, Certificate Transparency,
+CONIKS, Keybase, Catena and append-only authenticated data structures.
+
+\end{document}

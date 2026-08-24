@@ -107,6 +107,14 @@
 \section{SatsPath Resolver Semantics
 v1}\label{satspath-resolver-semantics-v1}}
 
+Resolver provenance and verification are reported separately. A
+transparent result carries the signed profile, latest name event,
+inclusion proof, signed checkpoint, optional consistency proof and
+identifier attestation. Implementations expose independent states for
+profile signature, identifier binding, key continuity, log inclusion,
+checkpoint consistency and payment-method ownership; these must not be
+collapsed into a single \texttt{verified} boolean.
+
 SatsPath is transport-neutral. A resolver is any component that can map
 a SatsPath identifier to a \texttt{SignedPaymentProfile}.
 
@@ -204,12 +212,10 @@ receiver controls. Consumer email domains usually cannot publish records
 under their own domain, so those identifiers require an explicit
 platform challenge resolver or fall back to the invite flow.
 
-The Rust quote response currently exposes
-\texttt{identifier\_verified:\ false} for the default resolver chain
-because resolver provenance is not yet carried through the
-\texttt{ProfileResolver} trait. Future platform or provenance-aware
-resolvers may set it to \texttt{true} only after binding the canonical
-identifier to the current signed profile identity.
+The daemon sets \texttt{identifier\_verified} only when an attestation
+binds the exact identifier hash, key and profile hash in the latest
+event and its verifier key and method are explicitly trusted. Otherwise
+it remains false and first contact is TOFU.
 
 \hypertarget{local-registry-resolver}{%
 \subsection{Local Registry Resolver}\label{local-registry-resolver}}
@@ -222,7 +228,11 @@ Reference files:
 \begin{itemize}
 \tightlist
 \item
-  \texttt{.satspath/registry.json}
+  \texttt{.satspath/satspath-transparency-v1.sqlite3} (daemon security
+  state)
+\item
+  \texttt{.satspath/registry.json} (legacy CLI/local resolver
+  compatibility only)
 \item
   \texttt{.satspath/peers/registry.local.json}
 \end{itemize}
@@ -414,7 +424,10 @@ Quote behavior
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-Verified profile found & Continue to route selection \\
+Profile plus all required transparency evidence verified & Continue with
+ownership-verified methods only \\
+Transparency, checkpoint binding or operator continuity fails &
+\texttt{no\_route} / explicit transparency error; never route \\
 No resolver found a profile & \texttt{not\_registered} \\
 Profile found but signature invalid & \texttt{invalid\_signature} \\
 Profile expired & \texttt{no\_route} \\

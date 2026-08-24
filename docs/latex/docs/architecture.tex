@@ -58,6 +58,10 @@
 \hypertarget{satspath-architecture}{%
 \section{SatsPath Architecture}\label{satspath-architecture}}
 
+The key-transparency extension is specified in
+\href{key_transparency.md}{Key Transparency Architecture}. Resolution is
+not fully verified solely because a profile self-signature validates.
+
 \hypertarget{overview}{%
 \subsection{Overview}\label{overview}}
 
@@ -76,7 +80,8 @@ Human-readable identifier
           v
   ┌───────────────────┐
   │  Resolver /       │
-  │  Registry         │  <── local .satspath/registry.json (prototype)
+  │  Transparent      │  <── transactional SQLite event/profile/checkpoint state
+  │  Resolver         │  <── pinned log_id + checkpoint/operator continuity
   │                   │  <── BIP-353 / HTTPS / Nostr / optional P2P
   └────────┬──────────┘
            |
@@ -91,6 +96,11 @@ Human-readable identifier
   │  - signature      │
   └────────┬──────────┘
            |
+           v
+  ┌───────────────────┐
+  │ Merkle + history  │
+  │ + ownership gate  │
+  └────────┬──────────┘
            v
   ┌───────────────────┐
   │  Route Engine     │
@@ -145,11 +155,9 @@ lifecycle}\label{payment-request-lifecycle}}
 3. Decode:
    PaymentRequest { alias, amount_sats, memo, ... }
 
-4. Resolve:
-   Registry::resolve_alias("rodrigo@satspath.dev") -> SignedPaymentProfile
-
-5. Verify:
-   verify_signed_profile(signed) -> bool
+4. Resolve and verify:
+   profile -> signed event -> checkpoint-bound inclusion -> pinned consistency
+   -> operator continuity -> ownership-verified method allow-list
 
 6. Route:
    select_route(RouteRequest { alias, amount_sats, signed_profile })
@@ -183,8 +191,9 @@ receiver)}\label{invite-lifecycle-unregistered-receiver}}
 \item
   The registry stores only public data (pubkeys, addresses, signatures).
 \item
-  Signature verification happens on the receiver side before any
-  payment.
+  Profile, history, checkpoint binding, pin/operator continuity and
+  selected method ownership verification happen before any quote/pay
+  route.
 \item
   The \texttt{.satspath/} directory is git-ignored.
 \end{itemize}

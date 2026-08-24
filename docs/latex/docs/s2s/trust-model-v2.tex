@@ -1,0 +1,493 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-v2-trust-model-and-malicious-server-invariants}{%
+\section{SatsPath v2 Trust Model and Malicious-Server
+Invariants}\label{satspath-v2-trust-model-and-malicious-server-invariants}}
+
+\textbf{Status:} Draft / Normative Specification\\
+\textbf{Parent Epic:}
+\href{https://github.com/Truja503/satspath/issues/46}{\#46}\\
+\textbf{Issue:}
+\href{https://github.com/Truja503/satspath/issues/47}{\#47}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{executive-summary-non-negotiable-invariants}{%
+\subsection{1. Executive Summary \& Non-Negotiable
+Invariants}\label{executive-summary-non-negotiable-invariants}}
+
+In SatsPath v2, resolution moves from unauthenticated transport/P2P
+mechanisms to an \textbf{authoritative, proof-carrying Server-to-Server
+(S2S) resolution protocol}.
+
+\hypertarget{core-invariant}{%
+\subsubsection{Core Invariant}\label{core-invariant}}
+
+\begin{quote}
+\textbf{The server stores, logs, replicates, and serves identity data;
+it is \emph{strictly forbidden from authoring identity changes}.}
+\end{quote}
+
+A self-signed profile alone is insufficient: a malicious or compromised
+registry could substitute both the identity key and profile while
+returning a self-consistent cryptographic signature. Similarly, a Merkle
+tree proof alone is insufficient if an adversarial server can construct
+bifurcated trees (split-view attacks) for different verifiers.
+
+SatsPath v2 decouples \textbf{Integrity}, \textbf{Freshness},
+\textbf{Global Consistency}, \textbf{Namespace Authority},
+\textbf{Payment-Method Ownership}, and \textbf{Availability}. A binary
+\texttt{verified:\ true} flag is explicitly prohibited.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{actors-compromise-model}{%
+\subsection{2. Actors \& Compromise
+Model}\label{actors-compromise-model}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Actor
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Responsibilities
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Key Type
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Failure / Compromise Impact
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mitigation
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Identity Owner} & Authors profile updates, key rotations,
+revocations & secp256k1 (Schnorr/ECDSA) & Total loss of identity control
+if private key leaked & Monotonic sequence hash-chain, dual-signed
+rotation, revocation \\
+\textbf{Domain / Namespace Authority} & Delegates authority to SatsPath
+server or publishes explicit namespace descriptor & DNSSEC KSK/ZSK or
+HTTPS WebPKI & Namespace hijacking, rogue server endpoint designation &
+DNSSEC validation, cryptographic namespace pinning, transparency
+logging \\
+\textbf{Log Operator} & Appends valid name events to the Merkle tree;
+signs checkpoints & Operator secp256k1 Key & Can attempt split-view,
+rollback, or key substitution & Witness cosigning, dual-signed operator
+key rotation, public append-only tree \\
+\textbf{Authoritative Server \& Replicas} & Serves S2S envelopes over
+HTTP; syncs state & Transport TLS / API auth & Can drop requests
+(censorship), serve stale envelopes, or attempt omission & Monotonic
+checkpoints, maximum staleness bounds, multi-replica failover,
+out-of-band audit \\
+\textbf{Independent Witnesses \& Monitors} & Cosign log checkpoints
+after validating consistency proof & Witness secp256k1 Key & 1
+compromised witness cannot forge checkpoints if quorum \(M\)-of-\(N\) is
+enforced & Quorum threshold \(M/N\), public cosignature gossip,
+automated alert logs \\
+\textbf{Recursive DNS Resolver} & Resolves
+\texttt{\_satspath.\textless{}domain\textgreater{}} TXT / URI records &
+N/A (Network intermediary) & Poisoned cache / spoofed record (if DNSSEC
+absent) & Mandatory DNSSEC verification or explicit TOFU pinning
+policy \\
+\textbf{Hosted Provider Administrator} & Manages server infrastructure
+for hosted sub-identities (\texttt{user@provider.com}) & Infrastructure
+root / DB admin & Can censor or terminate account, but \emph{cannot}
+forge transitions for existing user-held keys & Explicit ``Hosted''
+trust rating displayed in UI; portable identity export \\
+\textbf{Client / Verifier Wallet} & Verifies complete envelope locally
+before route selection & Local trust store / cache & Local cache
+poisoning if verification is bypassed & Verifier executes in isolated
+pure logic; fails closed on any invalid proof step \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{trust-profiles}{%
+\subsection{3. Trust Profiles}\label{trust-profiles}}
+
+Every resolved identifier MUST evaluate to exactly one of the following
+canonical trust profiles:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{                                   ┌───────────────────────────────────┐}
+\NormalTok{                                   │           Trust Profile           │}
+\NormalTok{                                   └───────────────────────────────────┘}
+\NormalTok{                                                     │}
+\NormalTok{                 ┌───────────────────────────────────┼───────────────────────────────────┐}
+\NormalTok{                 ▼                                   ▼                                   ▼}
+\NormalTok{      ┌─────────────────────┐             ┌─────────────────────┐             ┌─────────────────────┐}
+\NormalTok{      │   Domain{-}Sovereign  │             │    Domain/WebPKI    │             │  Hosted Identifier  │}
+\NormalTok{      │  (DNSSEC Validated) │             │   (HTTPS TOFU)      │             │  (Provider Domain)  │}
+\NormalTok{      └─────────────────────┘             └─────────────────────┘             └─────────────────────┘}
+\NormalTok{                 │                                   │                                   │}
+\NormalTok{                 └───────────────────────────────────┼───────────────────────────────────┘}
+\NormalTok{                                                     ▼}
+\NormalTok{                                          ┌─────────────────────┐}
+\NormalTok{                                          │  Explicit Pin /     │}
+\NormalTok{                                          │  Continuous Anchor  │}
+\NormalTok{                                          └─────────────────────┘}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{domain-sovereign}{%
+\subsubsection{1. Domain-Sovereign}\label{domain-sovereign}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Description}: The user or entity owns the domain name
+  (\texttt{example.com}) and publishes DNSSEC-signed \texttt{\_satspath}
+  delegation records pointing to their authoritative log.
+\item
+  \textbf{Trust Anchor}: Root DNSSEC trust anchor (\texttt{.})
+  \(\rightarrow\) Domain KSK/ZSK \(\rightarrow\)
+  \texttt{NamespaceDescriptor}.
+\item
+  \textbf{Security Properties}: Protected against network MITM, DNS
+  spoofing, and BGP hijacks. Full self-sovereignty.
+\end{itemize}
+
+\hypertarget{domain-webpki}{%
+\subsubsection{2. Domain / WebPKI}\label{domain-webpki}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Description}: Domain authority is discovered over HTTPS
+  (\texttt{https://example.com/.well-known/satspath-authority}), but
+  DNSSEC is absent or unvalidated.
+\item
+  \textbf{Trust Anchor}: Public WebPKI CA hierarchy.
+\item
+  \textbf{Security Properties}: Vulnerable to rogue CA issuance or DNS
+  hijacking, but protected against passive eavesdropping and
+  retrospective log tampering via witness signatures.
+\end{itemize}
+
+\hypertarget{hosted-identifier}{%
+\subsubsection{3. Hosted Identifier}\label{hosted-identifier}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Description}: The user has an identifier under a third-party
+  domain (e.g., \texttt{alice@fiatjaf.com} or \texttt{bob@strike.me}).
+\item
+  \textbf{Trust Anchor}: The hosting provider's namespace descriptor and
+  log operator key.
+\item
+  \textbf{Security Properties}: Provider can censor the user or refuse
+  to log new updates, but \emph{cannot} forge signatures on behalf of
+  the user's existing identity key without cryptographic verification
+  failure. \textbf{UI MUST clearly flag this as Hosted and NOT
+  Domain-Sovereign.}
+\end{itemize}
+
+\hypertarget{explicit-pin-tofu-trust-on-first-use}{%
+\subsubsection{4. Explicit Pin / TOFU
+(Trust-On-First-Use)}\label{explicit-pin-tofu-trust-on-first-use}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Description}: Verifier establishes a local pin on first
+  contact (\texttt{NamespaceDescriptorHash} + \texttt{LogId} +
+  \texttt{RootHash}) and requires monotonic append-only continuity for
+  all future resolutions.
+\item
+  \textbf{Trust Anchor}: First verified checkpoint stored locally.
+\item
+  \textbf{Security Properties}: Detects any subsequent unauthorized
+  operator key swap, log fork, or namespace redirection.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{comprehensive-threat-matrix}{%
+\subsection{4. Comprehensive Threat
+Matrix}\label{comprehensive-threat-matrix}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Threat / Attack Vector
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Attack Mechanism
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Attacker Capability
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Detection / Mitigation Mechanism
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Terminal Error Code
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Key Substitution} & Malicious registry replaces user's public
+key with attacker's key in response & Full DB / Server control & Fails
+\texttt{verify\_identifier\_history()}: Registration event must be
+signed by initial key; subsequent keys require dual-signed
+\texttt{KeyRotation}. & \texttt{ERR\_KEY\_SUBSTITUTION} \\
+\textbf{Self-Signed Replacement} & Server generates fresh fake profile
+and signs it with a newly generated fake key & Full DB / Server control
+& Fails \texttt{verify\_checkpoint\_inclusion()}: Leaf hash does not
+exist in the append-only log root committed by operator checkpoint. &
+\texttt{ERR\_INCLUSION\_MISMATCH} \\
+\textbf{Stale State Replay} & Server returns a previously valid
+historical profile to rollback a rotation or revocation & Network /
+Server replay & Checkpoint sequence and timestamp checked against
+freshness policy and client's last observed sequence. &
+\texttt{ERR\_STALE\_CHECKPOINT} \\
+\textbf{Split-View / Equivocation} & Server presents Root A to Client 1
+and Root B to Client 2 & Malicious Log Operator & Requires
+\(M\)-of-\(N\) independent witness cosignatures. Monitors detect
+inconsistent roots via RFC 6962 consistency proofs. &
+\texttt{ERR\_WITNESS\_QUORUM\_FAILED} \\
+\textbf{Omission / Silent Deletion} & Server omits a valid registered
+payment method or entire identity & Censoring Server & Authenticated
+Current-State Map generates cryptographic Non-Inclusion Proofs (Sparse
+Merkle Tree / Verkle Tree). &
+\texttt{ERR\_NON\_INCLUSION\_UNVERIFIED} \\
+\textbf{Operator Key Swap} & Attacker seizes server and signs
+checkpoints with an unauthorized operator key & Compromised Host &
+Checkpoints require valid \texttt{OperatorKeyRotation} signed by both
+old and new operator keys, adhering to monotonic sequence. &
+\texttt{ERR\_OPERATOR\_ROTATION\_INVALID} \\
+\textbf{DNS Rollback / Spoofing} & Attacker spoofs DNS records to
+redirect resolution to a rogue server & Active Network Adversary &
+DNSSEC validation fails or breaks explicit namespace pin. &
+\texttt{ERR\_DNSSEC\_VALIDATION\_FAILED} \\
+\textbf{Compromised Witness} & One witness colludes with malicious
+operator & Colluding Witness & Quorum requirement (\(M \ge 2\)) ensures
+single witness collusion is rejected. &
+\texttt{ERR\_INSUFFICIENT\_WITNESSES} \\
+\textbf{Malicious Replica} & Out-of-sync or adversarial replica serves
+modified payload & Byzantine Replica & Every S2S response is a
+self-contained, verifiable envelope; client verifies Merkle proof
+against canonical root regardless of source. &
+\texttt{ERR\_ENVELOPE\_VERIFICATION\_FAILED} \\
+\textbf{Lost Identity Key} & User loses private key and attempts
+recovery & Disrupted User & Recovery is \textbf{disabled by default}
+unless a verifiable threshold multisig recovery policy was explicitly
+committed at registration. & \texttt{ERR\_RECOVERY\_DISABLED} \\
+\textbf{Hosted Provider Takeover} & Provider revokes or claims account
+of user & Hostile Provider & History chain proves provider censorship;
+client UI flags hostile state; user can export cryptographically signed
+identity proof. & \texttt{ERR\_HOSTED\_PROVIDER\_CONFLICT} \\
+\textbf{Denial of Service (DoS)} & Server refuses to answer or floods
+garbage & Network Flooder & Fails gracefully to \texttt{UNAVAILABLE}
+without corrupting local verified state cache. &
+\texttt{ERR\_SERVER\_UNAVAILABLE} \\
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{machine-readable-verification-states-error-codes}{%
+\subsection{5. Machine-Readable Verification States \& Error
+Codes}\label{machine-readable-verification-states-error-codes}}
+
+A SatsPath v2 verification pipeline yields a structured result with
+explicit state classification:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{\#[}\NormalTok{derive}\AttributeTok{(}\BuiltInTok{Debug}\OperatorTok{,} \BuiltInTok{Clone}\OperatorTok{,} \BuiltInTok{Copy}\OperatorTok{,} \BuiltInTok{PartialEq}\OperatorTok{,} \BuiltInTok{Eq}\OperatorTok{,}\NormalTok{ Serialize}\OperatorTok{,}\NormalTok{ Deserialize}\AttributeTok{)]}
+\AttributeTok{\#[}\NormalTok{serde}\AttributeTok{(}\NormalTok{rename\_all }\OperatorTok{=} \StringTok{"snake\_case"}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{enum}\NormalTok{ VerificationStatus }\OperatorTok{\{}
+    \CommentTok{/// Fully verified: valid DNSSEC, complete Merkle inclusion, witness quorum satisfied, payment method bound.}
+\NormalTok{    VerifiedSovereign}\OperatorTok{,}
+    \CommentTok{/// Verified against WebPKI authority or TOFU pin; witness quorum satisfied.}
+\NormalTok{    VerifiedStandard}\OperatorTok{,}
+    \CommentTok{/// Verified hosted sub{-}identifier under third{-}party authority.}
+\NormalTok{    VerifiedHosted}\OperatorTok{,}
+    \CommentTok{/// Verification failed due to cryptographic integrity or consistency violation.}
+\NormalTok{    TerminalFailure}\OperatorTok{,}
+    \CommentTok{/// Server unreachable or timed out; cryptography untouched.}
+\NormalTok{    Unavailable}\OperatorTok{,}
+\OperatorTok{\}}
+
+\AttributeTok{\#[}\NormalTok{derive}\AttributeTok{(}\BuiltInTok{Debug}\OperatorTok{,} \BuiltInTok{Clone}\OperatorTok{,} \BuiltInTok{Copy}\OperatorTok{,} \BuiltInTok{PartialEq}\OperatorTok{,} \BuiltInTok{Eq}\OperatorTok{,}\NormalTok{ Serialize}\OperatorTok{,}\NormalTok{ Deserialize}\AttributeTok{)]}
+\AttributeTok{\#[}\NormalTok{serde}\AttributeTok{(}\NormalTok{rename\_all }\OperatorTok{=} \StringTok{"SCREAMING\_SNAKE\_CASE"}\AttributeTok{)]}
+\KeywordTok{pub} \KeywordTok{enum}\NormalTok{ S2SErrorCode }\OperatorTok{\{}
+    \CommentTok{// Namespace \& Authority}
+\NormalTok{    ErrDnssecValidationFailed}\OperatorTok{,}
+\NormalTok{    ErrNamespaceDescriptorMismatch}\OperatorTok{,}
+\NormalTok{    ErrAuthorityPinMismatch}\OperatorTok{,}
+
+    \CommentTok{// Identity \& History}
+\NormalTok{    ErrKeySubstitution}\OperatorTok{,}
+\NormalTok{    ErrInvalidEventSignature}\OperatorTok{,}
+\NormalTok{    ErrBrokenHistoryChain}\OperatorTok{,}
+\NormalTok{    ErrUnauthorizedKeyReplacement}\OperatorTok{,}
+\NormalTok{    ErrIdentifierRevoked}\OperatorTok{,}
+\NormalTok{    ErrRecoveryDisabled}\OperatorTok{,}
+
+    \CommentTok{// Merkle Log \& Checkpoints}
+\NormalTok{    ErrInclusionMismatch}\OperatorTok{,}
+\NormalTok{    ErrInvalidInclusionProof}\OperatorTok{,}
+\NormalTok{    ErrInvalidConsistencyProof}\OperatorTok{,}
+\NormalTok{    ErrCheckpointSignatureInvalid}\OperatorTok{,}
+\NormalTok{    ErrCheckpointRollback}\OperatorTok{,}
+\NormalTok{    ErrOperatorRotationInvalid}\OperatorTok{,}
+
+    \CommentTok{// Witnesses \& Consistency}
+\NormalTok{    ErrInsufficientWitnesses}\OperatorTok{,}
+\NormalTok{    ErrWitnessQuorumFailed}\OperatorTok{,}
+\NormalTok{    ErrConflictingCheckpoint}\OperatorTok{,}
+
+    \CommentTok{// Freshness \& State}
+\NormalTok{    ErrStaleCheckpoint}\OperatorTok{,}
+\NormalTok{    ErrNonInclusionUnverified}\OperatorTok{,}
+\NormalTok{    ErrProfileHashMismatch}\OperatorTok{,}
+\NormalTok{    ErrMethodBindingInvalid}\OperatorTok{,}
+
+    \CommentTok{// Transport \& Network}
+\NormalTok{    ErrServerUnavailable}\OperatorTok{,}
+\NormalTok{    ErrPayloadTooLarge}\OperatorTok{,}
+\NormalTok{    ErrMalformedEnvelope}\OperatorTok{,}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{explicitly-out-of-scope-for-v2}{%
+\subsection{6. Explicitly Out of Scope for
+v2}\label{explicitly-out-of-scope-for-v2}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Custodial Funds Handling}: SatsPath does not hold, escrow,
+  lock, or transfer Bitcoin or fiat funds.
+\item
+  \textbf{Forced Server Availability}: Cryptography proves correctness
+  and detects equivocation, but cannot force an unresponsive server to
+  reply.
+\item
+  \textbf{Email Inbox Proof}: Ownership of \texttt{user@domain.com} in
+  SatsPath represents routing authority within the SatsPath namespace,
+  not proof of SMTP/IMAP mailbox possession.
+\item
+  \textbf{Arbitrary Social Recovery}: No social or back-door recovery
+  without pre-committed on-chain / cryptographic threshold scripts.
+\end{enumerate}
+
+\end{document}
