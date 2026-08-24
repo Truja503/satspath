@@ -6,6 +6,7 @@ mod checkpoint;
 mod database;
 mod event;
 mod log;
+mod migration;
 mod proof;
 mod protocol;
 mod replication;
@@ -38,6 +39,7 @@ pub use checkpoint::{
 pub use database::TransactionalTransparencyStore;
 pub use event::{payment_method_descriptor_hash, profile_hash, NameAction, NameEvent};
 pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
+pub use migration::{verify_migration_statement, MigrationExport, MigrationStatement};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
 pub use protocol::{
     EndpointRole, NamespaceDescriptor, ReplicaEndpoint, ResolutionEnvelope, ResolutionRequest,

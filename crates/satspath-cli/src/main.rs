@@ -186,6 +186,12 @@ enum Command {
         command: IdentityCommand,
     },
 
+    /// Server migration and identifier portability
+    Migration {
+        #[command(subcommand)]
+        command: MigrationCommand,
+    },
+
     /// Safe receiver-profile wallet: manage public receive methods, sign a
     /// profile, preview. Never moves funds or stores spending keys.
     Wallet {
@@ -293,6 +299,22 @@ enum IdentityCommand {
         /// JSON payload path (created by sign-mutation)
         #[arg(long)]
         payload_file: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum MigrationCommand {
+    /// Export the server state to a portable JSON file
+    Export {
+        /// Output file path
+        #[arg(long, default_value = "satspath_migration_export.json")]
+        out_file: String,
+    },
+    /// Verify a migration export and cross-log commitments
+    Verify {
+        /// Path to the migration export JSON file
+        #[arg(long)]
+        file: String,
     },
 }
 
@@ -529,6 +551,16 @@ async fn main() -> Result<()> {
                     "Submitting signed mutation payload from {}...",
                     payload_file
                 );
+                println!("Feature coming soon!");
+            }
+        },
+        Command::Migration { command } => match command {
+            MigrationCommand::Export { out_file } => {
+                println!("Exporting server state to {}...", out_file);
+                println!("Feature coming soon!");
+            }
+            MigrationCommand::Verify { file } => {
+                println!("Verifying migration export from {}...", file);
                 println!("Feature coming soon!");
             }
         },
