@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use super::{MerkleConsistencyProof, MerkleInclusionProof, NameEvent, TransparencyCheckpoint};
+use super::{
+    MerkleConsistencyProof, MerkleInclusionProof, NameEvent, StateMapProof, TransparencyCheckpoint,
+};
 use crate::SignedPaymentProfile;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -38,8 +40,7 @@ pub struct ResolutionEnvelope {
     pub inclusion_proof: MerkleInclusionProof,
     pub checkpoint: TransparencyCheckpoint,
     pub consistency_proof: Option<MerkleConsistencyProof>,
-    // TODO: Define CurrentStateProof representation
-    // pub current_state_proof: Option<CurrentStateProof>,
+    pub current_state_proof: Option<StateMapProof>,
     pub witness_cosignatures: Vec<WitnessCosignature>,
     pub served_at: i64,
 }

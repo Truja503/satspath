@@ -7,6 +7,7 @@ mod event;
 mod log;
 mod proof;
 mod protocol;
+mod state_map;
 mod store;
 mod tree;
 mod verifier;
@@ -33,6 +34,7 @@ pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
 pub use protocol::{
     NamespaceDescriptor, ResolutionEnvelope, ResolutionRequest, WitnessCosignature,
 };
+pub use state_map::{IdentifierStatus, StateMapProof, StateMapValue};
 pub use store::CheckpointStore;
 pub use tree::{consistency_proof, leaf_hash, merkle_root, node_hash, verify_consistency};
 pub use verifier::{
