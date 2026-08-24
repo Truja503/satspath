@@ -2,7 +2,9 @@
 
 **A transport-neutral Bitcoin payment discovery and routing protocol.**
 
-> DISCLAIMER: This is hackathon software. Do not use with real funds.
+> [!CAUTION]
+> **EXPERIMENTAL SOFTWARE — DO NOT USE WITH REAL FUNDS.**
+> SatsPath v2 is currently undergoing internal conformance testing (Issue #60). It must not be deployed for real economic activity until the v2 conformance suite is finalized and an external cryptographic audit gate is deliberately cleared.
 
 The standalone daemon includes an experimental key-transparency log and Merkle explorer. Quote, pay and preview fail closed unless the profile is included in the exact signed checkpoint and consistent with the local `log_id` pin. It is unaudited; see [the architecture and limitations](docs/key_transparency.md).
 
