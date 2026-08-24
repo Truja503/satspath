@@ -317,14 +317,14 @@ pub fn verify_event_transition(head: Option<&NameEvent>, proposed: &NameEvent) -
         return Err(TransparencyError::RecoveryDisabled.into());
     }
 
-    if head.is_none() {
-        if !verify_message_signature(
+    if head.is_none()
+        && !verify_message_signature(
             &proposed.signing_message()?,
             &proposed.owner_signature,
             &proposed.identity_pubkey,
-        )? {
-            return Err(TransparencyError::InvalidEventSignature.into());
-        }
+        )?
+    {
+        return Err(TransparencyError::InvalidEventSignature.into());
     }
 
     Ok(())
