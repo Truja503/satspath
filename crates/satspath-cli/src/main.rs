@@ -180,6 +180,12 @@ enum Command {
         command: DnsCommand,
     },
 
+    /// Server-to-Server offline identity mutation commands
+    Identity {
+        #[command(subcommand)]
+        command: IdentityCommand,
+    },
+
     /// Safe receiver-profile wallet: manage public receive methods, sign a
     /// profile, preview. Never moves funds or stores spending keys.
     Wallet {
@@ -268,6 +274,26 @@ struct DnsResolveArgs {
     /// DEV ONLY: skip DNSSEC validation (never use on mainnet)
     #[arg(long)]
     allow_insecure_dns_for_dev: bool,
+}
+
+#[derive(Subcommand)]
+enum IdentityCommand {
+    /// Fetch a challenge nonce for an offline mutation
+    RequestChallenge { identifier: String },
+    /// Locally sign a mutation and output the JSON envelope for inspection
+    SignMutation {
+        identifier: String,
+        challenge_nonce: String,
+        /// Optional offline signing key path (simulates hardware wallet)
+        #[arg(long)]
+        key_path: Option<String>,
+    },
+    /// Submit a signed mutation payload to the server
+    SubmitMutation {
+        /// JSON payload path (created by sign-mutation)
+        #[arg(long)]
+        payload_file: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -476,6 +502,33 @@ async fn main() -> Result<()> {
             }
             DnsCommand::Check { domain } => {
                 println!("Validating DNSSEC delegation for domain: {}", domain);
+                println!("Feature coming soon!");
+            }
+        },
+        Command::Identity { command } => match command {
+            IdentityCommand::RequestChallenge { identifier } => {
+                println!("Requesting mutation challenge for {}...", identifier);
+                println!("Feature coming soon!");
+            }
+            IdentityCommand::SignMutation {
+                identifier,
+                challenge_nonce,
+                key_path,
+            } => {
+                println!(
+                    "Signing mutation for {} with nonce {}...",
+                    identifier, challenge_nonce
+                );
+                if let Some(path) = key_path {
+                    println!("Using offline key path: {}", path);
+                }
+                println!("Feature coming soon!");
+            }
+            IdentityCommand::SubmitMutation { payload_file } => {
+                println!(
+                    "Submitting signed mutation payload from {}...",
+                    payload_file
+                );
                 println!("Feature coming soon!");
             }
         },
