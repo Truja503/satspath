@@ -238,6 +238,98 @@ pub fn verify_key_continuity(events: &[NameEvent]) -> Result<bool> {
     Ok(true)
 }
 
+pub fn verify_event_transition(head: Option<&NameEvent>, proposed: &NameEvent) -> Result<()> {
+    match head {
+        None => {
+            if proposed.action != NameAction::Register || proposed.sequence != 0 {
+                return Err(TransparencyError::BrokenIdentifierHistory(
+                    "genesis event must be a Register action with sequence 0".into(),
+                )
+                .into());
+            }
+            if proposed.previous_event_hash.is_some() {
+                return Err(TransparencyError::BrokenIdentifierHistory(
+                    "genesis event cannot have a previous_event_hash".into(),
+                )
+                .into());
+            }
+        }
+        Some(head_event) => {
+            if proposed.identifier_hash != head_event.identifier_hash {
+                return Err(TransparencyError::BrokenIdentifierHistory(
+                    "identifier substitution".into(),
+                )
+                .into());
+            }
+            if proposed.sequence != head_event.sequence + 1 {
+                return Err(TransparencyError::BrokenIdentifierHistory(
+                    "sequence must advance exactly once".into(),
+                )
+                .into());
+            }
+            if proposed.previous_event_hash != Some(head_event.event_hash()?) {
+                return Err(TransparencyError::BrokenIdentifierHistory(
+                    "previous event hash mismatch (compare-and-set violation)".into(),
+                )
+                .into());
+            }
+            if head_event.action == NameAction::Revoke {
+                return Err(TransparencyError::IdentifierRevoked.into());
+            }
+
+            let signing_key = if proposed.action == NameAction::RotateKey {
+                let rotation = proposed.rotation.as_ref().ok_or_else(|| {
+                    TransparencyError::InvalidRotation("missing dual proof".into())
+                })?;
+
+                if rotation.previous_pubkey != head_event.identity_pubkey
+                    || rotation.new_pubkey != proposed.identity_pubkey
+                    || rotation.identifier_hash != proposed.identifier_hash
+                    || rotation.previous_event_hash
+                        != proposed.previous_event_hash.clone().unwrap_or_default()
+                    || rotation.sequence != proposed.sequence
+                    || !rotation.verify()?
+                {
+                    return Err(TransparencyError::InvalidRotation(
+                        "old authorization or new acceptance failed".into(),
+                    )
+                    .into());
+                }
+                head_event.identity_pubkey.clone()
+            } else {
+                if proposed.identity_pubkey != head_event.identity_pubkey {
+                    return Err(TransparencyError::UnauthorizedKeyReplacement.into());
+                }
+                head_event.identity_pubkey.clone()
+            };
+
+            if !verify_message_signature(
+                &proposed.signing_message()?,
+                &proposed.owner_signature,
+                &signing_key,
+            )? {
+                return Err(TransparencyError::InvalidEventSignature.into());
+            }
+        }
+    }
+
+    if proposed.action == NameAction::RecoverKey {
+        return Err(TransparencyError::RecoveryDisabled.into());
+    }
+
+    if head.is_none() {
+        if !verify_message_signature(
+            &proposed.signing_message()?,
+            &proposed.owner_signature,
+            &proposed.identity_pubkey,
+        )? {
+            return Err(TransparencyError::InvalidEventSignature.into());
+        }
+    }
+
+    Ok(())
+}
+
 pub fn next_identifier_sequence(
     existing_profile: Option<&SignedPaymentProfile>,
     history: &[NameEvent],
