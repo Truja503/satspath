@@ -53,3 +53,17 @@ pub struct ResolutionRequest {
     #[serde(default)]
     pub include_history: bool,
 }
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EndpointRole {
+    Primary,
+    Replica,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReplicaEndpoint {
+    pub url: String,
+    pub role: EndpointRole,
+    pub priority: u8,
+}
