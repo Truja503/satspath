@@ -30,7 +30,7 @@ pub use database::TransactionalTransparencyStore;
 pub use event::{payment_method_descriptor_hash, profile_hash, NameAction, NameEvent};
 pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
-pub use status::{VerificationStatus, S2SErrorCode};
+pub use status::{S2SErrorCode, VerificationStatus};
 pub use store::CheckpointStore;
 pub use tree::{consistency_proof, leaf_hash, merkle_root, node_hash, verify_consistency};
 pub use verifier::{
