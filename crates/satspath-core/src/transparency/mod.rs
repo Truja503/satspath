@@ -9,6 +9,7 @@ mod log;
 mod proof;
 mod protocol;
 mod replication;
+mod resolver;
 mod state_map;
 mod status;
 mod store;
@@ -45,6 +46,10 @@ pub use protocol::{
 pub use replication::{
     detect_equivocation, select_endpoint, validate_no_rollback, ReplicaHealth,
     MAX_STALENESS_WINDOW_SECS,
+};
+pub use resolver::{
+    verify_namespace_binding, verify_witness_quorum, DimensionStatus, VerificationDimensions,
+    VerifiedResolution,
 };
 pub use state_map::{IdentifierStatus, StateMapProof, StateMapValue};
 pub use status::{S2SErrorCode, VerificationStatus};

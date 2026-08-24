@@ -5,6 +5,8 @@
 //! does not move funds, sign Bitcoin transactions, broadcast transactions, or
 //! store Bitcoin wallet seeds/spending keys.
 
+mod v2_api;
+
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
