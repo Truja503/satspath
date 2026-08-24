@@ -251,6 +251,11 @@ struct WalletAddMethodsArgs {
 enum DnsCommand {
     /// Resolve ₿user@domain (or user@domain) via DNSSEC-backed BIP-353.
     Resolve(DnsResolveArgs),
+    /// Check and parse DNSSEC records for a namespace
+    Check {
+        /// The domain (e.g., example.com) to check the _satspath record for.
+        domain: String,
+    },
 }
 
 #[derive(Args)]
@@ -468,6 +473,10 @@ async fn main() -> Result<()> {
             DnsCommand::Resolve(args) => {
                 commands::cmd_dns_resolve(&args.name, args.json, args.allow_insecure_dns_for_dev)
                     .await?
+            }
+            DnsCommand::Check { domain } => {
+                println!("Validating DNSSEC delegation for domain: {}", domain);
+                println!("Feature coming soon!");
             }
         },
         Command::Wallet { command } => match command {

@@ -4,6 +4,7 @@ pub mod bip353;
 pub mod bip353_publish;
 pub mod codec;
 pub mod crypto;
+pub mod dns;
 pub mod errors;
 pub mod execution;
 pub mod ownership;
@@ -45,6 +46,7 @@ pub use crypto::{
     fingerprint_pubkey, generate_identity_keypair, generate_nonce, sign_message, sign_profile,
     verify_message_signature, verify_signed_profile, IdentityKeypair,
 };
+pub use dns::{DnsDescriptor, DnsError};
 pub use errors::{Result, SatsPathError};
 pub use execution::ExecutionMode;
 pub use ownership::{
