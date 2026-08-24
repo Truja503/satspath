@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use satspath_core::transparency::{
-    protocol::WitnessCosignature, MerkleConsistencyProof, TransparencyCheckpoint,
+    MerkleConsistencyProof, TransparencyCheckpoint, WitnessCosignature,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -59,32 +59,32 @@ impl<S: PinStore> WitnessService<S> {
         let pinned = self.store.get_pin(&checkpoint.log_id).await?;
 
         if let Some(pin) = pinned {
-            if checkpoint.tree_size < pin.tree_size {
+            if checkpoint.log_size < pin.tree_size {
                 return Err(WitnessError::Rollback {
                     pinned: pin.tree_size,
-                    proposed: checkpoint.tree_size,
+                    proposed: checkpoint.log_size,
                 });
             }
 
-            if checkpoint.tree_size == pin.tree_size && checkpoint.root_hash != pin.root_hash {
+            if checkpoint.log_size == pin.tree_size && checkpoint.log_root != pin.root_hash {
                 let equiv_a = pin.clone();
                 let equiv_b = PinnedState {
                     log_id: checkpoint.log_id.clone(),
-                    tree_size: checkpoint.tree_size,
-                    root_hash: checkpoint.root_hash.clone(),
-                    signature: checkpoint.signature.clone(),
-                    timestamp: checkpoint.timestamp,
+                    tree_size: checkpoint.log_size,
+                    root_hash: checkpoint.log_root.clone(),
+                    signature: checkpoint.operator_signature.clone(),
+                    timestamp: checkpoint.created_at,
                 };
                 self.store
-                    .record_equivocation(&checkpoint.log_id, checkpoint.tree_size, equiv_a, equiv_b)
+                    .record_equivocation(&checkpoint.log_id, checkpoint.log_size, equiv_a, equiv_b)
                     .await?;
                 return Err(WitnessError::EquivocationDetected {
                     log_id: checkpoint.log_id.clone(),
-                    tree_size: checkpoint.tree_size,
+                    tree_size: checkpoint.log_size,
                 });
             }
 
-            if checkpoint.tree_size > pin.tree_size {
+            if checkpoint.log_size > pin.tree_size {
                 let _proof = consistency_proof.ok_or(WitnessError::InvalidConsistencyProof)?;
                 // In a real implementation: verify_consistency_proof(&pin.root_hash, checkpoint, proof)?
             }
@@ -94,10 +94,10 @@ impl<S: PinStore> WitnessService<S> {
 
         let new_pin = PinnedState {
             log_id: checkpoint.log_id.clone(),
-            tree_size: checkpoint.tree_size,
-            root_hash: checkpoint.root_hash.clone(),
-            signature: checkpoint.signature.clone(),
-            timestamp: checkpoint.timestamp,
+            tree_size: checkpoint.log_size,
+            root_hash: checkpoint.log_root.clone(),
+            signature: checkpoint.operator_signature.clone(),
+            timestamp: checkpoint.created_at,
         };
         self.store.save_pin(new_pin).await?;
 
@@ -106,7 +106,7 @@ impl<S: PinStore> WitnessService<S> {
             witness_id: self.witness_id.clone(),
             witness_pubkey: "dummy_pubkey".to_string(), // In real impl, use actual key
             checkpoint_hash: "dummy_hash".to_string(),
-            tree_size: checkpoint.tree_size,
+            tree_size: checkpoint.log_size,
             timestamp: chrono::Utc::now().timestamp(),
             signature: "dummy_sig".to_string(),
         })
