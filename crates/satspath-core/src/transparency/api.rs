@@ -24,7 +24,7 @@ pub struct MutationSubmitRequest {
 #[serde(rename_all = "snake_case")]
 pub enum MutationStatus {
     AcceptedPendingCheckpoint,
-    Included(TransparencyCheckpoint),
+    Included(Box<TransparencyCheckpoint>),
     Conflict,
     Unauthorized,
     Revoked,
