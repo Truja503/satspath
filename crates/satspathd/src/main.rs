@@ -125,40 +125,6 @@ struct StatusResponse {
 struct NodeResponse {
     status: StatusResponse,
     profile: ProfileResponse,
-    peers: PeersResponse,
-    connections: ConnectionsResponse,
-}
-
-#[derive(Debug, Serialize)]
-struct PeersResponse {
-    active_count: usize,
-    peers: Vec<PeerView>,
-}
-
-#[derive(Debug, Serialize)]
-struct PeerView {
-    identifier_hash: String,
-    display_hint: String,
-    identity_fingerprint: Option<String>,
-    updated_at: i64,
-    expires_at: Option<i64>,
-    active: bool,
-    methods: Vec<String>,
-    record: PeerRecord,
-}
-
-#[derive(Debug, Serialize)]
-struct ConnectionsResponse {
-    active_count: usize,
-    connections: Vec<ConnectionView>,
-}
-
-#[derive(Debug, Serialize)]
-struct ConnectionView {
-    kind: &'static str,
-    status: String,
-    active: bool,
-    detail: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -435,10 +401,6 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         (Method::Get, "/v1/node") => json_result(StatusCode(200), node_response(state)),
         (Method::Get, "/v1/status") => json_result(StatusCode(200), status_response(state)),
         (Method::Get, "/v1/profile") => json_result(StatusCode(200), profile_response(state)),
-        (Method::Get, "/v1/peers") => json_result(StatusCode(200), peers_response(state)),
-        (Method::Get, "/v1/connections") => {
-            json_result(StatusCode(200), connections_response(state))
-        }
         (Method::Get, "/v1/transparency/status") => json_result(
             StatusCode(200),
             transparency_log(state).and_then(|log| log.status().map_err(Into::into)),
@@ -1220,77 +1182,6 @@ fn node_response(state: &AppState) -> Result<NodeResponse> {
     Ok(NodeResponse {
         status: status_response(state)?,
         profile: profile_response(state)?,
-        peers: peers_response(state)?,
-        connections: connections_response(state)?,
-    })
-}
-
-fn peers_response(state: &AppState) -> Result<PeersResponse> {
-    let registry = LocalPeerRegistry::open(&state.home)?;
-    let mut peers = Vec::new();
-    for hash in registry.list_hashes()? {
-        if let Some(record) = registry.get_hash(&hash) {
-            peers.push(peer_view(record));
-        }
-    }
-    peers.sort_by_key(|b| std::cmp::Reverse(b.updated_at));
-    let active_count = peers.iter().filter(|peer| peer.active).count();
-    Ok(PeersResponse {
-        active_count,
-        peers,
-    })
-}
-
-fn peer_view(record: PeerRecord) -> PeerView {
-    let active = record
-        .expires_at
-        .map(|expires_at| expires_at > now())
-        .unwrap_or(true);
-    let identity_fingerprint = fingerprint_pubkey(&record.identity_pubkey).ok();
-    let mut methods = Vec::new();
-    if record.pointers.lightning.is_some() {
-        methods.push("Lightning".into());
-    }
-    if record.pointers.onchain.is_some() {
-        methods.push("Onchain".into());
-    }
-    if record.pointers.ark.is_some() {
-        methods.push("Ark".into());
-    }
-    PeerView {
-        identifier_hash: record.identifier_hash.clone(),
-        display_hint: record.display_hint.clone(),
-        identity_fingerprint,
-        updated_at: record.updated_at,
-        expires_at: record.expires_at,
-        active,
-        methods,
-        record,
-    }
-}
-
-fn connections_response(state: &AppState) -> Result<ConnectionsResponse> {
-    let peers = peers_response(state)?;
-    let mut connections = Vec::new();
-    connections.push(ConnectionView {
-        kind: "peer_registry",
-        status: format!("{} active peer(s)", peers.active_count),
-        active: peers.active_count > 0,
-        detail: Some(
-            state
-                .home
-                .join("peers/registry.local.json")
-                .display()
-                .to_string(),
-        ),
-    });
-    let active_count = connections
-        .iter()
-        .filter(|connection| connection.active)
-        .count();
-    Ok(ConnectionsResponse {
-        active_count,
-        connections,
     })
 }
 
@@ -1349,86 +1240,6 @@ fn resolver_chain(home: &Path) -> ChainResolver {
         .push(Bip353Resolver::new())
         .push(HttpResolver::new())
         .push(NostrResolver::new())
-        .push(P2pSdkResolver::new(home.to_path_buf()))
-}
-
-struct P2pSdkResolver {
-    home: PathBuf,
-    sdk_dir: PathBuf,
-}
-
-impl P2pSdkResolver {
-    fn new(home: PathBuf) -> Self {
-        let sdk_dir = std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join("sdk")
-            .join("satspath-p2p");
-        Self { home, sdk_dir }
-    }
-
-    fn script(&self) -> PathBuf {
-        self.sdk_dir.join("examples").join("resolve.mjs")
-    }
-}
-
-#[async_trait]
-impl satspath_core::resolver::ProfileResolver for P2pSdkResolver {
-    async fn resolve_alias(&self, alias: &str) -> satspath_core::Result<SignedPaymentProfile> {
-        let script = self.script();
-        if !script.exists() {
-            return Err(SatsPathError::AliasNotFound(format!(
-                "P2P resolver unavailable: {}",
-                script.display()
-            )));
-        }
-
-        let output = timeout(
-            P2P_RESOLVE_TIMEOUT,
-            TokioCommand::new("node")
-                .arg("examples/resolve.mjs")
-                .arg(alias)
-                .arg("--json")
-                .arg("--timeout-ms")
-                .arg("8000")
-                .current_dir(&self.sdk_dir)
-                .output(),
-        )
-        .await
-        .map_err(|_| SatsPathError::NetworkError("P2P resolve timed out".into()))?
-        .map_err(|e| SatsPathError::NetworkError(format!("starting P2P resolver: {e}")))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            return Err(SatsPathError::AliasNotFound(if stderr.is_empty() {
-                alias.to_string()
-            } else {
-                format!("P2P not found: {stderr}")
-            }));
-        }
-
-        let signed: SignedPaymentProfile = serde_json::from_slice(&output.stdout)
-            .map_err(|e| SatsPathError::SerializationError(format!("P2P profile JSON: {e}")))?;
-        if signed.profile.alias.trim().eq_ignore_ascii_case(alias)
-            && verify_signed_profile(&signed)?
-        {
-            check_profile_expiry(&signed.profile)?;
-            cache_p2p_profile(&self.home, alias, &signed)?;
-            Ok(signed)
-        } else {
-            Err(SatsPathError::InvalidSignature)
-        }
-    }
-}
-
-fn cache_p2p_profile(
-    home: &Path,
-    alias: &str,
-    signed: &SignedPaymentProfile,
-) -> satspath_core::Result<()> {
-    Registry::open(home)?.update_profile(signed.clone())?;
-    let record = PeerRecord::from_signed_profile(alias, signed);
-    LocalPeerRegistry::open(home)?.put(alias, record)?;
-    Ok(())
 }
 
 fn build_methods(wallet: &WalletState, network: &str) -> Vec<PaymentMethod> {

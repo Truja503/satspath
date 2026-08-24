@@ -390,8 +390,6 @@ POST /v1/pay
 POST /v1/send
 POST /v1/receive
 POST /v1/dns/resolve
-GET  /v1/peers
-GET  /v1/connections
 ```
 
 El daemon también incluye una UI local, generación de QR, administración de perfiles y un bridge hacia el SDK P2P.

@@ -1,4 +1,9 @@
-# SatsPath P2P Wire Transport v1
+# SatsPath P2P Wire Transport v1 (Deprecated/Archived)
+
+> [!WARNING]
+> **This transport has been deprecated and retired from the canonical SatsPath architecture.**
+> SatsPath has fully transitioned to authoritative S2S resolution (v2). P2P discovery is no longer required or supported by default.
+> This document remains solely for historical reference.
 
 Pear/Holepunch is an optional transport for SatsPath protocol objects. It is not the SatsPath protocol.
 

@@ -134,8 +134,6 @@ The daemon exposes the protocol over a local HTTP API:
 | `POST /v1/quote` | Protocol quote response |
 | `POST /v1/pay` | Wallet handoff using protocol quote response |
 | `POST /v1/dns/resolve` | BIP-353/DNS resolution |
-| `GET /v1/peers` | Local peer registry view |
-| `GET /v1/connections` | Transport/connection diagnostics |
 
 `/v1/pay` does not move funds. It returns a wallet handoff containing a public payment payload and QR SVG.
 

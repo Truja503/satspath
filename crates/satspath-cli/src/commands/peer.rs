@@ -1,12 +1,13 @@
-//! Peer-to-peer profile transfer: `export` and `import`.
+//! Legacy profile transfer: `export` and `import`.
 //!
-//! These make the P2P trust model testable across machines without a central
-//! server: `export` prints a signed profile as raw JSON; `import` reads one
+//! These tools are now primarily intended for one-time manual migration
+//! of legacy local or P2P profiles into the new architecture.
+//! `export` prints a signed profile as raw JSON; `import` reads one
 //! (from a file, stdin, or an HTTPS URL), **verifies its signature and expiry**,
 //! and stores it in the local registry. A tampered profile is rejected.
 //!
 //! No funds move, nothing is signed or broadcast — this only moves public,
-//! signed payment profiles between peers.
+//! signed payment profiles.
 
 use std::io::Read;
 
