@@ -1,4 +1,5 @@
 mod anchor;
+mod api;
 mod attestation;
 mod checkpoint;
 #[cfg(feature = "std")]
@@ -19,6 +20,10 @@ mod consistency_tests;
 #[cfg(feature = "std")]
 pub use anchor::RegtestAnchorClient;
 pub use anchor::{anchor_commitment, BitcoinAnchor, MockAnchorClient};
+pub use api::{
+    MutationChallengeRequest, MutationChallengeResponse, MutationResponse, MutationStatus,
+    MutationSubmitRequest,
+};
 pub use attestation::{
     verify_attestation_binding, IdentifierAttestation, IdentifierVerificationMethod,
     TrustedVerifier,
