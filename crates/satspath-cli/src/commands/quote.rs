@@ -105,6 +105,13 @@ pub async fn cmd_quote(alias: &str, amount_sats: u64) -> Result<()> {
 
     println!();
     match &quote.selected_method {
+        PaymentMethod::Bolt12(offer_data) => {
+            println!("  BOLT12 Offer:");
+            println!("  ─────────────────────────────────────────");
+            print_qr(&offer_data.offer)?;
+            println!("  {}", offer_data.offer);
+            println!("  Preview only. No funds moved.");
+        }
         PaymentMethod::Lightning { .. } => {
             let ln_addr = lightning_address(&quote.selected_method)
                 .ok_or_else(|| anyhow::anyhow!("no Lightning Address in method"))?;

@@ -59,6 +59,21 @@ pub enum PaymentMethod {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         opaque_uri: Option<String>,
     },
+    /// Direct BOLT12 offer (BIP-353 compatible).
+    Bolt12(Bolt12Offer),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Bolt12Offer {
+    pub label: String,
+    pub offer: String,
+    #[serde(default = "default_bitcoin_network")]
+    pub network: BitcoinNetwork,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum_amount_sats: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+    pub issuer_pubkey: String,
 }
 
 fn default_bitcoin_network() -> BitcoinNetwork {
@@ -71,6 +86,7 @@ impl PaymentMethod {
             PaymentMethod::Onchain { .. } => "Onchain",
             PaymentMethod::Lightning { .. } => "Lightning",
             PaymentMethod::Ark { .. } => "Ark",
+            PaymentMethod::Bolt12(_) => "Bolt12",
         }
     }
 
@@ -79,6 +95,7 @@ impl PaymentMethod {
             PaymentMethod::Onchain { label, .. } => label,
             PaymentMethod::Lightning { label, .. } => label,
             PaymentMethod::Ark { label, .. } => label,
+            PaymentMethod::Bolt12(offer) => &offer.label,
         }
     }
 
@@ -124,6 +141,9 @@ impl PaymentMethod {
                 } else {
                     format!("lightning:{label}")
                 }
+            }
+            PaymentMethod::Bolt12(offer_data) => {
+                format!("bolt12:{}", offer_data.offer)
             }
             PaymentMethod::Ark { pubkey, .. } => format!("ark:{pubkey}"),
         }

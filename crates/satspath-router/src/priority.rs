@@ -133,6 +133,7 @@ impl RailName for PaymentMethod {
         match self {
             PaymentMethod::Onchain { .. } => "onchain",
             PaymentMethod::Lightning { .. } => "lightning",
+            PaymentMethod::Bolt12(_) => "bolt12",
             PaymentMethod::Ark { .. } => "ark",
         }
     }

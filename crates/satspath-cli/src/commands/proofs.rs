@@ -66,11 +66,16 @@ pub fn cmd_prove(alias: &str, method_index: usize) -> Result<()> {
                 );
                 println!("    --body-file served.txt");
             } else {
-                println!("This Lightning method has no Lightning Address to derive a domain from.");
+                println!("No standard ownership proof supported for this Lightning pointer yet.");
             }
             println!();
             println!("Or a self-attestation only (weakest tier, no domain needed):");
             println!("  satspath attach-proof {alias} --method-index {method_index} --type manual");
+        }
+        PaymentMethod::Bolt12(_) => {
+            println!("Prove control of this BOLT12 offer by providing a signature over the identity pubkey");
+            println!("signed by the BOLT12 offer issuer key.");
+            println!("(Interactive challenge coming soon)");
         }
         PaymentMethod::Onchain { .. } | PaymentMethod::Ark { .. } => {
             let issued_at = chrono::Utc::now().timestamp();

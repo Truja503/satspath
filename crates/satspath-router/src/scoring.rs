@@ -151,6 +151,24 @@ pub fn score_routes(
                     claim_policy: None,
                 });
             }
+            PaymentMethod::Bolt12(offer_data) => {
+                let fee = fee_snapshot
+                    .lightning_fee_sats_estimate
+                    .unwrap_or_else(|| std::cmp::max(1, amount_sats / 10_000));
+                candidates.push(RouteCandidate {
+                    rail: PaymentRail::Lightning,
+                    estimated_fee_sats: Some(fee),
+                    estimated_time_seconds: Some(2),
+                    privacy_score: 9,
+                    reliability_score: 9,
+                    requires_user_action: true,
+                    available: true,
+                    reason: "BOLT12 offer available for Lightning payment.".into(),
+                });
+                pointers.push(PaymentPointer::Bolt12Offer {
+                    offer: offer_data.offer.clone(),
+                });
+            }
             PaymentMethod::Ark {
                 server,
                 pubkey,
