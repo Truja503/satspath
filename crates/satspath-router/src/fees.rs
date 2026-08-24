@@ -170,7 +170,7 @@ mod native_fees {
     }
 }
 
-#[cfg(feature = "wasm")]
+#[cfg(all(feature = "wasm", target_arch = "wasm32"))]
 mod wasm_fees {
     use super::*;
     use wasm_bindgen_futures::JsFuture;
@@ -234,7 +234,7 @@ pub async fn fetch_fee_estimate() -> Result<FeeEstimate> {
             Err(_) => Ok(FALLBACK_FEES),
         }
     }
-    #[cfg(feature = "wasm")]
+    #[cfg(all(feature = "wasm", target_arch = "wasm32", not(feature = "std")))]
     {
         match wasm_fees::fetch_fee_estimate().await {
             Ok(fee) => Ok(fee),

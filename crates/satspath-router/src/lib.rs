@@ -28,7 +28,8 @@ pub use lightning::{
 };
 pub use priority::{select_priority_route, PriorityDecision};
 pub use quote_response::{
-    build_qr_payload, quote, quote_with_resolver, QuoteRecipient, QuoteResponse,
+    build_qr_payload, quote, quote_verified_profile, quote_with_resolver, QuoteRecipient,
+    QuoteResponse,
 };
 pub use router::{
     select_route, select_route_with_fees, FeeRateSnapshot, RouteQuote, RouteRequest, SwapDirective,

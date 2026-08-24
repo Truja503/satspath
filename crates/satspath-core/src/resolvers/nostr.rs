@@ -300,17 +300,18 @@ fn validate_nostr_pubkey(pubkey: &str) -> Result<()> {
 }
 
 fn env_relays() -> Option<Vec<String>> {
-    std::env::var("SATSPATH_NOSTR_RELAYS")
-        .ok()
-        .map(|value| {
+    std::env::var("SATSPATH_NOSTR_RELAYS").ok().map(|value| {
+        if value.trim() == "none" || value.trim().is_empty() {
+            Vec::new()
+        } else {
             value
                 .split(',')
                 .map(str::trim)
                 .filter(|relay| !relay.is_empty())
                 .map(ToOwned::to_owned)
                 .collect::<Vec<_>>()
-        })
-        .filter(|relays| !relays.is_empty())
+        }
+    })
 }
 
 /// Publishes a SignedPaymentProfile to a set of Nostr relays as a NIP-01 kind 30078 event.
@@ -326,6 +327,11 @@ pub async fn publish_profile(
     let default_relays =
         env_relays().unwrap_or_else(|| DEFAULT_RELAYS.iter().map(|s| s.to_string()).collect());
     let relays_to_use = relays.unwrap_or(&default_relays);
+    if relays_to_use.is_empty() {
+        return Err(SatsPathError::NetworkError(
+            "No Nostr relays configured".into(),
+        ));
+    }
 
     let secp = Secp256k1::new();
     let keypair = Keypair::from_secret_key(&secp, secret_key);
@@ -376,14 +382,16 @@ pub async fn publish_profile(
     let mut success_count = 0;
 
     for relay in relays_to_use {
-        let Ok((mut ws, _)) = connect_async(relay).await else {
+        let Ok(Ok((mut ws, _))) =
+            tokio::time::timeout(std::time::Duration::from_secs(2), connect_async(relay)).await
+        else {
             continue;
         };
 
         if ws.send(Message::Text(msg.clone().into())).await.is_ok() {
             // Wait for the OK response from the relay
             if let Ok(Some(Ok(Message::Text(resp)))) =
-                tokio::time::timeout(std::time::Duration::from_secs(5), ws.next()).await
+                tokio::time::timeout(std::time::Duration::from_secs(3), ws.next()).await
             {
                 if let Ok(Value::Array(arr)) = serde_json::from_str(&resp) {
                     if let (Some(Value::String(msg_type)), Some(Value::Bool(accepted))) =

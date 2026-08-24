@@ -39,7 +39,7 @@ pub fn canonical_profile_bytes(profile: &PaymentProfile) -> Result<Vec<u8>> {
 /// Sign a PaymentProfile with the given secret key and return a SignedPaymentProfile.
 ///
 /// Uses domain-separated hashing per Protocol v0.1 §12:
-/// `sig = ECDSA(SHA256("SatsPathProfileV1" || canonical_json(profile)))`
+/// `sig = Schnorr_secp256k1(SHA256("SatsPathProfileV1" || canonical_json(profile)))`
 pub fn sign_profile(
     profile: PaymentProfile,
     secret_key: &SecretKey,

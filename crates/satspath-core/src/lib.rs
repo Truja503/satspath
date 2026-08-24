@@ -15,6 +15,7 @@ pub mod profile;
 pub mod registry;
 pub mod rotation;
 pub mod split;
+pub mod transparency;
 pub mod validation;
 
 #[cfg(feature = "std")]
@@ -72,9 +73,22 @@ pub use rotation::{
     verify_key_rotation, KeyRotation,
 };
 pub use split::{SplitPaymentRequest, SplitRecipient};
+pub use transparency::next_identifier_sequence;
+#[cfg(feature = "std")]
+pub use transparency::TransactionalTransparencyStore;
+pub use transparency::{
+    BitcoinAnchor as TransparencyBitcoinAnchor, CheckpointStore, ConsistencyStatus,
+    IdentifierAttestation, IdentifierVerificationMethod, MerkleConsistencyProof,
+    MerkleInclusionProof, NameAction, NameEvent, OperatorKeyRotation, PinnedCheckpoint,
+    TransparencyCheckpoint, TransparencyError, TransparencyLog, TransparencyLogIdentity,
+    TransparencyStatus, TrustedVerifier,
+};
 
 #[cfg(feature = "std")]
-pub use resolver::{ChainResolver, ProfileResolver};
+pub use resolver::{
+    verify_payment_method_states, ChainResolver, PaymentMethodVerificationState, ProfileResolver,
+    ResolvedTransparentProfile, ResolverSource, VerificationStates,
+};
 #[cfg(feature = "std")]
 pub use resolvers::{bip353::Bip353Resolver, http::HttpResolver, nostr::NostrResolver};
 

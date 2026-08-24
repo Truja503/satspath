@@ -127,6 +127,34 @@ where
     quote_inner(resolver, recipient, amount_sats, None, false).await
 }
 
+/// Route a profile only after an external transparency verifier has accepted
+/// it. The allow-list contains independently verified ownership descriptors.
+pub async fn quote_verified_profile(
+    mut signed: satspath_core::SignedPaymentProfile,
+    recipient: &str,
+    amount_sats: u64,
+    allowed_method_descriptors: &[String],
+) -> QuoteResponse {
+    let verified = verify_signed_profile(&signed).unwrap_or(false);
+    if !verified {
+        return QuoteResponse::InvalidSignature {
+            recipient: recipient_of(&signed.profile, false),
+        };
+    }
+    signed.profile.methods.retain(|method| {
+        allowed_method_descriptors
+            .iter()
+            .any(|descriptor| descriptor == &method.ownership_descriptor())
+    });
+    if signed.profile.methods.is_empty() {
+        return QuoteResponse::NoRoute {
+            reason: "transparency verified, but no payment method has a valid ownership proof"
+                .into(),
+        };
+    }
+    route_verified_signed(signed, recipient, amount_sats, None, false).await
+}
+
 // ─── QR / payment payload ──────────────────────────────────────────────────────
 
 /// Build a public payment payload for a method.
@@ -227,6 +255,18 @@ where
             recipient: recipient_info,
         };
     }
+
+    route_verified_signed(signed, recipient, amount_sats, fees, fetch_ln_invoice).await
+}
+
+async fn route_verified_signed(
+    signed: satspath_core::SignedPaymentProfile,
+    recipient: &str,
+    amount_sats: u64,
+    fees: Option<FeeEstimate>,
+    fetch_ln_invoice: bool,
+) -> QuoteResponse {
+    let recipient_info = recipient_of(&signed.profile, true);
 
     // 3. Expiry (mapped to no_route to keep the frontend contract to four states).
     if check_profile_expiry(&signed.profile).is_err() {

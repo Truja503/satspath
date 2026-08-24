@@ -2,7 +2,7 @@ name: Docker Build & Scan
 
 on:
   push:
-    branches: [main, develop, "feature/**"]
+    branches: [main, develop, "feature/**", "feat/**"]
     paths:
       - "Dockerfile"
       - "docker-compose.yml"
@@ -11,7 +11,7 @@ on:
       - "Cargo.lock"
       - "crates/**"
   pull_request:
-    branches: [main]
+    branches: [main, develop, satspath-standalone]
 
 env:
   REGISTRY: ghcr.io
@@ -51,24 +51,21 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,prefix=sha-,format=short
 
-      - name: Build CLI image (with cache)
+      - name: Build and load CLI image (with cache)
         uses: docker/build-push-action@v6
         with:
           context: .
-          dockerfile: Dockerfile
+          file: Dockerfile
           target: runtime
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-cli.outputs.tags }}
-          labels: ${{ steps.meta-cli.outputs.labels }}
+          load: true
+          tags: satspath-cli:local
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
 
       - name: Run Trivy vulnerability scan (CLI image)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_CLI }}:sha-${{ github.sha }}
+          image-ref: satspath-cli:local
           format: sarif
           output: trivy-cli.sarif
           severity: CRITICAL,HIGH
@@ -80,3 +77,17 @@ jobs:
         with:
           sarif_file: trivy-cli.sarif
           category: trivy-cli
+
+      - name: Push CLI image (to GHCR)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ steps.meta-cli.outputs.tags }}
+          labels: ${{ steps.meta-cli.outputs.labels }}
+          cache-from: type=gha
+          provenance: true
+          sbom: true

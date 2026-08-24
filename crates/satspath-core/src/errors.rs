@@ -11,6 +11,15 @@ pub enum SatsPathError {
     #[error("invalid signature")]
     InvalidSignature,
 
+    #[error("unauthorized identity key replacement")]
+    UnauthorizedKeyReplacement,
+
+    #[error("invalid key rotation: {0}")]
+    InvalidRotation(String),
+
+    #[error("transparency failure: {0}")]
+    Transparency(#[from] crate::transparency::TransparencyError),
+
     #[error("invalid public key: {0}")]
     InvalidPublicKey(String),
 
