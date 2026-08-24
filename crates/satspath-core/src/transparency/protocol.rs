@@ -28,7 +28,7 @@ pub struct WitnessCosignature {
     pub signature: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolutionEnvelope {
     pub version: u16,
     pub identifier: String,
