@@ -8,6 +8,7 @@ mod event;
 mod log;
 mod proof;
 mod protocol;
+mod replication;
 mod resolver;
 mod state_map;
 mod status;
@@ -39,7 +40,12 @@ pub use event::{payment_method_descriptor_hash, profile_hash, NameAction, NameEv
 pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
 pub use protocol::{
-    NamespaceDescriptor, ResolutionEnvelope, ResolutionRequest, WitnessCosignature,
+    EndpointRole, NamespaceDescriptor, ReplicaEndpoint, ResolutionEnvelope, ResolutionRequest,
+    WitnessCosignature,
+};
+pub use replication::{
+    detect_equivocation, select_endpoint, validate_no_rollback, ReplicaHealth,
+    MAX_STALENESS_WINDOW_SECS,
 };
 pub use resolver::{
     verify_namespace_binding, verify_witness_quorum, DimensionStatus, VerificationDimensions,
