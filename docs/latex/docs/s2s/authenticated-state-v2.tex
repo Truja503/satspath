@@ -1,0 +1,167 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{satspath-v2-authenticated-state-map}{%
+\section{SatsPath v2 Authenticated State
+Map}\label{satspath-v2-authenticated-state-map}}
+
+\hypertarget{overview}{%
+\subsection{Overview}\label{overview}}
+
+An append-only Merkle log efficiently proves that an event exists in
+history, but it cannot efficiently prove non-inclusion (i.e.~that an
+identifier is NOT registered) or that an event is the \emph{latest}
+state. To prevent malicious log operators from selectively hiding
+identifiers via omission, SatsPath utilizes a dual authenticated
+structure.
+
+\hypertarget{dual-authenticated-structure}{%
+\subsection{Dual Authenticated
+Structure}\label{dual-authenticated-structure}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{History Log}: The server-wide append-only Merkle tree
+  containing every signed \texttt{NameEvent}.
+\item
+  \textbf{Current-State Map}: A verifiable Sparse Merkle Tree (SMT)
+  mapping a domain-separated \texttt{identifier\_hash} to a leaf value
+  containing \texttt{\{latest\_event\_hash,\ sequence,\ status\}}.
+\end{enumerate}
+
+A checkpoint commits to BOTH structures simultaneously
+(\texttt{log\_root} and \texttt{map\_root}). Any mutation updates both
+atomically.
+
+\hypertarget{current-state-map-design}{%
+\subsection{Current-State Map Design}\label{current-state-map-design}}
+
+We employ a Sparse Merkle Tree (SMT) with a 256-bit key space (the
+\texttt{identifier\_hash}).
+
+\hypertarget{cryptographic-properties}{%
+\subsubsection{Cryptographic
+Properties}\label{cryptographic-properties}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Leaf Hashing}:
+  \texttt{H(domain\_separator\ \textbar{}\textbar{}\ key\ \textbar{}\textbar{}\ value)}
+\item
+  \textbf{Internal Node Hashing}:
+  \texttt{H(domain\_separator\ \textbar{}\textbar{}\ left\_child\ \textbar{}\textbar{}\ right\_child)}
+\item
+  \textbf{Domain Separation}: Explicit 32-byte domain tags to prevent
+  internal nodes from being treated as leaves, and to separate map
+  hashing from log hashing.
+\end{itemize}
+
+\hypertarget{proof-formats}{%
+\subsubsection{Proof Formats}\label{proof-formats}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Inclusion Proof}: A path of sibling nodes from the leaf to the
+  root. Verifies that the specific \texttt{(key,\ value)} exists at the
+  leaf index.
+\item
+  \textbf{Non-Inclusion Proof}: A path of sibling nodes to an empty leaf
+  or a leaf with a different key. Verifies that the requested key does
+  not have an entry in the map.
+\end{enumerate}
+
+\hypertarget{verification-rules}{%
+\subsection{Verification Rules}\label{verification-rules}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Positive Resolution}: Must include a valid inclusion proof
+  binding the requested identifier's latest state to the
+  \texttt{map\_root} of a fresh checkpoint.
+\item
+  \textbf{Negative Resolution (\texttt{not\_registered})}: Must include
+  a valid non-inclusion proof against the same \texttt{map\_root}.
+\item
+  \textbf{Revoked}: Revocation is an included state, NOT a
+  non-inclusion. A revoked identifier has an inclusion proof showing
+  \texttt{status\ =\ Revoked}.
+\item
+  \textbf{Cross-binding}: The map proof, log proof, roots, sizes, and
+  checkpoint must be cross-bound in the \texttt{ResolutionEnvelope}.
+\end{itemize}
+
+\hypertarget{security-considerations}{%
+\subsection{Security Considerations}\label{security-considerations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Dictionary Attacks}: Hashing identifiers reduces disclosure in
+  the tree, but does not stop offline dictionary enumeration of short or
+  predictable aliases.
+\item
+  \textbf{Atomic Commits}: Rollbacks must leave neither the log nor the
+  map partially advanced.
+\end{itemize}
+
+\end{document}
