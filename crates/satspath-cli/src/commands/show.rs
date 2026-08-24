@@ -106,6 +106,10 @@ pub async fn cmd_show(alias: &str, verify_online: bool) -> Result<()> {
 
 fn print_method(method: &PaymentMethod, trust: &MethodTrust) {
     match method {
+        PaymentMethod::Bolt12(offer_data) => {
+            println!("  - {} [BOLT12]      {}", offer_data.label, trust.badge());
+            println!("      Offer: {}", mask_invoice(&offer_data.offer));
+        }
         PaymentMethod::Lightning {
             label,
             lightning_address,

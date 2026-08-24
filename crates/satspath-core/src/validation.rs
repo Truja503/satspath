@@ -290,6 +290,9 @@ pub fn validate_public_profile(profile: &PaymentProfile) -> Result<()> {
                     assert_no_private_material(descriptor)?;
                 }
             }
+            PaymentMethod::Bolt12(offer) => {
+                validate_bolt12_offer(&offer.offer)?;
+            }
             PaymentMethod::Ark {
                 server,
                 pubkey,

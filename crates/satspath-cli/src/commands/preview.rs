@@ -60,6 +60,11 @@ pub enum SelectedMethodResponse {
         lnurl: Option<String>,
         bolt12: Option<String>,
     },
+    Bolt12 {
+        label: String,
+        offer: String,
+        network: BitcoinNetwork,
+    },
     Onchain {
         label: String,
         network: BitcoinNetwork,
@@ -286,6 +291,19 @@ async fn method_preview(
                 warnings,
             ))
         }
+        PaymentMethod::Bolt12(offer_data) => {
+            let mut warnings = Vec::new();
+            warnings.push("BOLT12 offer pointer only (no invoice fetched).".into());
+            Ok((
+                SelectedMethodResponse::Bolt12 {
+                    label: offer_data.label.clone(),
+                    offer: offer_data.offer.clone(),
+                    network: offer_data.network,
+                },
+                offer_data.offer.clone(),
+                warnings,
+            ))
+        }
         PaymentMethod::Onchain {
             label,
             network,
@@ -430,6 +448,7 @@ fn print_human_preview(response: &QuoteResponse) -> Result<()> {
 fn method_name(method: &SelectedMethodResponse) -> &'static str {
     match method {
         SelectedMethodResponse::Lightning { .. } => "Lightning",
+        SelectedMethodResponse::Bolt12 { .. } => "BOLT12",
         SelectedMethodResponse::Onchain { .. } => "On-chain",
         SelectedMethodResponse::Ark { .. } => "Ark",
     }

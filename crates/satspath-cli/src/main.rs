@@ -220,6 +220,8 @@ enum WalletCommand {
     AddMethods(WalletAddMethodsArgs),
     /// Add/replace the Lightning Address (re-signs the profile)
     AddLightning { lightning_address: String },
+    /// Add/replace a BOLT12 offer (re-signs the profile)
+    AddBolt12 { offer: String },
     /// Add/replace the on-chain receive address (re-signs the profile)
     AddOnchain { bitcoin_address: String },
     /// Add/replace the Ark receive pointer (re-signs the profile)
@@ -577,6 +579,7 @@ async fn main() -> Result<()> {
             WalletCommand::AddLightning { lightning_address } => {
                 commands::cmd_wallet_add_lightning(&lightning_address)?
             }
+            WalletCommand::AddBolt12 { offer } => commands::cmd_wallet_add_bolt12(&offer)?,
             WalletCommand::AddOnchain { bitcoin_address } => {
                 commands::cmd_wallet_add_onchain(&bitcoin_address)?
             }

@@ -48,6 +48,8 @@ struct WalletState {
     #[serde(skip_serializing_if = "Option::is_none")]
     lightning_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    bolt12_offer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     onchain_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ark_server: Option<String>,
@@ -109,6 +111,16 @@ fn build_methods(state: &WalletState) -> Vec<PaymentMethod> {
             bolt12: None,
             receiver_pubkey: None,
         });
+    }
+    if let Some(offer) = &state.bolt12_offer {
+        methods.push(PaymentMethod::Bolt12(satspath_core::profile::Bolt12Offer {
+            label: "BOLT12 Offer".into(),
+            offer: offer.clone(),
+            network: BitcoinNetwork::Mainnet,
+            minimum_amount_sats: None,
+            expires_at: None,
+            issuer_pubkey: state.identity_pubkey.clone().unwrap_or_default(),
+        }));
     }
     if let Some(addr) = &state.onchain_address {
         methods.push(PaymentMethod::Onchain {
@@ -190,6 +202,11 @@ fn receive_payload_for(method: &PaymentMethod, amount_sats: Option<u64>) -> Resu
         PaymentMethod::Lightning {
             lnurl: Some(url), ..
         } => url.clone(),
+        PaymentMethod::Bolt12(offer_data) => {
+            // Provide BIP-321 bitcoin:?lno=... handoff or raw offer based on what makes sense
+            // For now just raw offer since most wallets parse raw bolt12 directly.
+            offer_data.offer.clone()
+        }
         PaymentMethod::Onchain {
             address,
             silent_payment_pubkey,
@@ -451,6 +468,16 @@ pub fn cmd_wallet_add_lightning(addr: &str) -> Result<()> {
     })
 }
 
+/// `satspath wallet add-bolt12 <offer>` — incremental update.
+pub fn cmd_wallet_add_bolt12(offer: &str) -> Result<()> {
+    update_one(|state| {
+        satspath_core::validation::validate_bolt12_offer(offer)
+            .map_err(|e| anyhow::anyhow!("invalid BOLT12 offer: {e}"))?;
+        state.bolt12_offer = Some(offer.to_string());
+        Ok(())
+    })
+}
+
 /// `satspath wallet add-onchain <addr>` — incremental update.
 pub fn cmd_wallet_add_onchain(addr: &str) -> Result<()> {
     update_one(|state| {
@@ -689,6 +716,7 @@ mod tests {
             onchain_address: Some("bc1qexample".into()),
             ark_server: Some("https://ark.example.com".into()),
             ark_pubkey: Some("02def".into()),
+            bolt12_offer: Some("lno1qexampleoffer".into()),
             created_at: Some(1),
             updated_at: Some(2),
         };

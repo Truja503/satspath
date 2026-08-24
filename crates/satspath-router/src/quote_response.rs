@@ -201,6 +201,7 @@ pub fn build_qr_payload(method: &PaymentMethod, amount_sats: u64) -> satspath_co
             urlencoding::encode(server),
             amount_sats
         ),
+        PaymentMethod::Bolt12(offer_data) => offer_data.offer.clone(),
     };
 
     // Defence in depth: a payment payload must never carry private material.

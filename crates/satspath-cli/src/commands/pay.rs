@@ -326,6 +326,9 @@ fn payment_method_to_pointer(method: &PaymentMethod) -> Result<PaymentPointer> {
                 anyhow::bail!("Lightning method has no public pointer.")
             }
         }
+        PaymentMethod::Bolt12(offer_data) => Ok(PaymentPointer::Bolt12Offer {
+            offer: offer_data.offer.clone(),
+        }),
         PaymentMethod::Onchain {
             address,
             silent_payment_pubkey,
@@ -380,6 +383,9 @@ fn validate_pointer_for_preview(
         PaymentPointer::Bolt11Invoice { invoice, .. } => {
             assert_no_private_material(invoice).map_err(|e| anyhow::anyhow!("{}", e))?;
         }
+        PaymentPointer::Bolt12Offer { offer } => {
+            assert_no_private_material(offer).map_err(|e| anyhow::anyhow!("{}", e))?;
+        }
         PaymentPointer::OnchainAddress { address, .. } => {
             if mainnet_preview {
                 validate_bitcoin_address(address, BitcoinNetwork::Mainnet)
@@ -422,6 +428,9 @@ fn display_pointer(pointer: &PaymentPointer, debug: bool) -> String {
         PaymentPointer::Bolt11Invoice { invoice, .. } => {
             format!("BOLT11 {}", display_value(invoice, mask_invoice, debug))
         }
+        PaymentPointer::Bolt12Offer { offer } => {
+            format!("BOLT12 Offer {}", display_value(offer, mask_invoice, debug))
+        }
         PaymentPointer::OnchainAddress { address, .. } => {
             format!("On-chain {}", display_value(address, mask_address, debug))
         }
@@ -443,6 +452,7 @@ fn display_payload(pointer: &PaymentPointer, payload: &str, debug: bool) -> Stri
     }
     match pointer {
         PaymentPointer::Bolt11Invoice { .. } => mask_invoice(payload),
+        PaymentPointer::Bolt12Offer { .. } => mask_invoice(payload),
         PaymentPointer::OnchainAddress { .. } => mask_address(payload),
         PaymentPointer::Ark { .. } => mask_address(payload),
         PaymentPointer::LightningAddress { .. } | PaymentPointer::LnurlPay { .. } => {

@@ -149,6 +149,9 @@ impl PeerRecord {
                         });
                     }
                 }
+                crate::profile::PaymentMethod::Bolt12(_offer_data) => {
+                    // Handle Bolt12 if necessary for record building
+                }
             }
         }
 

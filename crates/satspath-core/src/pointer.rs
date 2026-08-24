@@ -35,6 +35,9 @@ pub enum PaymentPointer {
         address: String,
         claim_policy: Option<ClaimPolicy>,
     },
+    Bolt12Offer {
+        offer: String,
+    },
     Ark {
         server: String,
         receiver_pubkey: String,
@@ -48,6 +51,7 @@ impl PaymentPointer {
             PaymentPointer::LightningAddress { .. } => "Lightning Address",
             PaymentPointer::LnurlPay { .. } => "LNURL Pay",
             PaymentPointer::Bolt11Invoice { .. } => "BOLT11 Invoice",
+            PaymentPointer::Bolt12Offer { .. } => "BOLT12 Offer",
             PaymentPointer::OnchainAddress { .. } => "On-chain Bitcoin",
             PaymentPointer::Ark { .. } => "Ark",
         }
@@ -84,6 +88,7 @@ pub fn build_qr_payload(pointer: &PaymentPointer, amount_sats: u64) -> Result<St
             )));
         }
         PaymentPointer::Bolt11Invoice { invoice, .. } => invoice.clone(),
+        PaymentPointer::Bolt12Offer { offer } => offer.clone(),
         PaymentPointer::OnchainAddress { address, .. } => {
             let btc = sats_to_btc(amount_sats);
             format!("bitcoin:{address}?amount={btc}")
