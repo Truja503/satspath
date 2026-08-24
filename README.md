@@ -58,6 +58,7 @@ Resolvers can use local files, HTTPS well-known endpoints, BIP-353 DNS, Nostr/NI
 - Run a local daemon (`satspathd`) that exposes `/v1/node`, `/v1/quote`,
   `/v1/pay`, and `/v1/dns/resolve`.
 - Full CLI: `init`, `register`, `show`, `encode`, `decode`, `quote`, `pay`, `invite`, `dns resolve`, `demo`.
+- **Self-Hosting**: Sovereign server deployment and DNS operator onboarding (`satspath server init/check`). See [deploy/README.md](deploy/README.md) for Docker Compose and TLS proxy instructions.
 
 > SatsPath can resolve DNSSEC-backed BIP-353 payment instructions for domains the
 > receiver controls. For consumer email addresses like `gmail.com`, SatsPath uses

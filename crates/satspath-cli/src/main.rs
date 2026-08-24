@@ -192,6 +192,12 @@ enum Command {
         command: MigrationCommand,
     },
 
+    /// Sovereign server and DNS operator onboarding
+    Server {
+        #[command(subcommand)]
+        command: ServerCommand,
+    },
+
     /// Safe receiver-profile wallet: manage public receive methods, sign a
     /// profile, preview. Never moves funds or stores spending keys.
     Wallet {
@@ -208,6 +214,20 @@ enum Command {
 
     /// Run the full SatsPath demo flow
     Demo,
+}
+
+#[derive(Subcommand)]
+enum ServerCommand {
+    /// Initialize a namespace, operator identity, and witness policy. Prints DNS records.
+    Init {
+        /// The domain namespace (e.g. yourdomain.com)
+        domain: String,
+    },
+    /// Validate DNSSEC chain, operator key, and witness quorum for a domain.
+    Check {
+        /// The domain namespace (e.g. yourdomain.com)
+        domain: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -565,6 +585,10 @@ async fn main() -> Result<()> {
                 println!("Verifying migration export from {}...", file);
                 println!("Feature coming soon!");
             }
+        },
+        Command::Server { command } => match command {
+            ServerCommand::Init { domain } => commands::cmd_server_init(&domain)?,
+            ServerCommand::Check { domain } => commands::cmd_server_check(&domain).await?,
         },
         Command::Wallet { command } => match command {
             WalletCommand::Init => commands::cmd_wallet_init()?,
