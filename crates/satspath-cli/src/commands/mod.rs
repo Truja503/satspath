@@ -58,7 +58,6 @@ use satspath_core::resolver::ChainResolver;
 use satspath_core::resolvers::bip353::Bip353Resolver;
 use satspath_core::resolvers::http::HttpResolver;
 use satspath_core::resolvers::nostr::NostrResolver;
-use satspath_core::resolvers::pear::PearResolver;
 
 pub(crate) fn get_resolver() -> Result<ChainResolver> {
     let mut chain = ChainResolver::new();
@@ -73,7 +72,6 @@ pub(crate) fn get_resolver() -> Result<ChainResolver> {
     // Add public HTTP resolver fallback
     chain = chain.push(HttpResolver::new());
     chain = chain.push(NostrResolver::new());
-    chain = chain.push(PearResolver::new());
 
     Ok(chain)
 }

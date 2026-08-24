@@ -156,7 +156,7 @@ enum Command {
         onchain_address: Option<String>,
     },
 
-    /// Export a peer's signed profile as JSON (for sharing with another machine)
+    /// Export a signed profile as JSON (for manual migration or local sharing)
     Export { alias: String },
 
     /// Import a signed profile (verifying it) from a file, stdin, or an HTTPS URL
@@ -237,7 +237,7 @@ enum WalletCommand {
         #[arg(long)]
         debug: bool,
     },
-    /// Export the signed profile for peer-to-peer publishing
+    /// Export the signed profile for manual migration or backup
     Publish { alias: Option<String> },
     /// Preview a receive for an amount (no funds moved)
     Receive {

@@ -56,7 +56,7 @@ Resolvers can use local files, HTTPS well-known endpoints, BIP-353 DNS, Nostr/NI
   profile event.
 - Generate invite links for unregistered users (receiver generates their own keys).
 - Run a local daemon (`satspathd`) that exposes `/v1/node`, `/v1/quote`,
-  `/v1/pay`, `/v1/dns/resolve`, `/v1/peers`, and `/v1/connections`.
+  `/v1/pay`, and `/v1/dns/resolve`.
 - Full CLI: `init`, `register`, `show`, `encode`, `decode`, `quote`, `pay`, `invite`, `dns resolve`, `demo`.
 
 > SatsPath can resolve DNSSEC-backed BIP-353 payment instructions for domains the
