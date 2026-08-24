@@ -8,6 +8,7 @@ mod event;
 mod log;
 mod proof;
 mod protocol;
+mod resolver;
 mod state_map;
 mod status;
 mod store;
@@ -39,6 +40,10 @@ pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
 pub use protocol::{
     NamespaceDescriptor, ResolutionEnvelope, ResolutionRequest, WitnessCosignature,
+};
+pub use resolver::{
+    verify_namespace_binding, verify_witness_quorum, DimensionStatus, VerificationDimensions,
+    VerifiedResolution,
 };
 pub use state_map::{IdentifierStatus, StateMapProof, StateMapValue};
 pub use status::{S2SErrorCode, VerificationStatus};
