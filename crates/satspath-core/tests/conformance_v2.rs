@@ -1,4 +1,4 @@
-use satspath_core::resolve::utils::canonicalize_identifier;
+use satspath_core::canonicalize_identifier;
 use serde::Deserialize;
 use std::fs;
 
