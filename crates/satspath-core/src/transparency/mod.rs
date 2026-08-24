@@ -40,7 +40,8 @@ pub use tree::{consistency_proof, leaf_hash, merkle_root, node_hash, verify_cons
 pub use verifier::{
     next_identifier_sequence, verify_checkpoint, verify_checkpoint_inclusion,
     verify_checkpoint_transition, verify_consistency_proof, verify_event_profile,
-    verify_identifier_history, verify_inclusion_proof, verify_key_continuity,
+    verify_event_transition, verify_identifier_history, verify_inclusion_proof,
+    verify_key_continuity,
 };
 
 use thiserror::Error;
