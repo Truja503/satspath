@@ -6,6 +6,7 @@ mod database;
 mod event;
 mod log;
 mod proof;
+mod protocol;
 mod store;
 mod tree;
 mod verifier;
@@ -29,6 +30,9 @@ pub use database::TransactionalTransparencyStore;
 pub use event::{payment_method_descriptor_hash, profile_hash, NameAction, NameEvent};
 pub use log::{ConsistencyStatus, TransparencyLog, TransparencyStatus};
 pub use proof::{MerkleConsistencyProof, MerkleInclusionProof};
+pub use protocol::{
+    NamespaceDescriptor, ResolutionEnvelope, ResolutionRequest, WitnessCosignature,
+};
 pub use store::CheckpointStore;
 pub use tree::{consistency_proof, leaf_hash, merkle_root, node_hash, verify_consistency};
 pub use verifier::{
