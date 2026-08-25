@@ -126,10 +126,20 @@ directly within the user's profile.
 \subsection{Validation \& Parsing}\label{validation-parsing}}
 
 SatsPath strictly validates offers before allowing them into the
-profile: - \textbf{Prefix validation}: \texttt{lno} for mainnet,
-\texttt{lnot} for testnet. - \textbf{Length checks}: Ensures the bech32
-payload isn't prematurely truncated or synthetic. - \textbf{Network
-enforcement}: The expected network must match the prefix.
+profile:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Prefix validation}: \texttt{lno} for mainnet, \texttt{lnot}
+  for testnet.
+\item
+  \textbf{Length checks}: Ensures the bech32 payload isn't prematurely
+  truncated or synthetic.
+\item
+  \textbf{Network enforcement}: The expected network must match the
+  prefix.
+\end{itemize}
 
 \emph{Future extensions will decode full TLV trees to validate expiry,
 unknown required feature bits, and amount constraints directly.}
@@ -139,9 +149,17 @@ unknown required feature bits, and amount constraints directly.}
 
 When resolving a SatsPath identifier that prefers BOLT12, the server
 returns the raw offer payload to the client. The client/wallet then
-decides whether to: 1. Parse the BOLT12 offer directly. 2. Rely on a
-\texttt{bitcoin:?lno=...} (BIP-321) URI handoff to trigger a standard
-wallet payment flow.
+decides whether to:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Parse the BOLT12 offer directly.
+\item
+  Rely on a \texttt{bitcoin:?lno=...} (BIP-321) URI handoff to trigger a
+  standard wallet payment flow.
+\end{enumerate}
 
 SatsPath servers \textbf{never} attempt to fetch an invoice
 (e.g.~\texttt{invoice\_request}) on behalf of the user, preserving the

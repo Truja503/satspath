@@ -202,9 +202,19 @@ receiver)}\label{invite-lifecycle-unregistered-receiver}}
 \subsection{Pluggability}\label{pluggability}}
 
 The registry is an abstraction --- in production,
-\texttt{Registry::open()} can be swapped for: - BIP-353 DNS TXT record
-lookup - Nostr NIP-05 / NIP-57 resolution - Lightning Address
-\texttt{.well-known/lnurlp} discovery - A decentralized DHT
+\texttt{Registry::open()} can be swapped for:
+
+\begin{itemize}
+\tightlist
+\item
+  BIP-353 DNS TXT record lookup
+\item
+  Nostr NIP-05 / NIP-57 resolution
+\item
+  Lightning Address \texttt{.well-known/lnurlp} discovery
+\item
+  A decentralized DHT
+\end{itemize}
 
 The router is similarly pluggable: new payment rails are added by
 implementing the routing priority logic and returning a

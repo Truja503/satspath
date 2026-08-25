@@ -754,8 +754,8 @@ See \url{examples/demo_flow.md} for a full annotated walkthrough.
 \subsection{Threat model summary}\label{threat-model-summary}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3478}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6522}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3194}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6806}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Threat
@@ -789,8 +789,8 @@ Full threat model: \url{docs/threat_model.md}
 \subsection{Future integrations}\label{future-integrations}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5909}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.4091}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2561}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7439}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Integration
@@ -826,13 +826,35 @@ rails \\
 \end{Highlighting}
 \end{Shaded}
 
-Test coverage includes: - Profile serialization - Profile signing and
-verification - Invalid signature rejection - Tampered profile rejection
-- Encode/decode payment URIs - Registry register/resolve - Router:
-Lightning for small amounts - Router: On-chain for low fees - Router:
-Ark fallback for high fees - Ark route planning and testnet-gated intent
-safety - Router: Error when no methods available - Registry persistence
-across opens
+Test coverage includes:
+
+\begin{itemize}
+\tightlist
+\item
+  Profile serialization
+\item
+  Profile signing and verification
+\item
+  Invalid signature rejection
+\item
+  Tampered profile rejection
+\item
+  Encode/decode payment URIs
+\item
+  Registry register/resolve
+\item
+  Router: Lightning for small amounts
+\item
+  Router: On-chain for low fees
+\item
+  Router: Ark fallback for high fees
+\item
+  Ark route planning and testnet-gated intent safety
+\item
+  Router: Error when no methods available
+\item
+  Registry persistence across opens
+\end{itemize}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 

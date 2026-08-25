@@ -132,9 +132,9 @@ LDK (Lightning) / Arkade SDK (Ark) / BDK (On-chain)
 MVP)}\label{production-requirements-vs-mvp}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2609}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2174}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.5217}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2294}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2385}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.5321}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Area
@@ -180,7 +180,7 @@ UniFFI}\label{rust-refactor-for-uniffi}}
 satspath/
 ├── crates/
 │   ├── satspath-core/          # → Keep, make `cdylib` + `uniffi` feature
-│   ├── satspath-router/        # → Keep, make `cdylib` + `uniffi` feature  
+│   ├── satspath-router/        # → Keep, make `cdylib` + `uniffi` feature
 │   ├── satspath-ffi/           # NEW: UniFFI definitions (UDL) + glue
 │   │   ├── satspath.udl
 │   │   ├── build.rs
@@ -348,7 +348,7 @@ Changes}{2.2 satspath-core Changes}}\label{satspath-core-changes}}
 \NormalTok{    string? senderPubkey;}
 \NormalTok{\};}
 
-\NormalTok{union QuoteResponse \{ }
+\NormalTok{union QuoteResponse \{}
 \NormalTok{    record \{ QuoteRecipient recipient; PaymentMethod selectedMethod; u64 feeSats; string eta; string reason; string qr; ExecutionMode execution; string walletHint; \},}
 \NormalTok{    record \{ Invite invite; \},}
 \NormalTok{    record \{ string reason; \},}
@@ -358,17 +358,17 @@ Changes}{2.2 satspath-core Changes}}\label{satspath-core-changes}}
 \NormalTok{interface Satspath \{}
 \NormalTok{    // High{-}level: resolve + verify + route + build payload}
 \NormalTok{    Promise\textless{}QuoteResponse\textgreater{} quote(string recipient, u64 amountSats);}
-    
+
 \NormalTok{    // Lower{-}level building blocks}
 \NormalTok{    Promise\textless{}SignedPaymentProfile\textgreater{} resolve(string alias);}
 \NormalTok{    boolean verifyProfile(SignedPaymentProfile profile);}
 \NormalTok{    Promise\textless{}RouteQuote\textgreater{} route(QuoteRequest request);}
-    
+
 \NormalTok{    // Identity management}
 \NormalTok{    Promise\textless{}Identity\textgreater{} createIdentity();}
 \NormalTok{    Promise\textless{}void\textgreater{} saveProfile(SignedPaymentProfile profile);}
 \NormalTok{    Promise\textless{}SignedPaymentProfile?\textgreater{} loadProfile(string alias);}
-    
+
 \NormalTok{    // P2P (optional)}
 \NormalTok{    Promise\textless{}void\textgreater{} startP2pBridge(string profilePath);}
 \NormalTok{    void stopP2pBridge();}
@@ -547,7 +547,7 @@ BDK)}\label{android-kotlin-ldk-arkade-sdk-bdk}}
                 \KeywordTok{val} \VariableTok{method} \OperatorTok{=}\NormalTok{ response}\OperatorTok{.}\NormalTok{selectedMethod}
                 \ControlFlowTok{when} \OperatorTok{(}\NormalTok{method}\OperatorTok{)} \OperatorTok{\{}
                     \KeywordTok{is}\NormalTok{ PaymentMethod}\OperatorTok{.}\NormalTok{LightningMethod }\OperatorTok{{-}\textgreater{}} \OperatorTok{\{}
-                        \KeywordTok{val} \VariableTok{invoice} \OperatorTok{=} \ControlFlowTok{if} \OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{.}\NormalTok{startsWith}\OperatorTok{(}\StringTok{"lnbc"}\OperatorTok{))}\NormalTok{ response}\OperatorTok{.}\NormalTok{qr }
+                        \KeywordTok{val} \VariableTok{invoice} \OperatorTok{=} \ControlFlowTok{if} \OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{.}\NormalTok{startsWith}\OperatorTok{(}\StringTok{"lnbc"}\OperatorTok{))}\NormalTok{ response}\OperatorTok{.}\NormalTok{qr}
                             \ControlFlowTok{else}\NormalTok{ ldk}\OperatorTok{.}\NormalTok{fetchInvoice}\OperatorTok{(}\NormalTok{response}\OperatorTok{.}\NormalTok{qr}\OperatorTok{,}\NormalTok{ response}\OperatorTok{.}\NormalTok{feeSats}\OperatorTok{)}
 \NormalTok{                        ldk}\OperatorTok{.}\NormalTok{sendPayment}\OperatorTok{(}\NormalTok{invoice}\OperatorTok{)}
                     \OperatorTok{\}}
@@ -588,13 +588,13 @@ BDK)}\label{ios-swift-ldk-arkade-sdk-bdk}}
 \begin{Highlighting}[]
 \KeywordTok{class}\NormalTok{ SatspathIdentityManager }\OperatorTok{\{}
     \KeywordTok{let} \VariableTok{keychain} \OperatorTok{=}\NormalTok{ Keychain}\OperatorTok{(}\NormalTok{service}\OperatorTok{:} \StringTok{"com.arkade.satspath"}\OperatorTok{)}
-    
+
     \KeywordTok{func} \FunctionTok{createIdentity}\OperatorTok{()} \KeywordTok{throws}\NormalTok{ {-}\textgreater{} }\FunctionTok{Identity} \OperatorTok{\{}
         \KeywordTok{let} \VariableTok{identity} \OperatorTok{=} \ControlFlowTok{try}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{createIdentity}\OperatorTok{()}  \CommentTok{// UniFFI}
         \ControlFlowTok{try}\NormalTok{ keychain}\OperatorTok{.}\KeywordTok{set}\OperatorTok{(}\NormalTok{identity}\OperatorTok{.}\NormalTok{secretKeyPath}\OperatorTok{,}\NormalTok{ key}\OperatorTok{:} \StringTok{"satspath\_secret\_}\ErrorTok{\textbackslash{}(}\StringTok{identity.fingerprint)"}\OperatorTok{)}
         \KeywordTok{return}\NormalTok{ identity}
     \OperatorTok{\}}
-    
+
     \KeywordTok{func} \FunctionTok{signProfile}\OperatorTok{(}\VariableTok{\_} \VariableTok{profile}\OperatorTok{:} \DataTypeTok{PaymentProfile}\OperatorTok{)} \KeywordTok{throws}\NormalTok{ {-}\textgreater{} }\FunctionTok{SignedPaymentProfile} \OperatorTok{\{}
         \KeywordTok{let} \VariableTok{secret} \OperatorTok{=} \ControlFlowTok{try}\NormalTok{ keychain}\OperatorTok{.}\KeywordTok{get}\OperatorTok{(}\StringTok{"satspath\_secret\_}\ErrorTok{\textbackslash{}(}\StringTok{currentFingerprint)"}\OperatorTok{)}
         \KeywordTok{return} \ControlFlowTok{try}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{signProfile}\OperatorTok{(}\NormalTok{profile}\OperatorTok{,}\NormalTok{ secret}\OperatorTok{)}
@@ -610,11 +610,11 @@ BDK)}\label{ios-swift-ldk-arkade-sdk-bdk}}
 \AttributeTok{@MainActor}
 \KeywordTok{class}\NormalTok{ SendViewModel}\OperatorTok{:} \DataTypeTok{ObservableObject} \OperatorTok{\{}
     \AttributeTok{@Published} \KeywordTok{var} \VariableTok{quote}\OperatorTok{:}\NormalTok{ QuoteResponse}\OperatorTok{?}
-    
+
     \KeywordTok{func} \FunctionTok{getQuote}\OperatorTok{(}\VariableTok{alias}\OperatorTok{:} \DataTypeTok{String}\OperatorTok{,} \VariableTok{amount}\OperatorTok{:} \DataTypeTok{UInt64}\OperatorTok{)} \FunctionTok{async} \OperatorTok{\{}
 \NormalTok{        quote }\OperatorTok{=} \ControlFlowTok{try} \ControlFlowTok{await}\NormalTok{ Satspath}\OperatorTok{.}\NormalTok{shared}\OperatorTok{.}\NormalTok{quote}\OperatorTok{(}\NormalTok{alias}\OperatorTok{,}\NormalTok{ amount}\OperatorTok{)}
     \OperatorTok{\}}
-    
+
     \KeywordTok{func} \FunctionTok{pay}\OperatorTok{()} \FunctionTok{async} \KeywordTok{throws} \OperatorTok{\{}
         \ControlFlowTok{guard} \ControlFlowTok{case} \OperatorTok{.}\NormalTok{ok}\OperatorTok{(}\KeywordTok{let} \VariableTok{data}\OperatorTok{)} \OperatorTok{=}\NormalTok{ quote}\OperatorTok{?.}\NormalTok{status }\ControlFlowTok{else} \OperatorTok{\{} \KeywordTok{return} \OperatorTok{\}}
         \ControlFlowTok{switch}\NormalTok{ data}\OperatorTok{.}\NormalTok{selectedMethod }\OperatorTok{\{}
@@ -683,9 +683,9 @@ TS bindings)
 Blockers)}\label{ark-mainnet-readiness-production-blockers}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2963}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3704}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2520}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2114}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.5366}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Blocker
@@ -758,7 +758,7 @@ Router: if \texttt{bolt12} present → fetch offer → send
 \begin{Highlighting}[]
 \NormalTok{Onchain }\OperatorTok{\{}
 \NormalTok{    silent\_payment\_pubkey}\OperatorTok{:} \DataTypeTok{Option}\OperatorTok{\textless{}}\DataTypeTok{String}\OperatorTok{\textgreater{},}  \CommentTok{// sp1q...}
-    \CommentTok{// Payer derives: address = hash(sp\_pubkey + shared\_secret) }
+    \CommentTok{// Payer derives: address = hash(sp\_pubkey + shared\_secret)}
 \OperatorTok{\}}
 \end{Highlighting}
 \end{Shaded}
@@ -804,11 +804,21 @@ Scoring: minimize total fee, respect per-rail limits.
 \end{Highlighting}
 \end{Shaded}
 
-\textbf{Flow}: 1. User generates new identity key (in Secure
-Enclave/Keystore) 2. Sign \texttt{rotation} object with old key 3.
-Publish new profile with \texttt{rotation} field + both signatures 4.
-Resolvers verify chain: \texttt{old\_sig\ verifies\ rotation} +
-\texttt{new\_sig\ verifies\ profile}
+\textbf{Flow}:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  User generates new identity key (in Secure Enclave/Keystore)
+\item
+  Sign \texttt{rotation} object with old key
+\item
+  Publish new profile with \texttt{rotation} field + both signatures
+\item
+  Resolvers verify chain: \texttt{old\_sig\ verifies\ rotation} +
+  \texttt{new\_sig\ verifies\ profile}
+\end{enumerate}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -818,17 +828,33 @@ Ownership)}\label{platform-verification-emaildomain-ownership}}
 
 \textbf{Current}: Invite flow only (no proof)
 
-\textbf{Production}: \textbar{} Method \textbar{} Verification
-\textbar{} UDL \textbar{}
-\textbar--------\textbar--------------\textbar-----\textbar{} \textbar{}
-\textbf{DKIM} \textbar{} User forwards verification email → wallet
-verifies DKIM sig \textbar{} \texttt{EmailVerifier} interface \textbar{}
-\textbar{} \textbf{Nostr NIP-42} \textbar{} Relay challenges user to
-sign event \textbar{} \texttt{NostrVerifier} \textbar{} \textbar{}
-\textbf{DNS} \textbar{} User adds TXT record → resolver checks
-\textbar{} \texttt{DnsVerifier} (BIP-353) \textbar{} \textbar{}
-\textbf{OAuth} \textbar{} Wallet opens auth flow → gets signed
-attestation \textbar{} \texttt{OAuthVerifier} \textbar{}
+\textbf{Production}:
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.1600}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Method
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Verification
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+UDL
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{DKIM} & User forwards verification email → wallet verifies DKIM
+sig & \texttt{EmailVerifier} interface \\
+\textbf{Nostr NIP-42} & Relay challenges user to sign event &
+\texttt{NostrVerifier} \\
+\textbf{DNS} & User adds TXT record → resolver checks &
+\texttt{DnsVerifier} (BIP-353) \\
+\textbf{OAuth} & Wallet opens auth flow → gets signed attestation &
+\texttt{OAuthVerifier} \\
+\end{longtable}
 
 \textbf{Profile Field}:
 
@@ -906,7 +932,7 @@ mobile runs swarm in background.
 \CommentTok{\# Kotlin}
 \BuiltInTok{cd}\NormalTok{ android }\KeywordTok{\&\&} \ExtensionTok{./gradlew}\NormalTok{ test}
 
-\CommentTok{\# Swift  }
+\CommentTok{\# Swift}
 \BuiltInTok{cd}\NormalTok{ ios }\KeywordTok{\&\&} \ExtensionTok{xcodebuild}\NormalTok{ test }\AttributeTok{{-}scheme}\NormalTok{ SatspathTests}
 
 \CommentTok{\# TypeScript}
@@ -995,9 +1021,9 @@ satspath/
 \subsection{11. Timeline (Production)}\label{timeline-production}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2593}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2593}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.4815}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2772}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.0891}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.6337}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Phase
@@ -1079,10 +1105,10 @@ Arkade + SatsPath} \\
 (Production)}\label{risk-register-production}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1579}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3158}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2105}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3158}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2883}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0901}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.0541}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.5676}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Risk

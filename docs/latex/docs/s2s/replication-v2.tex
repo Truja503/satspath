@@ -89,14 +89,29 @@ periodically fetch and verify updates from the primary authority.
 \hypertarget{ingestion-pipeline}{%
 \subsubsection{Ingestion Pipeline}\label{ingestion-pipeline}}
 
-A replica must ingest and verify, in order: 1. Namespace descriptor and
-policy epoch. 2. Signed name events (verified against
-\texttt{verify\_event\_transition}). 3. Append-only log entries and
-checkpoints (verified via \texttt{verify\_checkpoint\_transition}). 4.
-Compact consistency proofs (verified via
-\texttt{verify\_consistency\_proof}). 5. Current-state map snapshots or
-deterministic updates. 6. Witness cosignatures. 7. Operator and
-namespace-key transitions.
+A replica must ingest and verify, in order:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Namespace descriptor and policy epoch.
+\item
+  Signed name events (verified against
+  \texttt{verify\_event\_transition}).
+\item
+  Append-only log entries and checkpoints (verified via
+  \texttt{verify\_checkpoint\_transition}).
+\item
+  Compact consistency proofs (verified via
+  \texttt{verify\_consistency\_proof}).
+\item
+  Current-state map snapshots or deterministic updates.
+\item
+  Witness cosignatures.
+\item
+  Operator and namespace-key transitions.
+\end{enumerate}
 
 A replica serves data \textbf{only after full verification and durable
 commit}.

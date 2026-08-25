@@ -106,16 +106,27 @@ the security perimeter for the engine.
 \subsection{1. Non-Custodial
 Architecture}\label{non-custodial-architecture}}
 
-\textbf{SatsPath is NOT a custodial wallet.} - The
-\texttt{Identity\ Key} (used to sign profiles) \textbf{does not} control
-funds. - Wallet, Node, or SDK plugins are responsible for securely
-managing funds and signing transactions. - Never store seed phrases,
-wallet private keys, macaroons, certs, API tokens, or other high-value
-secrets in the SatsPath repository or plaintext config files. - Email
-verification proves inbox access only. It does not transfer custody and
-does not prove ownership of a Gmail-style domain. - Receiver wallets
-must generate private keys locally on the receiver's device and publish
-only public payment profiles.
+\textbf{SatsPath is NOT a custodial wallet.}
+
+\begin{itemize}
+\tightlist
+\item
+  The \texttt{Identity\ Key} (used to sign profiles) \textbf{does not}
+  control funds.
+\item
+  Wallet, Node, or SDK plugins are responsible for securely managing
+  funds and signing transactions.
+\item
+  Never store seed phrases, wallet private keys, macaroons, certs, API
+  tokens, or other high-value secrets in the SatsPath repository or
+  plaintext config files.
+\item
+  Email verification proves inbox access only. It does not transfer
+  custody and does not prove ownership of a Gmail-style domain.
+\item
+  Receiver wallets must generate private keys locally on the receiver's
+  device and publish only public payment profiles.
+\end{itemize}
 
 \hypertarget{mainnet-preview-vs-mainnet-execution}{%
 \subsection{2. Mainnet Preview vs Mainnet
@@ -177,10 +188,19 @@ payment sender.
 
 By default, the SatsPath Swap Engine operates in \textbf{Testnet mode}.
 
-\textbf{Required Safety Defaults:} - \texttt{mainnet\_enabled\ =\ false}
-- \texttt{max\_mainnet\_payment\_sats\ =\ 1000} -
-\texttt{require\_manual\_confirmation\ =\ true} -
-\texttt{fail\_closed\ =\ true}
+\textbf{Required Safety Defaults:}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{mainnet\_enabled\ =\ false}
+\item
+  \texttt{max\_mainnet\_payment\_sats\ =\ 1000}
+\item
+  \texttt{require\_manual\_confirmation\ =\ true}
+\item
+  \texttt{fail\_closed\ =\ true}
+\end{itemize}
 
 Mainnet preview is allowed because it touches public data only. Mainnet
 execution is disabled. \texttt{-\/-experimental-swaps\ -\/-testnet} is
@@ -192,22 +212,38 @@ separate future feature with stronger confirmation gates.
 Checks}\label{strict-pre-execution-checks}}
 
 Before executing \emph{any} Mainnet transaction or Swap, the engine MUST
-abort if any of the following checks fail: - \textbf{Amount Mismatch:}
-Abort if the requested invoice amount does not match the BOLT11 invoice
-returned by LNURL or Boltz. - \textbf{Signature Verification:} Abort if
-the \texttt{SignedPaymentProfile} signature is invalid or tampered with.
-- \textbf{Metadata Invalid:} Abort if LNURL metadata violates expected
-tags or amount bounds. - \textbf{Expiration:} Abort if the payment
-profile has expired.
+abort if any of the following checks fail:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Amount Mismatch:} Abort if the requested invoice amount does
+  not match the BOLT11 invoice returned by LNURL or Boltz.
+\item
+  \textbf{Signature Verification:} Abort if the
+  \texttt{SignedPaymentProfile} signature is invalid or tampered with.
+\item
+  \textbf{Metadata Invalid:} Abort if LNURL metadata violates expected
+  tags or amount bounds.
+\item
+  \textbf{Expiration:} Abort if the payment profile has expired.
+\end{itemize}
 
 \hypertarget{first-mainnet-tests}{%
 \subsection{5. First Mainnet Tests}\label{first-mainnet-tests}}
 
-When testing features on Mainnet for the first time: - Use tiny amounts
-only (e.g., \texttt{\textless{}\ 1000\ sats}). - Verify routing paths
-locally before broadcasting. - Ensure that the local
-\texttt{.satspath/swaps.enc} vault is encrypting secrets via AES-GCM and
-not falling back silently to plaintext.
+When testing features on Mainnet for the first time:
+
+\begin{itemize}
+\tightlist
+\item
+  Use tiny amounts only (e.g., \texttt{\textless{}\ 1000\ sats}).
+\item
+  Verify routing paths locally before broadcasting.
+\item
+  Ensure that the local \texttt{.satspath/swaps.enc} vault is encrypting
+  secrets via AES-GCM and not falling back silently to plaintext.
+\end{itemize}
 
 \hypertarget{bip-353-dns-resolution-mainnet-preview}{%
 \subsection{5. BIP-353 DNS Resolution (Mainnet

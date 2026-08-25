@@ -117,17 +117,43 @@ wallets (via WASM or FFI) or run as a standalone service, acting as the
 ``brain'' for resolving identity profiles and optimizing payment
 routing.
 
-It can: - Resolve a local or peer-registered signed profile via multiple
-resolution methods (Local Registry, BIP-353 DNS, HTTP Well-Known,
-Nostr). - Select an optimal payment rail (Lightning, On-chain, Ark)
-based on live mempool fees and routing rules. - Authenticate and verify
-hybrid Post-Quantum signatures (ML-DSA-65 + Schnorr). - Fetch real LNURL
-invoices and BOLT12 offers. - Evaluate Silent Payments (BIP-352) and
-build BIP-21 on-chain URIs. - Preview swap directives (testnet only).
+It can:
 
-It cannot (and intentionally does not): - Move funds automatically. -
-Sign Bitcoin transactions (no PSBT signing). - Broadcast anything to the
-network. - Store or generate seed phrases. - Execute mainnet swaps.
+\begin{itemize}
+\tightlist
+\item
+  Resolve a local or peer-registered signed profile via multiple
+  resolution methods (Local Registry, BIP-353 DNS, HTTP Well-Known,
+  Nostr).
+\item
+  Select an optimal payment rail (Lightning, On-chain, Ark) based on
+  live mempool fees and routing rules.
+\item
+  Authenticate and verify hybrid Post-Quantum signatures (ML-DSA-65 +
+  Schnorr).
+\item
+  Fetch real LNURL invoices and BOLT12 offers.
+\item
+  Evaluate Silent Payments (BIP-352) and build BIP-21 on-chain URIs.
+\item
+  Preview swap directives (testnet only).
+\end{itemize}
+
+It cannot (and intentionally does not):
+
+\begin{itemize}
+\tightlist
+\item
+  Move funds automatically.
+\item
+  Sign Bitcoin transactions (no PSBT signing).
+\item
+  Broadcast anything to the network.
+\item
+  Store or generate seed phrases.
+\item
+  Execute mainnet swaps.
+\end{itemize}
 
 \hypertarget{architecture}{%
 \subsection{Architecture}\label{architecture}}
@@ -225,9 +251,15 @@ SatsPath is built with a strict Zero-Trust model:
 \subsection{What is Implemented vs.~What is
 Not}\label{what-is-implemented-vs.-what-is-not}}
 
-\begin{longtable}[]{@{}ll@{}}
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6778}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3222}}@{}}
 \toprule\noalign{}
-Feature & Status \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Feature
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Status
+\end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
