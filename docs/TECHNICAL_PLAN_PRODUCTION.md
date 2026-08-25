@@ -2,7 +2,8 @@
 
 **Goal**: Fully native, self-sovereign SatsPath stack in Arkade wallet (mobile + desktop) with zero trusted backend. UniFFI bindings for Kotlin (Android), Swift (iOS), TypeScript (React Native / Tauri / PWA).
 
-**Architecture**: 
+**Architecture**:
+
 ```
 Arkade Wallet (Kotlin/Swift/TS)
     ↓ UniFFI
@@ -19,19 +20,19 @@ LDK (Lightning) / Arkade SDK (Ark) / BDK (On-chain)
 
 ## 1. Production Requirements (vs MVP)
 
-| Area | MVP | Production |
-|------|-----|------------|
-| **Resolver** | TS fetch in PWA | Rust async in core (tokio) — no JS fetch dependency |
-| **Crypto** | WASM (secp256k1 only) | Native Rust (secp256k1 + schnorrkel) via UniFFI |
-| **Router** | TS port (~300 LOC) | Native Rust (full scoring, urgency, split payments) |
-| **Identity** | LocalStorage profile | Encrypted SQLCipher/Keychain/Keystore + BIP-39 seed backup |
-| **P2P** | Optional satspathd sidecar | Embedded Hyperswarm via UniFFI (or libp2p) |
-| **Ark** | Testnet preview | Mainnet ready (covenant-based when available) |
-| **BOLT12** | ❌ | ✅ Offer-based async payments |
-| **Silent Payments** | ❌ | ✅ BIP-352 receive |
-| **Split Payments** | ❌ | ✅ Multi-rail single payment |
-| **Key Rotation** | ❌ | ✅ Spec §29 |
-| **Platform Verification** | Invite only | DKIM / OAuth / Nostr NIP-42 |
+| Area                      | MVP                        | Production                                                 |
+| ------------------------- | -------------------------- | ---------------------------------------------------------- |
+| **Resolver**              | TS fetch in PWA            | Rust async in core (tokio) — no JS fetch dependency        |
+| **Crypto**                | WASM (secp256k1 only)      | Native Rust (secp256k1 + schnorrkel) via UniFFI            |
+| **Router**                | TS port (~300 LOC)         | Native Rust (full scoring, urgency, split payments)        |
+| **Identity**              | LocalStorage profile       | Encrypted SQLCipher/Keychain/Keystore + BIP-39 seed backup |
+| **P2P**                   | Optional satspathd sidecar | Embedded Hyperswarm via UniFFI (or libp2p)                 |
+| **Ark**                   | Testnet preview            | Mainnet ready (covenant-based when available)              |
+| **BOLT12**                | ❌                         | ✅ Offer-based async payments                              |
+| **Silent Payments**       | ❌                         | ✅ BIP-352 receive                                         |
+| **Split Payments**        | ❌                         | ✅ Multi-rail single payment                               |
+| **Key Rotation**          | ❌                         | ✅ Spec §29                                                |
+| **Platform Verification** | Invite only                | DKIM / OAuth / Nostr NIP-42                                |
 
 ---
 
@@ -43,7 +44,7 @@ LDK (Lightning) / Arkade SDK (Ark) / BDK (On-chain)
 satspath/
 ├── crates/
 │   ├── satspath-core/          # → Keep, make `cdylib` + `uniffi` feature
-│   ├── satspath-router/        # → Keep, make `cdylib` + `uniffi` feature  
+│   ├── satspath-router/        # → Keep, make `cdylib` + `uniffi` feature
 │   ├── satspath-ffi/           # NEW: UniFFI definitions (UDL) + glue
 │   │   ├── satspath.udl
 │   │   ├── build.rs
@@ -58,6 +59,7 @@ satspath/
 ### 2.2 `satspath-core` Changes
 
 **Cargo.toml**:
+
 ```toml
 [lib]
 crate-type = ["rlib", "cdylib"]  # cdylib for UniFFI
@@ -74,6 +76,7 @@ reqwest = { version = "0.12", features = ["json", "native-tls"], optional = true
 ```
 
 **Expose async trait for UniFFI** (`src/resolver.rs`):
+
 ```rust
 use uniffi::async_trait;
 
@@ -200,7 +203,7 @@ record Invite {
     string? senderPubkey;
 };
 
-union QuoteResponse { 
+union QuoteResponse {
     record { QuoteRecipient recipient; PaymentMethod selectedMethod; u64 feeSats; string eta; string reason; string qr; ExecutionMode execution; string walletHint; },
     record { Invite invite; },
     record { string reason; },
@@ -210,17 +213,17 @@ union QuoteResponse {
 interface Satspath {
     // High-level: resolve + verify + route + build payload
     Promise<QuoteResponse> quote(string recipient, u64 amountSats);
-    
+
     // Lower-level building blocks
     Promise<SignedPaymentProfile> resolve(string alias);
     boolean verifyProfile(SignedPaymentProfile profile);
     Promise<RouteQuote> route(QuoteRequest request);
-    
+
     // Identity management
     Promise<Identity> createIdentity();
     Promise<void> saveProfile(SignedPaymentProfile profile);
     Promise<SignedPaymentProfile?> loadProfile(string alias);
-    
+
     // P2P (optional)
     Promise<void> startP2pBridge(string profilePath);
     void stopP2pBridge();
@@ -326,6 +329,7 @@ cargo run --features uniffi --bin uniffi-bindgen generate \
 ### 3.1 Android (Kotlin + LDK + Arkade SDK + BDK)
 
 **Gradle** (`android/app/build.gradle.kts`):
+
 ```kotlin
 dependencies {
     implementation("org.ldk:ldk-android:0.0.120")  // or Breez SDK
@@ -336,6 +340,7 @@ dependencies {
 ```
 
 **Identity Storage** (`android/satspath/src/main/java/com/satspath/IdentityManager.kt`):
+
 ```kotlin
 class IdentityManager @Inject constructor(
     @Assisted private val context: Context
@@ -359,6 +364,7 @@ class IdentityManager @Inject constructor(
 ```
 
 **Send Flow** (`android/ui/send/SendViewModel.kt`):
+
 ```kotlin
 class SendViewModel @ViewModelInject constructor(
     private val satspath: Satspath,
@@ -378,7 +384,7 @@ class SendViewModel @ViewModelInject constructor(
                 val method = response.selectedMethod
                 when (method) {
                     is PaymentMethod.LightningMethod -> {
-                        val invoice = if (response.qr.startsWith("lnbc")) response.qr 
+                        val invoice = if (response.qr.startsWith("lnbc")) response.qr
                             else ldk.fetchInvoice(response.qr, response.feeSats)
                         ldk.sendPayment(invoice)
                     }
@@ -399,6 +405,7 @@ class SendViewModel @ViewModelInject constructor(
 ### 3.2 iOS (Swift + LDK + Arkade SDK + BDK)
 
 **Package.swift**:
+
 ```swift
 dependencies: [
     .package(url: "https://github.com/lightningdevkit/ldk-swift", from: "0.1.0"),
@@ -408,16 +415,17 @@ dependencies: [
 ```
 
 **Identity** (`SatspathIdentityManager.swift`):
+
 ```swift
 class SatspathIdentityManager {
     let keychain = Keychain(service: "com.arkade.satspath")
-    
+
     func createIdentity() throws -> Identity {
         let identity = try Satspath.createIdentity()  // UniFFI
         try keychain.set(identity.secretKeyPath, key: "satspath_secret_\(identity.fingerprint)")
         return identity
     }
-    
+
     func signProfile(_ profile: PaymentProfile) throws -> SignedPaymentProfile {
         let secret = try keychain.get("satspath_secret_\(currentFingerprint)")
         return try Satspath.signProfile(profile, secret)
@@ -426,15 +434,16 @@ class SatspathIdentityManager {
 ```
 
 **Send Flow** (`SendViewModel.swift`):
+
 ```swift
 @MainActor
 class SendViewModel: ObservableObject {
     @Published var quote: QuoteResponse?
-    
+
     func getQuote(alias: String, amount: UInt64) async {
         quote = try await Satspath.shared.quote(alias, amount)
     }
-    
+
     func pay() async throws {
         guard case .ok(let data) = quote?.status else { return }
         switch data.selectedMethod {
@@ -468,6 +477,7 @@ export const satspath: Satspath; // WASM fallback if native not available
 ```
 
 **Usage** (same as MVP but native):
+
 ```typescript
 import { satspath } from "@satspath/core";
 
@@ -491,15 +501,16 @@ if (response.status === "ok") {
 
 ## 4. Ark Mainnet Readiness (Production Blockers)
 
-| Blocker | Status | Solution |
-|---------|--------|----------|
-| **Covenant opcodes (CTV/CSFS)** | Not on mainnet | Use connector outputs + pre-signed txs (current Ark design) |
-| **Ark server trust** | ASP can steal if malicious | Client-side VTXO verification (Arkade SDK Tier 1-3) — already done |
-| **Unilateral exit UX** | Complex | Arkade SDK `sovereignStorage` + auto-broadcast on expiry |
-| **Liquidity** | Limited | Boltz submarine swaps for on-ramp/off-ramp |
-| **Fee estimation** | Ark server sets | Router queries ASP `/fee` endpoint, falls back to mempool |
+| Blocker                         | Status                     | Solution                                                           |
+| ------------------------------- | -------------------------- | ------------------------------------------------------------------ |
+| **Covenant opcodes (CTV/CSFS)** | Not on mainnet             | Use connector outputs + pre-signed txs (current Ark design)        |
+| **Ark server trust**            | ASP can steal if malicious | Client-side VTXO verification (Arkade SDK Tier 1-3) — already done |
+| **Unilateral exit UX**          | Complex                    | Arkade SDK `sovereignStorage` + auto-broadcast on expiry           |
+| **Liquidity**                   | Limited                    | Boltz submarine swaps for on-ramp/off-ramp                         |
+| **Fee estimation**              | Ark server sets            | Router queries ASP `/fee` endpoint, falls back to mempool          |
 
 **Router Ark Logic** (enhance `ark_routes.rs`):
+
 ```rust
 pub async fn plan_ark_route_mainnet(
     sender: &SenderCapabilities,
@@ -518,6 +529,7 @@ pub async fn plan_ark_route_mainnet(
 ## 5. BOLT12 / Silent Payments / Split Payments (v2.1+)
 
 ### 5.1 BOLT12 Offers
+
 ```rust
 // satspath-core/src/profile.rs - extend PaymentMethod::Lightning
 Lightning {
@@ -526,18 +538,22 @@ Lightning {
     // Add: offer fetching + invoice_request flow
 }
 ```
+
 Router: if `bolt12` present → fetch offer → send `invoice_request` → pay invoice.
 
 ### 5.2 Silent Payments (BIP-352)
+
 ```rust
 Onchain {
     silent_payment_pubkey: Option<String>,  // sp1q...
-    // Payer derives: address = hash(sp_pubkey + shared_secret) 
+    // Payer derives: address = hash(sp_pubkey + shared_secret)
 }
 ```
+
 Router: if `silent_payment_pubkey` present → derive unique address per payment.
 
 ### 5.3 Split Payments
+
 ```rust
 // New route type
 enum RouteQuote {
@@ -545,6 +561,7 @@ enum RouteQuote {
     Split(Vec<SplitRoute>),  // { method, amount_sats, fee_sats } summing to total
 }
 ```
+
 Scoring: minimize total fee, respect per-rail limits.
 
 ---
@@ -552,6 +569,7 @@ Scoring: minimize total fee, respect per-rail limits.
 ## 6. Key Rotation & Profile Revocation (Spec §29)
 
 **UDL Addition**:
+
 ```idl
 record KeyRotation {
     string newIdentityPubkey;
@@ -566,6 +584,7 @@ interface Satspath {
 ```
 
 **Flow**:
+
 1. User generates new identity key (in Secure Enclave/Keystore)
 2. Sign `rotation` object with old key
 3. Publish new profile with `rotation` field + both signatures
@@ -578,14 +597,16 @@ interface Satspath {
 **Current**: Invite flow only (no proof)
 
 **Production**:
-| Method | Verification | UDL |
-|--------|--------------|-----|
-| **DKIM** | User forwards verification email → wallet verifies DKIM sig | `EmailVerifier` interface |
-| **Nostr NIP-42** | Relay challenges user to sign event | `NostrVerifier` |
-| **DNS** | User adds TXT record → resolver checks | `DnsVerifier` (BIP-353) |
-| **OAuth** | Wallet opens auth flow → gets signed attestation | `OAuthVerifier` |
+
+| Method           | Verification                                                | UDL                       |
+| ---------------- | ----------------------------------------------------------- | ------------------------- |
+| **DKIM**         | User forwards verification email → wallet verifies DKIM sig | `EmailVerifier` interface |
+| **Nostr NIP-42** | Relay challenges user to sign event                         | `NostrVerifier`           |
+| **DNS**          | User adds TXT record → resolver checks                      | `DnsVerifier` (BIP-353)   |
+| **OAuth**        | Wallet opens auth flow → gets signed attestation            | `OAuthVerifier`           |
 
 **Profile Field**:
+
 ```rust
 record MethodVerification {
     string methodDescriptor;  // PaymentMethod::ownership_descriptor()
@@ -630,6 +651,7 @@ impl ProfileResolver for P2pResolver {
 ## 9. Testing & CI/CD (Production)
 
 ### 9.1 Rust Layer
+
 ```yaml
 # .github/workflows/rust.yml
 - cargo test --workspace --features uniffi
@@ -639,11 +661,12 @@ impl ProfileResolver for P2pResolver {
 ```
 
 ### 9.2 UniFFI Bindings Tests
+
 ```bash
 # Kotlin
 cd android && ./gradlew test
 
-# Swift  
+# Swift
 cd ios && xcodebuild test -scheme SatspathTests
 
 # TypeScript
@@ -651,6 +674,7 @@ cd sdk/ts && npm test
 ```
 
 ### 9.3 Integration Tests (Testnet)
+
 ```rust
 // tests/integration/mainnet_preview.rs
 #[tokio::test]
@@ -663,6 +687,7 @@ async fn mainnet_preview_quote() {
 ```
 
 ### 9.4 Fuzz Testing
+
 ```bash
 cargo fuzz run profile_parsing
 cargo fuzz run router_scoring
@@ -718,19 +743,19 @@ satspath/
 
 ## 11. Timeline (Production)
 
-| Phase | Weeks | Deliverable |
-|-------|-------|-------------|
-| **0. Prep** | 1 | Enable `uniffi` feature, `cdylib`, fix WASM-incompatible deps |
-| **1. FFI Layer** | 3 | `satspath-ffi` crate + UDL + all bindings (Kotlin/Swift/TS) |
-| **2. Resolver Chain** | 2 | Port all resolvers to async Rust trait, remove TS resolvers |
-| **3. Router Native** | 2 | Full router in Rust (scoring, urgency, split, BOLT12, silent) |
-| **4. Identity & Storage** | 2 | Encrypted keystore (Keystore/Keychain/SQLCipher) + BIP-39 backup |
-| **5. P2P Embedded** | 3 | `hyperdriver` integration, background swarm on mobile |
-| **6. Platform Verification** | 2 | DKIM + NIP-42 + DNS verifiers |
-| **7. Ark Mainnet** | 3 | Covenant-ready ASP integration, fee estimation, liquidity |
-| **8. Mobile Integration** | 4 | Arkade Android/iOS wiring (LDK, BDK, Arkade SDK) |
-| **9. Auditing & Hardening** | 3 | Security audit, fuzzing, testnet soak, mainnet preview |
-| **Total** | ~25 weeks | **Production-ready Arkade + SatsPath** |
+| Phase                        | Weeks     | Deliverable                                                      |
+| ---------------------------- | --------- | ---------------------------------------------------------------- |
+| **0. Prep**                  | 1         | Enable `uniffi` feature, `cdylib`, fix WASM-incompatible deps    |
+| **1. FFI Layer**             | 3         | `satspath-ffi` crate + UDL + all bindings (Kotlin/Swift/TS)      |
+| **2. Resolver Chain**        | 2         | Port all resolvers to async Rust trait, remove TS resolvers      |
+| **3. Router Native**         | 2         | Full router in Rust (scoring, urgency, split, BOLT12, silent)    |
+| **4. Identity & Storage**    | 2         | Encrypted keystore (Keystore/Keychain/SQLCipher) + BIP-39 backup |
+| **5. P2P Embedded**          | 3         | `hyperdriver` integration, background swarm on mobile            |
+| **6. Platform Verification** | 2         | DKIM + NIP-42 + DNS verifiers                                    |
+| **7. Ark Mainnet**           | 3         | Covenant-ready ASP integration, fee estimation, liquidity        |
+| **8. Mobile Integration**    | 4         | Arkade Android/iOS wiring (LDK, BDK, Arkade SDK)                 |
+| **9. Auditing & Hardening**  | 3         | Security audit, fuzzing, testnet soak, mainnet preview           |
+| **Total**                    | ~25 weeks | **Production-ready Arkade + SatsPath**                           |
 
 ---
 
@@ -754,11 +779,11 @@ satspath/
 
 ## 13. Risk Register (Production)
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| UniFFI async trait limitations | Medium | High | Use `uniffi::async_trait` + `tokio` runtime; test early |
-| Mobile binary size (Rust + deps) | High | Medium | `strip`, `lto`, feature-gate optional modules (P2P, Ark) |
-| Ark mainnet covenant delay | High | High | Ship with connector-output design; upgrade when CTV activates |
-| Platform keystore differences | Medium | Medium | Abstract `SecureStorage` trait per platform |
-| Nostr relay censorship | Low | Medium | Multi-relay fallback; P2P as ultimate fallback |
-| Regulatory (KYC/AML on identity) | Low | High | SatsPath = identity only, no custody; wallet handles compliance |
+| Risk                             | Likelihood | Impact | Mitigation                                                      |
+| -------------------------------- | ---------- | ------ | --------------------------------------------------------------- |
+| UniFFI async trait limitations   | Medium     | High   | Use `uniffi::async_trait` + `tokio` runtime; test early         |
+| Mobile binary size (Rust + deps) | High       | Medium | `strip`, `lto`, feature-gate optional modules (P2P, Ark)        |
+| Ark mainnet covenant delay       | High       | High   | Ship with connector-output design; upgrade when CTV activates   |
+| Platform keystore differences    | Medium     | Medium | Abstract `SecureStorage` trait per platform                     |
+| Nostr relay censorship           | Low        | Medium | Multi-relay fallback; P2P as ultimate fallback                  |
+| Regulatory (KYC/AML on identity) | Low        | High   | SatsPath = identity only, no custody; wallet handles compliance |

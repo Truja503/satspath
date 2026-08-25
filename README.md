@@ -435,18 +435,18 @@ See [examples/demo_flow.md](examples/demo_flow.md) for a full annotated walkthro
 
 ## Threat model summary
 
-| Threat | MVP Mitigation |
-|--------|---------------|
+| Threat                  | MVP Mitigation                                    |
+| ----------------------- | ------------------------------------------------- |
 | Fake alias registration | Signature-bound profiles; first-come-first-served |
-| Server tampering | secp256k1 signature verification on every resolve |
-| Key replacement attack | Signature covers identity_pubkey; swap breaks sig |
-| Profile replay | `expires_at` enforced locally and remotely |
-| Email takeover | Not mitigated at MVP (future: DKIM challenge) |
-| LNURL spoofing | Amount and expiry verification before routing |
-| On-chain privacy leaks | Multiple on-chain addresses per profile |
-| Lost keys | Local backup only (future: BIP-39 seed phrase) |
-| Malicious invite links | Alias hash + amount in invite; receiver verifies |
-| Ark server trust | Mock client only (future: covenant-based Ark) |
+| Server tampering        | secp256k1 signature verification on every resolve |
+| Key replacement attack  | Signature covers identity_pubkey; swap breaks sig |
+| Profile replay          | `expires_at` enforced locally and remotely        |
+| Email takeover          | Not mitigated at MVP (future: DKIM challenge)     |
+| LNURL spoofing          | Amount and expiry verification before routing     |
+| On-chain privacy leaks  | Multiple on-chain addresses per profile           |
+| Lost keys               | Local backup only (future: BIP-39 seed phrase)    |
+| Malicious invite links  | Alias hash + amount in invite; receiver verifies  |
+| Ark server trust        | Mock client only (future: covenant-based Ark)     |
 
 Full threat model: [docs/threat_model.md](docs/threat_model.md)
 
@@ -454,15 +454,15 @@ Full threat model: [docs/threat_model.md](docs/threat_model.md)
 
 ## Future integrations
 
-| Integration | Purpose |
-|-------------|---------|
-| **BIP-353** | Replace local registry with DNS TXT record resolution |
-| **Nostr** | Decentralized identity and profile discovery (NIP-05, NIP-57) |
-| **Lightning Address** | Auto-discover LNURL-pay endpoint from `user@domain` |
-| **BOLT12** | Async invoices and reusable payment offers |
-| **Ark** | Non-custodial off-chain payments via virtual UTXOs |
-| **Silent Payments** | Privacy-preserving on-chain payments (BIP-352) |
-| **Split Payments** | Route a single payment across multiple rails |
+| Integration           | Purpose                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| **BIP-353**           | Replace local registry with DNS TXT record resolution         |
+| **Nostr**             | Decentralized identity and profile discovery (NIP-05, NIP-57) |
+| **Lightning Address** | Auto-discover LNURL-pay endpoint from `user@domain`           |
+| **BOLT12**            | Async invoices and reusable payment offers                    |
+| **Ark**               | Non-custodial off-chain payments via virtual UTXOs            |
+| **Silent Payments**   | Privacy-preserving on-chain payments (BIP-352)                |
+| **Split Payments**    | Route a single payment across multiple rails                  |
 
 ---
 
@@ -473,6 +473,7 @@ cargo test
 ```
 
 Test coverage includes:
+
 - Profile serialization
 - Profile signing and verification
 - Invalid signature rejection

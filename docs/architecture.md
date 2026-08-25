@@ -123,6 +123,7 @@ satspath/
 ## Pluggability
 
 The registry is an abstraction — in production, `Registry::open()` can be swapped for:
+
 - BIP-353 DNS TXT record lookup
 - Nostr NIP-05 / NIP-57 resolution
 - Lightning Address `.well-known/lnurlp` discovery

@@ -68,5 +68,4 @@ fn test_forged_non_inclusion() {
 #[test]
 fn test_legacy_fallback_rejection() {
     // Core resolvers do not implement fallback; they strictly fail on v2 verification errors.
-    assert!(true);
 }
