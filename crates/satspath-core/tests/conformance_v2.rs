@@ -1,7 +1,7 @@
 use satspath_core::canonicalize_identifier;
 use serde::Deserialize;
-use std::fs;
 use sha2::Digest;
+use std::fs;
 
 #[derive(Debug, Deserialize)]
 struct ConformanceVectors {
@@ -41,7 +41,11 @@ fn test_v2_conformance_vectors() {
 
     for vec in suite.vectors.idna_canonicalization {
         let actual = canonicalize_identifier(&vec.input);
-        assert_eq!(actual, vec.expected, "IDNA canonicalization mismatch for {}", vec.input);
+        assert_eq!(
+            actual, vec.expected,
+            "IDNA canonicalization mismatch for {}",
+            vec.input
+        );
     }
 
     let secp = secp256k1::Secp256k1::new();
@@ -50,16 +54,20 @@ fn test_v2_conformance_vectors() {
             // Skip the dummy private key test for now since it's just a dummy string
             continue;
         }
-        
-        let secret_key = secp256k1::SecretKey::from_slice(&hex::decode(&sig.private_key).unwrap()).unwrap();
+
+        let secret_key =
+            secp256k1::SecretKey::from_slice(&hex::decode(&sig.private_key).unwrap()).unwrap();
         let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
         assert_eq!(hex::encode(pubkey.serialize()), sig.expected_pubkey);
-        
-        let message = secp256k1::Message::from_digest_slice(
-            &sha2::Sha256::digest(sig.message.as_bytes())
-        ).unwrap();
-        
+
+        let message =
+            secp256k1::Message::from_digest_slice(&sha2::Sha256::digest(sig.message.as_bytes()))
+                .unwrap();
+
         let signature = secp.sign_ecdsa(&message, &secret_key);
-        assert_eq!(hex::encode(signature.serialize_der()), sig.expected_signature);
+        assert_eq!(
+            hex::encode(signature.serialize_der()),
+            sig.expected_signature
+        );
     }
 }

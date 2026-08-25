@@ -1,5 +1,5 @@
-use satspath_core::PaymentProfile;
 use chrono::Utc;
+use satspath_core::PaymentProfile;
 
 #[test]
 fn test_reject_old_profile_replay() {
@@ -20,15 +20,18 @@ fn test_reject_old_profile_replay() {
         pqc_required: false,
         revoked: false,
     };
-    
+
     // Test our local expiration logic
-    assert!(profile.expires_at.unwrap() < Utc::now().timestamp(), "Old profiles should be considered expired");
+    assert!(
+        profile.expires_at.unwrap() < Utc::now().timestamp(),
+        "Old profiles should be considered expired"
+    );
 }
 
 #[test]
 fn test_reject_split_view() {
-    use satspath_core::transparency::MerkleConsistencyProof;
     use satspath_core::transparency::verify_consistency_proof;
+    use satspath_core::transparency::MerkleConsistencyProof;
 
     let proof = MerkleConsistencyProof {
         version: 2,
@@ -38,16 +41,18 @@ fn test_reject_split_view() {
         new_root: "rootB".to_string(),
         audit_path: vec![],
     };
-    
+
     // Identical sized trees with different roots cannot be consistent
-    assert!(verify_consistency_proof(&proof).is_err() || !verify_consistency_proof(&proof).unwrap());
+    assert!(
+        verify_consistency_proof(&proof).is_err() || !verify_consistency_proof(&proof).unwrap()
+    );
 }
 
 #[test]
 fn test_forged_non_inclusion() {
-    use satspath_core::transparency::MerkleInclusionProof;
     use satspath_core::transparency::verify_inclusion_proof;
-    
+    use satspath_core::transparency::MerkleInclusionProof;
+
     let proof = MerkleInclusionProof {
         leaf_index: 5,
         tree_size: 10,
@@ -55,7 +60,7 @@ fn test_forged_non_inclusion() {
         audit_path: vec!["invalid_path".to_string()],
         root_hash: "root".to_string(),
     };
-    
+
     // Forged proof should fail verification
     assert!(verify_inclusion_proof(&proof).is_err() || !verify_inclusion_proof(&proof).unwrap());
 }
@@ -65,5 +70,3 @@ fn test_legacy_fallback_rejection() {
     // Core resolvers do not implement fallback; they strictly fail on v2 verification errors.
     assert!(true);
 }
-
-
