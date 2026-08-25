@@ -1,0 +1,201 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{deploying-a-sovereign-satspath-authority}{%
+\section{Deploying a Sovereign SatsPath
+Authority}\label{deploying-a-sovereign-satspath-authority}}
+
+This guide explains how to deploy \texttt{satspathd} as a
+\textbf{sovereign single-domain authority} or a \textbf{multi-tenant
+hosted provider}.
+
+SatsPath allows \texttt{name@yourdomain.com} to be realistically
+deployable without hiding the underlying security model.
+
+\hypertarget{onboarding-workflow}{%
+\subsection{Onboarding Workflow}\label{onboarding-workflow}}
+
+\hypertarget{initialize-operator-and-dns-records}{%
+\subsubsection{1. Initialize Operator and DNS
+Records}\label{initialize-operator-and-dns-records}}
+
+Run the CLI operator tool to generate your operator keys and output the
+required DNS records:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ server init yourdomain.com}
+\end{Highlighting}
+\end{Shaded}
+
+Add the printed \texttt{TXT} records to your DNS provider (e.g.,
+Cloudflare, Route53, Bind).
+
+\hypertarget{verify-dns-and-trust-quorum}{%
+\subsubsection{2. Verify DNS and Trust
+Quorum}\label{verify-dns-and-trust-quorum}}
+
+Once DNS records propagate, verify the DNSSEC chain, operator key, and
+transparency log:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{satspath}\NormalTok{ server check yourdomain.com}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{deploy-with-docker-compose}{%
+\subsubsection{3. Deploy with Docker
+Compose}\label{deploy-with-docker-compose}}
+
+We provide a reproducible deployment via Docker Compose. Private user
+keys \textbf{never} reside on the server and are generated locally by
+users.
+
+Edit \texttt{docker-compose.yml} to set
+\texttt{SATSPATH\_AUTHORITY\_DOMAIN} and deploy:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{docker{-}compose}\NormalTok{ up }\AttributeTok{{-}d}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{reverse-proxy-tls-example-caddy}{%
+\subsubsection{4. Reverse Proxy TLS Example
+(Caddy)}\label{reverse-proxy-tls-example-caddy}}
+
+We strongly recommend placing \texttt{satspathd} behind a
+TLS-terminating reverse proxy.
+
+\textbf{Caddyfile example}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{yourdomain.com \{}
+\NormalTok{    reverse\_proxy localhost:4848}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{backup-restore}{%
+\subsection{Backup \& Restore}\label{backup-restore}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Backup}: Backup the \texttt{satspath-data} docker volume.
+  Backups exclude user identity private keys because those keys never
+  reside on the server.
+\item
+  \textbf{Restore}: Restoring a backup preserves the transparency
+  \texttt{log\_id}, pins, histories, and witness continuity.
+\end{itemize}
+
+\hypertarget{upgrade-guidance}{%
+\subsection{Upgrade Guidance}\label{upgrade-guidance}}
+
+Upgrading \texttt{satspathd} is as simple as pulling the latest
+container image and restarting:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{docker{-}compose}\NormalTok{ pull}
+\ExtensionTok{docker{-}compose}\NormalTok{ up }\AttributeTok{{-}d}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}
