@@ -29,12 +29,13 @@
 
 ## Images
 
-| Image | Base | Size target | Binary |
-|---|---|---|---|
-| `satspath-cli` | `debian:bookworm-slim` | ~25 MB | `/usr/local/bin/satspath` |
-| `satspath-ark-bridge` | `node:20-bookworm-slim` | ~120 MB | `node dist/index.js` |
+| Image                 | Base                    | Size target | Binary                    |
+| --------------------- | ----------------------- | ----------- | ------------------------- |
+| `satspath-cli`        | `debian:bookworm-slim`  | ~25 MB      | `/usr/local/bin/satspath` |
+| `satspath-ark-bridge` | `node:20-bookworm-slim` | ~120 MB     | `node dist/index.js`      |
 
 Both images use:
+
 - **Non-root user** (UID 10001 / 10002)
 - **Read-only root filesystem** (`read_only: true`)
 - **All capabilities dropped** (`cap_drop: ALL`)
@@ -46,6 +47,7 @@ Both images use:
 ## Quick Start
 
 ### Prerequisites
+
 - Docker ≥ 24 (or Podman ≥ 4) with BuildKit enabled
 - `docker compose` v2 plugin (or `docker-compose` v1)
 
@@ -125,14 +127,14 @@ make smoke         # Build + verify --help / node --version
 
 ### What is protected
 
-| Concern | Mitigation |
-|---|---|
-| Private keys in image | `.dockerignore` blocks `*.key`, `.satspath/`, `.env` |
-| Root escalation | `no-new-privileges`, `cap_drop: ALL`, non-root users |
-| Container escape | Read-only root filesystem + tmpfs for `/tmp` only |
-| Dependency supply chain | `npm ci --ignore-scripts` (no postinstall scripts) |
-| Secret injection | `.env` is gitignored; use Docker secrets or env at runtime |
-| Vulnerability tracking | Trivy scan in CI via `.github/workflows/docker.yml` |
+| Concern                 | Mitigation                                                 |
+| ----------------------- | ---------------------------------------------------------- |
+| Private keys in image   | `.dockerignore` blocks `*.key`, `.satspath/`, `.env`       |
+| Root escalation         | `no-new-privileges`, `cap_drop: ALL`, non-root users       |
+| Container escape        | Read-only root filesystem + tmpfs for `/tmp` only          |
+| Dependency supply chain | `npm ci --ignore-scripts` (no postinstall scripts)         |
+| Secret injection        | `.env` is gitignored; use Docker secrets or env at runtime |
+| Vulnerability tracking  | Trivy scan in CI via `.github/workflows/docker.yml`        |
 
 ### What is intentionally not in Docker
 
@@ -177,6 +179,7 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 
 **`Permission denied: /data`**
 → The `satspath-data` volume ownership may be wrong. Run:
+
 ```bash
 docker compose run --rm --user root satspath-cli chown -R 10001:10001 /data
 ```

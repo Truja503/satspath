@@ -461,9 +461,7 @@ Nostr transport uses NIP-05 to bind an identifier domain to a Nostr pubkey and r
 {
   "kind": 30078,
   "pubkey": "<nip05 nostr pubkey hex>",
-  "tags": [
-    ["d", "satspath-profile:alice@example.com"]
-  ],
+  "tags": [["d", "satspath-profile:alice@example.com"]],
   "content": "{\"profile\":{...},\"signature\":\"3044...\"}"
 }
 ```

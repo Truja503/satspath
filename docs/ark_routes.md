@@ -40,4 +40,3 @@ fails closed for execution.
   confirmation text, profile validation, Ark ownership proof validation, bridge
   availability, encrypted swap storage, and claim/refund builder availability.
 - Boltz Ark swap settlement is not implemented end to end.
-

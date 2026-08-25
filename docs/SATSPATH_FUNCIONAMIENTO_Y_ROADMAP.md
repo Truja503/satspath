@@ -298,11 +298,11 @@ Esto permite realizar pagos reales sin que SatsPath almacene las claves privadas
 
 La responsabilidad se divide así:
 
-| Componente | Responsabilidad |
-|---|---|
-| SatsPath | Resolver identidad, verificar perfil, escoger rail y construir la instrucción |
-| Wallet | Mostrar confirmación, firmar y ejecutar el pago |
-| Red o protocolo | Liquidar o transmitir el pago |
+| Componente      | Responsabilidad                                                               |
+| --------------- | ----------------------------------------------------------------------------- |
+| SatsPath        | Resolver identidad, verificar perfil, escoger rail y construir la instrucción |
+| Wallet          | Mostrar confirmación, firmar y ejecutar el pago                               |
+| Red o protocolo | Liquidar o transmitir el pago                                                 |
 
 Esta separación es una propiedad del diseño, no una limitación conceptual. Mantiene a SatsPath como infraestructura no custodial y facilita su integración con varias wallets.
 

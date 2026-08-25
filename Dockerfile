@@ -55,6 +55,7 @@ LABEL org.opencontainers.image.title="satspath-cli" \
 
 # Security: install only the minimum required CA certificates (needed for HTTPS).
 RUN apt-get update -qq \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -95,6 +96,7 @@ LABEL org.opencontainers.image.title="satspathd" \
 
 # Security: install CA certificates and curl (for docker healthchecks).
 RUN apt-get update -qq \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*

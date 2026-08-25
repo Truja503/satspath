@@ -25,14 +25,14 @@ crates/satspath-core/src/profile.rs
 
 Spec mapping:
 
-| Spec object | Rust type |
-| --- | --- |
-| `PaymentProfile` | `PaymentProfile` |
-| `SignedPaymentProfile` | `SignedPaymentProfile` |
+| Spec object               | Rust type                  |
+| ------------------------- | -------------------------- |
+| `PaymentProfile`          | `PaymentProfile`           |
+| `SignedPaymentProfile`    | `SignedPaymentProfile`     |
 | `PaymentMethod.Lightning` | `PaymentMethod::Lightning` |
-| `PaymentMethod.Onchain` | `PaymentMethod::Onchain` |
-| `PaymentMethod.Ark` | `PaymentMethod::Ark` |
-| Invite | `Invite`, `InviteRecord` |
+| `PaymentMethod.Onchain`   | `PaymentMethod::Onchain`   |
+| `PaymentMethod.Ark`       | `PaymentMethod::Ark`       |
+| Invite                    | `Invite`, `InviteRecord`   |
 
 ## Signature and Safety Validation
 
@@ -68,14 +68,14 @@ crates/satspath-core/src/peer_registry.rs
 
 Current resolver surfaces:
 
-| Resolver | File | Status |
-| --- | --- | --- |
-| Local registry | `registry.rs` | Active |
-| Local peer registry | `peer_registry.rs` | Active local storage |
-| BIP-353 | `resolvers/bip353.rs`, `bip353.rs` | Resolver and DNS primitives; strict DNSSEC fails closed without validator |
-| HTTPS | `resolvers/http.rs` | Active |
-| Nostr | `resolvers/nostr.rs` | Active NIP-05 + kind 30078 resolver |
-| Platform | `resolvers/platform.rs` | Scaffold |
+| Resolver            | File                               | Status                                                                    |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| Local registry      | `registry.rs`                      | Active                                                                    |
+| Local peer registry | `peer_registry.rs`                 | Active local storage                                                      |
+| BIP-353             | `resolvers/bip353.rs`, `bip353.rs` | Resolver and DNS primitives; strict DNSSEC fails closed without validator |
+| HTTPS               | `resolvers/http.rs`                | Active                                                                    |
+| Nostr               | `resolvers/nostr.rs`               | Active NIP-05 + kind 30078 resolver                                       |
+| Platform            | `resolvers/platform.rs`            | Scaffold                                                                  |
 
 Resolver chain behavior is implemented by `ChainResolver`.
 
@@ -92,14 +92,14 @@ crates/satspath-router/src/lightning.rs
 
 Spec mapping:
 
-| Spec behavior | Implementation |
-| --- | --- |
-| Resolve identifier | `quote_inner` + `ProfileResolver` |
-| Verify profile | `verify_signed_profile` |
-| Check expiry | `check_profile_expiry` |
-| Select route | `select_route`, `select_route_with_fees` |
-| Build payment payload | `build_qr_payload` |
-| Stable response | `QuoteResponse` |
+| Spec behavior         | Implementation                           |
+| --------------------- | ---------------------------------------- |
+| Resolve identifier    | `quote_inner` + `ProfileResolver`        |
+| Verify profile        | `verify_signed_profile`                  |
+| Check expiry          | `check_profile_expiry`                   |
+| Select route          | `select_route`, `select_route_with_fees` |
+| Build payment payload | `build_qr_payload`                       |
+| Stable response       | `QuoteResponse`                          |
 
 `QuoteResponse` status values:
 
@@ -122,18 +122,18 @@ crates/satspathd/src/main.rs
 
 The daemon exposes the protocol over a local HTTP API:
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /health` | Liveness |
-| `GET /v1/status` | Local daemon/protocol status |
-| `GET /v1/node` | Aggregate status, profile, peers, connections |
-| `GET /v1/profile` | Local wallet profile state |
-| `PUT/POST /v1/profile` | Create or update local public profile |
-| `POST /v1/profile/methods` | Update receive methods |
-| `POST /v1/resolve` | Resolve a local profile |
-| `POST /v1/quote` | Protocol quote response |
-| `POST /v1/pay` | Wallet handoff using protocol quote response |
-| `POST /v1/dns/resolve` | BIP-353/DNS resolution |
+| Endpoint                   | Purpose                                       |
+| -------------------------- | --------------------------------------------- |
+| `GET /health`              | Liveness                                      |
+| `GET /v1/status`           | Local daemon/protocol status                  |
+| `GET /v1/node`             | Aggregate status, profile, peers, connections |
+| `GET /v1/profile`          | Local wallet profile state                    |
+| `PUT/POST /v1/profile`     | Create or update local public profile         |
+| `POST /v1/profile/methods` | Update receive methods                        |
+| `POST /v1/resolve`         | Resolve a local profile                       |
+| `POST /v1/quote`           | Protocol quote response                       |
+| `POST /v1/pay`             | Wallet handoff using protocol quote response  |
+| `POST /v1/dns/resolve`     | BIP-353/DNS resolution                        |
 
 `/v1/pay` does not move funds. It returns a wallet handoff containing a public payment payload and QR SVG.
 
@@ -147,13 +147,13 @@ crates/satspath-cli/src/
 
 Important commands:
 
-| Command area | Protocol role |
-| --- | --- |
-| `register` | Create signed public profile |
-| `wallet` | Manage local receive profile |
-| `quote` | Produce quote response |
-| `pay` | Preview/handoff flow |
-| `dns` | BIP-353 resolver tooling |
+| Command area         | Protocol role                        |
+| -------------------- | ------------------------------------ |
+| `register`           | Create signed public profile         |
+| `wallet`             | Manage local receive profile         |
+| `quote`              | Produce quote response               |
+| `pay`                | Preview/handoff flow                 |
+| `dns`                | BIP-353 resolver tooling             |
 | `peer export/import` | Manual transport for signed profiles |
 
 The CLI is a reference client for local development and protocol testing.
