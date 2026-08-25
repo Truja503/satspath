@@ -22,8 +22,8 @@ pub fn canonicalize_identifier(identifier: &str) -> String {
     if let Some((local, domain)) = s.split_once('@') {
         let domain_clean = domain.trim();
         // Convert domain to punycode/ascii using IDNA standard
-        let ascii_domain = idna::domain_to_ascii(domain_clean)
-            .unwrap_or_else(|_| domain_clean.to_string());
+        let ascii_domain =
+            idna::domain_to_ascii(domain_clean).unwrap_or_else(|_| domain_clean.to_string());
         format!("{}@{}", local.trim(), ascii_domain)
     } else {
         s
