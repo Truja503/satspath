@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use satspath_core::canonicalize_identifier;
 use serde::Deserialize;
 use sha2::Digest;
