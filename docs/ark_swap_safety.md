@@ -39,4 +39,3 @@ If any gate fails, execution is blocked and the command remains preview-only.
 - Ark offboard execution to arbitrary BTC destinations.
 - Reverse/chain claim transaction builders.
 - Submarine refund transaction builder.
-

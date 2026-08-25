@@ -206,4 +206,3 @@ The bridge publishes the local signed profile over the P2P transport. The same p
 Version 1 receivers SHOULD ignore unknown envelope fields. Version 1 receivers MUST reject unknown required message semantics if a future message declares them.
 
 Future wire versions may change message types or add encryption, but must preserve the core protocol invariant: profiles are verified as SatsPath signed profiles before routing.
-

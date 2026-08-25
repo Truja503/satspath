@@ -2,10 +2,11 @@
 
 ## What SatsPath Is
 
-SatsPath is a robust backend engine, protocol daemon (`satspathd`), and CLI designed to act as a universal signed payment resolver and router. 
+SatsPath is a robust backend engine, protocol daemon (`satspathd`), and CLI designed to act as a universal signed payment resolver and router.
 It is intended to be embedded into existing wallets (via WASM or FFI) or run as a standalone service, acting as the "brain" for resolving identity profiles and optimizing payment routing.
 
 It can:
+
 - Resolve a local or peer-registered signed profile via multiple resolution methods (Local Registry, BIP-353 DNS, HTTP Well-Known, Nostr).
 - Select an optimal payment rail (Lightning, On-chain, Ark) based on live mempool fees and routing rules.
 - Authenticate and verify hybrid Post-Quantum signatures (ML-DSA-65 + Schnorr).
@@ -14,6 +15,7 @@ It can:
 - Preview swap directives (testnet only).
 
 It cannot (and intentionally does not):
+
 - Move funds automatically.
 - Sign Bitcoin transactions (no PSBT signing).
 - Broadcast anything to the network.
@@ -50,26 +52,26 @@ SatsPath is built with a strict Zero-Trust model:
 
 ## What is Implemented vs. What is Not
 
-| Feature | Status |
-|---------|--------|
-| Signed profile resolution (Nostr, HTTP, Local, BIP-353) | ✅ |
-| Hybrid Identity Signature Verification (PQC ML-DSA + Schnorr) | ✅ |
-| SSRF-protected Resolvers | ✅ |
-| Live mempool fee fetch (mempool.space / mempool.ninja) | ✅ |
-| Lightning rail selection (amount < 100k sats) | ✅ |
-| On-chain rail (fastestFee ≤ 20 sat/vB) | ✅ |
-| Ark fallback (high fees) | ✅ |
-| LNURL-pay two-step invoice fetch | ✅ |
-| BOLT12 HTTP proxy resolution | ✅ |
-| Silent Payments (BIP-352) URI injection | ✅ |
-| Terminal QR code (Dense1x2 unicode) | ✅ |
-| LocalPeerRegistry (SHA-256 keyed, no raw email) | ✅ |
-| SwapStore AES-256-GCM encryption & sensitive guards | ✅ |
-| Boltz API client & Swap creation (testnet scaffolding) | ✅ scaffold |
-| Claim/Refund transaction construction | ❌ Out of scope |
-| PSBT signing | ❌ Out of scope |
-| Ark VTXO DAG validation | ❌ Delegated to Wallet |
-| Mainnet swap execution | ❌ Intentionally out of scope |
+| Feature                                                       | Status                        |
+| ------------------------------------------------------------- | ----------------------------- |
+| Signed profile resolution (Nostr, HTTP, Local, BIP-353)       | ✅                            |
+| Hybrid Identity Signature Verification (PQC ML-DSA + Schnorr) | ✅                            |
+| SSRF-protected Resolvers                                      | ✅                            |
+| Live mempool fee fetch (mempool.space / mempool.ninja)        | ✅                            |
+| Lightning rail selection (amount < 100k sats)                 | ✅                            |
+| On-chain rail (fastestFee ≤ 20 sat/vB)                        | ✅                            |
+| Ark fallback (high fees)                                      | ✅                            |
+| LNURL-pay two-step invoice fetch                              | ✅                            |
+| BOLT12 HTTP proxy resolution                                  | ✅                            |
+| Silent Payments (BIP-352) URI injection                       | ✅                            |
+| Terminal QR code (Dense1x2 unicode)                           | ✅                            |
+| LocalPeerRegistry (SHA-256 keyed, no raw email)               | ✅                            |
+| SwapStore AES-256-GCM encryption & sensitive guards           | ✅                            |
+| Boltz API client & Swap creation (testnet scaffolding)        | ✅ scaffold                   |
+| Claim/Refund transaction construction                         | ❌ Out of scope               |
+| PSBT signing                                                  | ❌ Out of scope               |
+| Ark VTXO DAG validation                                       | ❌ Delegated to Wallet        |
+| Mainnet swap execution                                        | ❌ Intentionally out of scope |
 
 ## Getting Started (Dockerized Environment)
 

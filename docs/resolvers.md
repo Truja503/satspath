@@ -148,9 +148,7 @@ Reference event shape:
 {
   "kind": 30078,
   "pubkey": "<nip05 nostr pubkey hex>",
-  "tags": [
-    ["d", "satspath-profile:alice@example.com"]
-  ],
+  "tags": [["d", "satspath-profile:alice@example.com"]],
   "content": "{\"profile\":{...},\"signature\":\"3044...\"}"
 }
 ```
@@ -174,15 +172,15 @@ P2P wire behavior is specified in [wire_p2p.md](./wire_p2p.md).
 
 Resolver outcome maps to quote behavior as follows:
 
-| Resolver outcome | Quote behavior |
-| --- | --- |
-| Profile plus all required transparency evidence verified | Continue with ownership-verified methods only |
-| Transparency, checkpoint binding or operator continuity fails | `no_route` / explicit transparency error; never route |
-| No resolver found a profile | `not_registered` |
-| Profile found but signature invalid | `invalid_signature` |
-| Profile expired | `no_route` |
-| Profile has no supported rail | `no_route` |
-| Transient resolver failures only | `not_registered` unless a stricter caller wants diagnostics |
+| Resolver outcome                                              | Quote behavior                                              |
+| ------------------------------------------------------------- | ----------------------------------------------------------- |
+| Profile plus all required transparency evidence verified      | Continue with ownership-verified methods only               |
+| Transparency, checkpoint binding or operator continuity fails | `no_route` / explicit transparency error; never route       |
+| No resolver found a profile                                   | `not_registered`                                            |
+| Profile found but signature invalid                           | `invalid_signature`                                         |
+| Profile expired                                               | `no_route`                                                  |
+| Profile has no supported rail                                 | `no_route`                                                  |
+| Transient resolver failures only                              | `not_registered` unless a stricter caller wants diagnostics |
 
 Implementations SHOULD expose resolver diagnostics in debug APIs, but the user-facing quote response remains the stable protocol contract.
 

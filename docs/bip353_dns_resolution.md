@@ -64,10 +64,10 @@ malicious resolver.
 
 `DnssecPolicy` has two modes:
 
-| Mode | Behavior |
-|------|----------|
-| `Strict` (default) | Require real DNSSEC validation; **fail closed** otherwise. |
-| `DevInsecure` | Local testing only. Accept unvalidated records with loud warnings. Never the default; requires `--allow-insecure-dns-for-dev`. |
+| Mode               | Behavior                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Strict` (default) | Require real DNSSEC validation; **fail closed** otherwise.                                                                     |
+| `DevInsecure`      | Local testing only. Accept unvalidated records with loud warnings. Never the default; requires `--allow-insecure-dns-for-dev`. |
 
 This build does not ship a local DNSSEC validator, so `Strict` resolution **fails
 closed** with a clear message (option C of the BIP-353 DNSSEC guidance). A future
@@ -141,9 +141,9 @@ changes always require identity proof.
 
 ## TTL recommendations
 
-| Instruction kind | TTL |
-|------------------|-----|
-| Rotating on-chain address | 300 seconds |
+| Instruction kind                       | TTL          |
+| -------------------------------------- | ------------ |
+| Rotating on-chain address              | 300 seconds  |
 | Reusable BOLT12 offer / Silent Payment | 1800 seconds |
 
 A direct on-chain address in a record is treated as **rotating** and emits a

@@ -9,15 +9,17 @@
 ## Current Architecture Summary
 
 ### SatsPath (Rust) — Existing Components
-| Crate | Purpose | Key Exports |
-|-------|---------|-------------|
-| `satspath-core` | Types, crypto, resolvers, registry, profile signing | `PaymentMethod`, `SignedPaymentProfile`, `ChainResolver`, `Registry` |
-| `satspath-router` | Rail selection logic | `quote()`, `select_route()`, `RouteQuote`, `FeeEstimate` |
-| `satspath-cli` | CLI: `init`, `register`, `quote`, `pay`, `preview` | — |
-| `satspathd` | HTTP daemon (`/v1/quote`, `/v1/pay`, `/v1/resolve`) | — |
-| `satspath-wasm` | WASM bindings (crypto only today) | `verify_signed_profile`, `canonical_profile_json`, `topic_for_alias` |
+
+| Crate             | Purpose                                             | Key Exports                                                          |
+| ----------------- | --------------------------------------------------- | -------------------------------------------------------------------- |
+| `satspath-core`   | Types, crypto, resolvers, registry, profile signing | `PaymentMethod`, `SignedPaymentProfile`, `ChainResolver`, `Registry` |
+| `satspath-router` | Rail selection logic                                | `quote()`, `select_route()`, `RouteQuote`, `FeeEstimate`             |
+| `satspath-cli`    | CLI: `init`, `register`, `quote`, `pay`, `preview`  | —                                                                    |
+| `satspathd`       | HTTP daemon (`/v1/quote`, `/v1/pay`, `/v1/resolve`) | —                                                                    |
+| `satspath-wasm`   | WASM bindings (crypto only today)                   | `verify_signed_profile`, `canonical_profile_json`, `topic_for_alias` |
 
 ### Arkade SDK (TypeScript) — Existing Components
+
 - **Tier 1**: VTXO DAG reconstruction + Schnorr/MuSig2 validation
 - **Tier 2**: Taproot tree audit + CSV delays + Boltz HTLC support
 - **Tier 3**: Sovereign exit — local encrypted storage + ASP-independent broadcast
@@ -28,6 +30,7 @@
 ## Integration Strategy: WASM Bindings
 
 Extend `satspath-wasm` to expose **resolver chain + router** to TypeScript. Arkade wallet calls:
+
 ```typescript
 const quote = await satspath.quote("Truja@sexo.ya", 21000n);
 // → { selected_method, reason, fee_sats, eta, qr, execution_mode }
@@ -40,15 +43,18 @@ const quote = await satspath.quote("Truja@sexo.ya", 21000n);
 ## MVP Scope (4-6 Weeks)
 
 ### Phase 1: Extend satspath-wasm (Week 1-2)
+
 **Goal**: Expose resolver + router to TypeScript via WASM
 
 **Tasks**:
+
 1. Add `wasm` feature flags to `satspath-core` and `satspath-router` (remove `tokio`/`reqwest` dependencies)
 2. Create WASM-compatible resolver implementations using `web-sys` fetch
 3. Export `quote()`, `verify_signed_profile()`, `ChainResolver`, `Registry` from `satspath-wasm`
 4. Add `fingerprint_pubkey()`, `mask_identifier()` helpers
 
 **Files to modify**:
+
 - `crates/satspath-core/Cargo.toml` — add `wasm` feature
 - `crates/satspath-router/Cargo.toml` — add `wasm` feature
 - `crates/satspath-wasm/src/lib.rs` — new exports
@@ -56,47 +62,61 @@ const quote = await satspath.quote("Truja@sexo.ya", 21000n);
 - `crates/satspath-wasm/src/router.rs` — NEW: router wrapper
 
 ### Phase 2: Build WASM Package (Week 2)
+
 **Goal**: Publish `@satspath/wasm` npm package
 
 **Tasks**:
+
 1. Configure `wasm-pack` build for web target
 2. Generate TypeScript definitions via `wasm-bindgen`
-2. Publish to local npm registry or GitHub Packages
-3. Verify import in TypeScript: `import { quote } from '@satspath/wasm'`
+3. Publish to local npm registry or GitHub Packages
+4. Verify import in TypeScript: `import { quote } from '@satspath/wasm'`
 
 ### Phase 3: Arkade Wallet Service Layer (Week 2-3)
+
 **Goal**: Integrate WASM into Arkade wallet services
 
 **New file**: `arkade-wallet/src/services/satspath.ts`
-```typescript
-import { quote, verify_signed_profile, ChainResolver } from '@satspath/wasm';
 
-export async function getPaymentQuote(alias: string, amountSats: bigint): Promise<PaymentQuote>
-export function verifyProfile(profile: SignedPaymentProfile): boolean
-export async function resolveProfile(alias: string): Promise<SignedPaymentProfile>
+```typescript
+import { quote, verify_signed_profile, ChainResolver } from "@satspath/wasm";
+
+export async function getPaymentQuote(
+  alias: string,
+  amountSats: bigint,
+): Promise<PaymentQuote>;
+export function verifyProfile(profile: SignedPaymentProfile): boolean;
+export async function resolveProfile(
+  alias: string,
+): Promise<SignedPaymentProfile>;
 ```
 
 **Types**: `arkade-wallet/src/types/satspath.ts` (mirror Rust types)
 
 ### Phase 4: Send/Receive UI Flows (Week 3-4)
+
 **Goal**: User-facing flows in Arkade wallet
 
 **Send Flow** (`SendFlow.tsx`):
+
 ```
 Input: alias + amount → satspath.quote() → shows rail + fee + QR → Pay button
 ```
 
 **Receive Flow** (`ReceiveFlow.tsx`):
+
 ```
 Manage identity keypair → Add payment methods → Sign profile → Publish (HTTPS/Nostr)
 ```
 
 **Components**:
+
 - `RailSelector.tsx` — Shows selected rail, reason, fee, ETA
 - `OwnershipBadges.tsx` — ✓/⚠ per method verification status
 - `ArkVtxoStatus.tsx` — VTXO verification progress + sovereign exit status
 
 ### Phase 5: Ark VTXO Verification (Week 4)
+
 **Goal**: When Ark rail selected, run Arkade SDK verification
 
 ```typescript
@@ -120,6 +140,7 @@ async function sendViaArk(quote: RouteQuote, amountSats: bigint) {
 ```
 
 ### Phase 6: Profile Management + Ownership Proofs (Week 4-5)
+
 **Goal**: Full identity lifecycle
 
 - Generate secp256k1 identity keypair (encrypted at rest via Web Crypto API)
@@ -130,6 +151,7 @@ async function sendViaArk(quote: RouteQuote, amountSats: bigint) {
 - Profile publication: HTTPS well-known → Nostr NIP-05
 
 ### Phase 7: Testing + E2E (Week 5-6)
+
 - Testnet Lightning payment (LDK)
 - Testnet On-chain payment (BDK)
 - Testnet Ark payment + VTXO verification
@@ -188,9 +210,29 @@ impl WasmChainResolver {
 ```typescript
 // arkade-wallet/src/types/satspath.ts
 export type PaymentMethod =
-  | { type: "Lightning"; label: string; lightning_address?: string; lnurl?: string; bolt12?: string; receiver_pubkey?: string }
-  | { type: "Onchain"; label: string; network: "mainnet" | "testnet" | "regtest"; address?: string; silent_payment_pubkey?: string }
-  | { type: "Ark"; label: string; server: string; pubkey: string; vtxo_pointer?: string; opaque_uri?: string };
+  | {
+      type: "Lightning";
+      label: string;
+      lightning_address?: string;
+      lnurl?: string;
+      bolt12?: string;
+      receiver_pubkey?: string;
+    }
+  | {
+      type: "Onchain";
+      label: string;
+      network: "mainnet" | "testnet" | "regtest";
+      address?: string;
+      silent_payment_pubkey?: string;
+    }
+  | {
+      type: "Ark";
+      label: string;
+      server: string;
+      pubkey: string;
+      vtxo_pointer?: string;
+      opaque_uri?: string;
+    };
 
 export interface PaymentProfile {
   alias: string;
@@ -215,7 +257,8 @@ export interface RouteQuote {
   estimated_fee_sats: number;
   estimated_confirmation: string;
   fee_snapshot?: FeeSnapshot;
-  execution_mode: "Preview" | "MainnetPreview" | "TestnetExperimental" | "ManualWallet";
+  execution_mode:
+    "Preview" | "MainnetPreview" | "TestnetExperimental" | "ManualWallet";
   wallet_hint: string;
 }
 
@@ -277,13 +320,13 @@ arkade-wallet/
 
 ## Risk Mitigation
 
-| Risk | Mitigation |
-|------|------------|
-| WASM bundle too large | `wasm-opt -Oz`, tree-shake unused crate code, lazy-load |
+| Risk                                       | Mitigation                                                                 |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| WASM bundle too large                      | `wasm-opt -Oz`, tree-shake unused crate code, lazy-load                    |
 | Resolver chain fails in browser (CORS/DNS) | Fallback: HTTP daemon proxy for DNS/Nostr; HTTPS well-known works natively |
-| Ark VTXO verification slow | Run async with progress UI; cache verified VTXOs |
-| Profile publication complex | MVP: HTTPS well-known only; Nostr/P2P post-MVP |
-| Fee estimation inaccurate | Use mempool.space API + 10% buffer (already in router) |
+| Ark VTXO verification slow                 | Run async with progress UI; cache verified VTXOs                           |
+| Profile publication complex                | MVP: HTTPS well-known only; Nostr/P2P post-MVP                             |
+| Fee estimation inaccurate                  | Use mempool.space API + 10% buffer (already in router)                     |
 
 ---
 
@@ -311,4 +354,4 @@ arkade-wallet/
 
 ---
 
-*Generated as part of SatsPath × Arkade MVP integration. See `satspath/README.md` for protocol overview.*
+_Generated as part of SatsPath × Arkade MVP integration. See `satspath/README.md` for protocol overview._

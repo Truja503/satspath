@@ -3,7 +3,7 @@
 **Status:** Draft / Normative Specification  
 **Parent Epic:** [#46](https://github.com/Truja503/satspath/issues/46)  
 **Issue:** [#48](https://github.com/Truja503/satspath/issues/48)  
-**Depends On:** [docs/s2s/trust-model-v2.md](file:///home/chelo/antigravity/PlanB/satspath/docs/s2s/trust-model-v2.md)  
+**Depends On:** [docs/s2s/trust-model-v2.md](file:///home/chelo/antigravity/PlanB/satspath/docs/s2s/trust-model-v2.md)
 
 ---
 
@@ -12,6 +12,7 @@
 The SatsPath v2 S2S Wire Protocol defines the HTTP and cryptographic interface that clients, resolvers, and peer servers use to discover authority, resolve identifiers, verify cryptographic proofs, and synchronize transparency logs.
 
 ### Core Principles
+
 1. **Self-Contained Proof Envelopes**: A resolution response carries all cryptographic proofs necessary for a pure verifier to establish integrity, origin, and freshness without querying secondary endpoints.
 2. **Deterministic Canonicalization**: All cryptographic commitments use strict domain separation (`SatsPath*V1` / `SatsPath*V2`) and canonical JSON (RFC 8785) formatting.
 3. **Fail-Closed Verification**: Any missing mandatory field, unknown schema extension, malformed proof, or broken consistency chain terminates verification immediately.
@@ -40,6 +41,7 @@ All hashes are SHA-256 over domain-separated prefixes followed by RFC 8785 canon
 ## 3. Protocol Data Objects (Rust & JSON Schemas)
 
 ### 3.1. Namespace Descriptor (`NamespaceDescriptor`)
+
 Discovered via DNS TXT or `/.well-known/satspath-authority`.
 
 ```rust
@@ -59,6 +61,7 @@ pub struct NamespaceDescriptor {
 ```
 
 ### 3.2. Witness Cosignature (`WitnessCosignature`)
+
 Guarantees global consistency and split-view prevention.
 
 ```rust
@@ -75,6 +78,7 @@ pub struct WitnessCosignature {
 ```
 
 ### 3.3. Resolution Envelope (`ResolutionEnvelope`)
+
 The comprehensive proof payload returned on resolution.
 
 ```rust
@@ -101,42 +105,47 @@ pub struct ResolutionEnvelope {
 All endpoints use `Content-Type: application/vnd.satspath.v2+json; charset=utf-8`.
 
 ### 4.1. Authority Discovery
-* **Endpoint**: `GET /.well-known/satspath-authority`
-* **Query Parameters**: None
-* **Response**: `200 OK` with `NamespaceDescriptor`
-* **Caching**: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`
+
+- **Endpoint**: `GET /.well-known/satspath-authority`
+- **Query Parameters**: None
+- **Response**: `200 OK` with `NamespaceDescriptor`
+- **Caching**: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`
 
 ### 4.2. Proof-Carrying Identifier Resolution
-* **Endpoint**: `GET /v2/resolve`
-* **Query Parameters**:
-  * `identifier` (required): Canonical format `user@domain.com` (lowercase, UTF-8).
-  * `pinned_tree_size` (optional): Client's last observed tree size to request inline consistency proof.
-  * `include_history` (optional): `true` / `false` (defaults to `true`).
-* **Alternative**: `POST /v2/resolve` with JSON body `{"identifier": "...", "pinned_tree_size": ...}` to avoid URL proxy logging of private sub-identifiers.
-* **Response**: `200 OK` with `ResolutionEnvelope`.
-* **Errors**:
-  * `404 Not Found`: Identifier does not exist (returns cryptographically signed non-inclusion proof).
-  * `400 Bad Request`: Malformed identifier syntax.
-  * `503 Service Unavailable`: Log synchronization in progress.
+
+- **Endpoint**: `GET /v2/resolve`
+- **Query Parameters**:
+  - `identifier` (required): Canonical format `user@domain.com` (lowercase, UTF-8).
+  - `pinned_tree_size` (optional): Client's last observed tree size to request inline consistency proof.
+  - `include_history` (optional): `true` / `false` (defaults to `true`).
+- **Alternative**: `POST /v2/resolve` with JSON body `{"identifier": "...", "pinned_tree_size": ...}` to avoid URL proxy logging of private sub-identifiers.
+- **Response**: `200 OK` with `ResolutionEnvelope`.
+- **Errors**:
+  - `404 Not Found`: Identifier does not exist (returns cryptographically signed non-inclusion proof).
+  - `400 Bad Request`: Malformed identifier syntax.
+  - `503 Service Unavailable`: Log synchronization in progress.
 
 ### 4.3. Checkpoint Retrieval
-* **Endpoint**: `GET /v2/checkpoint`
-* **Response**: `200 OK` with latest `TransparencyCheckpoint` and attached `witness_cosignatures`.
-* **Caching**: `Cache-Control: public, max-age=15`
+
+- **Endpoint**: `GET /v2/checkpoint`
+- **Response**: `200 OK` with latest `TransparencyCheckpoint` and attached `witness_cosignatures`.
+- **Caching**: `Cache-Control: public, max-age=15`
 
 ### 4.4. Consistency Proof Retrieval
-* **Endpoint**: `GET /v2/proof/consistency`
-* **Query Parameters**:
-  * `old` (required): Previous tree size $N_1$.
-  * `new` (required): Target tree size $N_2$ ($N_2 \ge N_1$).
-* **Response**: `200 OK` with `MerkleConsistencyProof` (RFC 6962 format).
+
+- **Endpoint**: `GET /v2/proof/consistency`
+- **Query Parameters**:
+  - `old` (required): Previous tree size $N_1$.
+  - `new` (required): Target tree size $N_2$ ($N_2 \ge N_1$).
+- **Response**: `200 OK` with `MerkleConsistencyProof` (RFC 6962 format).
 
 ### 4.5. Monitor Entry Stream
-* **Endpoint**: `GET /v2/entries`
-* **Query Parameters**:
-  * `from` (required): Start leaf index (inclusive, 0-indexed).
-  * `to` (required): End leaf index (inclusive, max delta: 1000).
-* **Response**: `200 OK` with JSON array of `NameEvent` leaves.
+
+- **Endpoint**: `GET /v2/entries`
+- **Query Parameters**:
+  - `from` (required): Start leaf index (inclusive, 0-indexed).
+  - `to` (required): End leaf index (inclusive, max delta: 1000).
+- **Response**: `200 OK` with JSON array of `NameEvent` leaves.
 
 ---
 
@@ -179,13 +188,13 @@ A compliant SatsPath v2 verifier executes the following ordered sequence:
 
 ## 6. Limits, Timeouts & Error Mapping
 
-| Parameter | Limit / Policy |
-|---|---|
-| Max Resolution Envelope Size | 65,536 bytes (64 KiB) |
+| Parameter                      | Limit / Policy                                         |
+| ------------------------------ | ------------------------------------------------------ |
+| Max Resolution Envelope Size   | 65,536 bytes (64 KiB)                                  |
 | Max History Events in Response | 256 events (older history retrieved via `/v2/entries`) |
-| Max S2S Request Timeout | 5000 ms |
-| Max Allowed Clock Skew | $\pm 300$ seconds (5 minutes) |
-| Allowed Compression | `gzip`, `zstd`, `br` |
+| Max S2S Request Timeout        | 5000 ms                                                |
+| Max Allowed Clock Skew         | $\pm 300$ seconds (5 minutes)                          |
+| Allowed Compression            | `gzip`, `zstd`, `br`                                   |
 
 ### Terminal Error Mapping
 

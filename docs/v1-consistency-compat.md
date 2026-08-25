@@ -6,14 +6,14 @@ Transparency logs prove that the log is append-only through **Merkle consistency
 
 SatsPath supports two versions of the consistency proof wire format:
 
-| Property | Version 1 (V1 - Legacy/Bounded) | Version 2 (V2 - Compact RFC 6962) |
-| :--- | :--- | :--- |
-| **Proof Payload** | Entire sequence of leaf hashes ($n$ hashes) | Minimal subtree hashes ($O(\log n)$ hashes) |
-| **Bandwidth** | $O(n)$ | $O(\log n)$ |
-| **Verification Memory** | $O(n)$ | $O(\log n)$ |
-| **Max Tree Size Cap** | 16,384 leaves | Unlimited (scales with log depth) |
-| **Algorithm** | Full Merkle tree recomputation | RFC 6962 Section 2.1.2 Subproof verification |
-| **Server Trust** | Zero (Pure verifier) | Zero (Pure verifier) |
+| Property                | Version 1 (V1 - Legacy/Bounded)             | Version 2 (V2 - Compact RFC 6962)            |
+| :---------------------- | :------------------------------------------ | :------------------------------------------- |
+| **Proof Payload**       | Entire sequence of leaf hashes ($n$ hashes) | Minimal subtree hashes ($O(\log n)$ hashes)  |
+| **Bandwidth**           | $O(n)$                                      | $O(\log n)$                                  |
+| **Verification Memory** | $O(n)$                                      | $O(\log n)$                                  |
+| **Max Tree Size Cap**   | 16,384 leaves                               | Unlimited (scales with log depth)            |
+| **Algorithm**           | Full Merkle tree recomputation              | RFC 6962 Section 2.1.2 Subproof verification |
+| **Server Trust**        | Zero (Pure verifier)                        | Zero (Pure verifier)                         |
 
 ---
 
@@ -26,10 +26,7 @@ SatsPath supports two versions of the consistency proof wire format:
   "new_tree_size": 2500,
   "old_root": "a1b2...",
   "new_root": "c3d4...",
-  "audit_path": [
-    "e5f6...",
-    "7a8b..."
-  ]
+  "audit_path": ["e5f6...", "7a8b..."]
 }
 ```
 
@@ -49,10 +46,12 @@ SatsPath supports two versions of the consistency proof wire format:
 ## Backward Compatibility Policy
 
 ### 1. Proof Generation (`TransparencyLog::consistency`)
+
 - All new consistency proofs produced by `TransparencyLog::consistency(old_size, new_size)` are emitted using **Version 2 (RFC 6962 compact)**.
 - Tree size is bounded only by the actual log size; no arbitrary 16,384 leaf ceiling is applied to V2 generation.
 
 ### 2. Verifier Support (`verify_consistency_proof`)
+
 - **Version 2 proofs (RFC 6962)**:
   - Verified according to RFC 6962 consistency proof arithmetic.
   - Verification operates in $O(\log n)$ time and $O(1)$ auxiliary memory per step.
@@ -65,6 +64,7 @@ SatsPath supports two versions of the consistency proof wire format:
   - Any V1 proof with `new_tree_size > 16,384` is **rejected immediately** prior to slicing or allocating memory, preserving DDoS resistance against malformed V1 payloads.
 
 ### 3. Checkpoint Binding and Local Pinning
+
 - Consistency proof verification remains strictly bound to signed checkpoints and local pinned state.
 - Transition checks (`verify_checkpoint_transition`) ensure:
   - `old_tree_size` matches the locally pinned checkpoint tree size.

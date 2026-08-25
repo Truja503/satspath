@@ -4,7 +4,7 @@ This document outlines the security assumptions, privacy rules, and threat vecto
 
 ## 1. Overview
 
-The PearResolver allows SatsPath to resolve aliases (e.g., `alice@example.com`) to `SignedPaymentProfile`s over the Holepunch/Hyperswarm peer-to-peer network. 
+The PearResolver allows SatsPath to resolve aliases (e.g., `alice@example.com`) to `SignedPaymentProfile`s over the Holepunch/Hyperswarm peer-to-peer network.
 This bypasses centralized servers and DNS, relying on distributed hash tables (DHT) to locate peers announcing a specific topic.
 
 ## 2. Privacy Rules (P2P-03)
@@ -17,13 +17,13 @@ To prevent passive scraping of the Hyperswarm DHT, the following privacy rules a
 
 ## 3. Threat Vectors and Mitigations
 
-| Threat | Mitigation | Layer |
-|--------|------------|-------|
-| **Passive DHT Scraping** | Topics are `SHA256(alias)`, making it impossible to harvest a list of registered emails/aliases by simply listening to the DHT. | Pear / JS |
-| **Profile Spoofing / Man-in-the-Middle** | The Rust resolver verifies the `secp256k1` signature of every profile returned by a peer against the declared `identity_pubkey`. A malicious peer cannot forge a signature for an identity they do not control. | Rust Core |
-| **Replay Attacks** | The `SignedPaymentProfile` includes an `expires_at` timestamp. The Rust resolver rejects expired profiles. | Rust Core |
-| **Denial of Service (DHT Spam)** | An attacker could spam the topic with junk data. The `satspath-pear` resolver will disconnect from peers sending non-JSON or invalid schema data. The Rust resolver handles validation quickly and drops invalid signatures. | Pear + Rust |
-| **Alias Collision (Intentional)** | Two users cannot easily claim the same alias because the sender verifies the profile signature against the expected identity, or trust is established via out-of-band exchange (TOFU or verified channels). | Rust Core |
+| Threat                                   | Mitigation                                                                                                                                                                                                                   | Layer       |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| **Passive DHT Scraping**                 | Topics are `SHA256(alias)`, making it impossible to harvest a list of registered emails/aliases by simply listening to the DHT.                                                                                              | Pear / JS   |
+| **Profile Spoofing / Man-in-the-Middle** | The Rust resolver verifies the `secp256k1` signature of every profile returned by a peer against the declared `identity_pubkey`. A malicious peer cannot forge a signature for an identity they do not control.              | Rust Core   |
+| **Replay Attacks**                       | The `SignedPaymentProfile` includes an `expires_at` timestamp. The Rust resolver rejects expired profiles.                                                                                                                   | Rust Core   |
+| **Denial of Service (DHT Spam)**         | An attacker could spam the topic with junk data. The `satspath-pear` resolver will disconnect from peers sending non-JSON or invalid schema data. The Rust resolver handles validation quickly and drops invalid signatures. | Pear + Rust |
+| **Alias Collision (Intentional)**        | Two users cannot easily claim the same alias because the sender verifies the profile signature against the expected identity, or trust is established via out-of-band exchange (TOFU or verified channels).                  | Rust Core   |
 
 ## 4. Trust Model
 

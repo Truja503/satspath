@@ -5,6 +5,7 @@ SatsPath is a powerful routing engine that coordinates interactions across multi
 ## 1. Non-Custodial Architecture
 
 **SatsPath is NOT a custodial wallet.**
+
 - The `Identity Key` (used to sign profiles) **does not** control funds.
 - Wallet, Node, or SDK plugins are responsible for securely managing funds and signing transactions.
 - Never store seed phrases, wallet private keys, macaroons, certs, API tokens, or other high-value secrets in the SatsPath repository or plaintext config files.
@@ -54,6 +55,7 @@ satspath quote <recipient> <amount_sats> --mainnet-preview --json
 By default, the SatsPath Swap Engine operates in **Testnet mode**.
 
 **Required Safety Defaults:**
+
 - `mainnet_enabled = false`
 - `max_mainnet_payment_sats = 1000`
 - `require_manual_confirmation = true`
@@ -66,7 +68,8 @@ stronger confirmation gates.
 
 ## 4. Strict Pre-Execution Checks
 
-Before executing *any* Mainnet transaction or Swap, the engine MUST abort if any of the following checks fail:
+Before executing _any_ Mainnet transaction or Swap, the engine MUST abort if any of the following checks fail:
+
 - **Amount Mismatch:** Abort if the requested invoice amount does not match the BOLT11 invoice returned by LNURL or Boltz.
 - **Signature Verification:** Abort if the `SignedPaymentProfile` signature is invalid or tampered with.
 - **Metadata Invalid:** Abort if LNURL metadata violates expected tags or amount bounds.
@@ -75,6 +78,7 @@ Before executing *any* Mainnet transaction or Swap, the engine MUST abort if any
 ## 5. First Mainnet Tests
 
 When testing features on Mainnet for the first time:
+
 - Use tiny amounts only (e.g., `< 1000 sats`).
 - Verify routing paths locally before broadcasting.
 - Ensure that the local `.satspath/swaps.enc` vault is encrypting secrets via AES-GCM and not falling back silently to plaintext.
