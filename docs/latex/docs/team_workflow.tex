@@ -82,12 +82,19 @@ the following workflow.
   fully tested and verified.
 \end{itemize}
 
-\textbf{Branch Naming Convention:} -
-\texttt{feature/\textless{}issue-name\textgreater{}} (e.g.,
-\texttt{feature/lnurl-pay}) -
-\texttt{fix/\textless{}issue-name\textgreater{}} (e.g.,
-\texttt{fix/dust-threshold}) -
-\texttt{docs/\textless{}issue-name\textgreater{}}
+\textbf{Branch Naming Convention:}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{feature/\textless{}issue-name\textgreater{}} (e.g.,
+  \texttt{feature/lnurl-pay})
+\item
+  \texttt{fix/\textless{}issue-name\textgreater{}} (e.g.,
+  \texttt{fix/dust-threshold})
+\item
+  \texttt{docs/\textless{}issue-name\textgreater{}}
+\end{itemize}
 
 \hypertarget{pull-request-pr-rules}{%
 \subsection{2. Pull Request (PR) Rules}\label{pull-request-pr-rules}}
@@ -110,20 +117,38 @@ the following workflow.
 \hypertarget{pr-checklist}{%
 \subsubsection{PR Checklist}\label{pr-checklist}}
 
-Before requesting a review, the author must ensure: - {[} {]} Code
-compiles and tests pass (\texttt{cargo\ test\ -\/-workspace}). - {[} {]}
-The existing demo still works. - {[} {]} New components do not introduce
-dangerous mainnet fallbacks. - {[} {]} No fake invoices or plaintext
-secret storage were added.
+Before requesting a review, the author must ensure:
+
+\begin{itemize}
+\tightlist
+\item[$\square$]
+  Code compiles and tests pass (\texttt{cargo\ test\ -\/-workspace}).
+\item[$\square$]
+  The existing demo still works.
+\item[$\square$]
+  New components do not introduce dangerous mainnet fallbacks.
+\item[$\square$]
+  No fake invoices or plaintext secret storage were added.
+\end{itemize}
 
 \hypertarget{definition-of-done}{%
 \subsection{3. Definition of Done}\label{definition-of-done}}
 
-A task is considered ``Done'' when: 1. The acceptance criteria in the
-issue are fully met. 2. Unit tests or integration mocks cover the
-success and failure paths. 3. The PR is reviewed and approved by the
-respective module owner (e.g., Swap engine owner, Protocol Rust owner).
-4. The code is merged into the target branch without breaking existing
-pipelines.
+A task is considered ``Done'' when:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  The acceptance criteria in the issue are fully met.
+\item
+  Unit tests or integration mocks cover the success and failure paths.
+\item
+  The PR is reviewed and approved by the respective module owner (e.g.,
+  Swap engine owner, Protocol Rust owner).
+\item
+  The code is merged into the target branch without breaking existing
+  pipelines.
+\end{enumerate}
 
 \end{document}

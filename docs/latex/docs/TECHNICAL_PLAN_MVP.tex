@@ -126,9 +126,9 @@ Summary}\label{current-architecture-summary}}
 Components}\label{satspath-rust-existing-components}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2414}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3103}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.4483}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.1250}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3750}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.5000}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Crate
@@ -203,20 +203,43 @@ sidecar process.
 
 \textbf{Goal}: Expose resolver + router to TypeScript via WASM
 
-\textbf{Tasks}: 1. Add \texttt{wasm} feature flags to
-\texttt{satspath-core} and \texttt{satspath-router} (remove
-\texttt{tokio}/\texttt{reqwest} dependencies) 2. Create WASM-compatible
-resolver implementations using \texttt{web-sys} fetch 3. Export
-\texttt{quote()}, \texttt{verify\_signed\_profile()},
-\texttt{ChainResolver}, \texttt{Registry} from \texttt{satspath-wasm} 4.
-Add \texttt{fingerprint\_pubkey()}, \texttt{mask\_identifier()} helpers
+\textbf{Tasks}:
 
-\textbf{Files to modify}: - \texttt{crates/satspath-core/Cargo.toml} ---
-add \texttt{wasm} feature - \texttt{crates/satspath-router/Cargo.toml}
---- add \texttt{wasm} feature - \texttt{crates/satspath-wasm/src/lib.rs}
---- new exports - \texttt{crates/satspath-wasm/src/resolver.rs} --- NEW:
-WASM resolver chain - \texttt{crates/satspath-wasm/src/router.rs} ---
-NEW: router wrapper
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Add \texttt{wasm} feature flags to \texttt{satspath-core} and
+  \texttt{satspath-router} (remove \texttt{tokio}/\texttt{reqwest}
+  dependencies)
+\item
+  Create WASM-compatible resolver implementations using \texttt{web-sys}
+  fetch
+\item
+  Export \texttt{quote()}, \texttt{verify\_signed\_profile()},
+  \texttt{ChainResolver}, \texttt{Registry} from \texttt{satspath-wasm}
+\item
+  Add \texttt{fingerprint\_pubkey()}, \texttt{mask\_identifier()}
+  helpers
+\end{enumerate}
+
+\textbf{Files to modify}:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{crates/satspath-core/Cargo.toml} --- add \texttt{wasm} feature
+\item
+  \texttt{crates/satspath-router/Cargo.toml} --- add \texttt{wasm}
+  feature
+\item
+  \texttt{crates/satspath-wasm/src/lib.rs} --- new exports
+\item
+  \texttt{crates/satspath-wasm/src/resolver.rs} --- NEW: WASM resolver
+  chain
+\item
+  \texttt{crates/satspath-wasm/src/router.rs} --- NEW: router wrapper
+\end{itemize}
 
 \hypertarget{phase-2-build-wasm-package-week-2}{%
 \subsubsection{Phase 2: Build WASM Package (Week
@@ -224,10 +247,21 @@ NEW: router wrapper
 
 \textbf{Goal}: Publish \texttt{@satspath/wasm} npm package
 
-\textbf{Tasks}: 1. Configure \texttt{wasm-pack} build for web target 2.
-Generate TypeScript definitions via \texttt{wasm-bindgen} 2. Publish to
-local npm registry or GitHub Packages 3. Verify import in TypeScript:
-\texttt{import\ \{\ quote\ \}\ from\ \textquotesingle{}@satspath/wasm\textquotesingle{}}
+\textbf{Tasks}:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Configure \texttt{wasm-pack} build for web target
+\item
+  Generate TypeScript definitions via \texttt{wasm-bindgen}
+\item
+  Publish to local npm registry or GitHub Packages
+\item
+  Verify import in TypeScript:
+  \texttt{import\ \{\ quote\ \}\ from\ \textquotesingle{}@satspath/wasm\textquotesingle{}}
+\end{enumerate}
 
 \hypertarget{phase-3-arkade-wallet-service-layer-week-2-3}{%
 \subsubsection{Phase 3: Arkade Wallet Service Layer (Week
@@ -239,11 +273,16 @@ local npm registry or GitHub Packages 3. Verify import in TypeScript:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\ImportTok{import}\NormalTok{ \{ quote}\OperatorTok{,}\NormalTok{ verify\_signed\_profile}\OperatorTok{,}\NormalTok{ ChainResolver \} }\ImportTok{from} \StringTok{\textquotesingle{}@satspath/wasm\textquotesingle{}}\OperatorTok{;}
+\ImportTok{import}\NormalTok{ \{ quote}\OperatorTok{,}\NormalTok{ verify\_signed\_profile}\OperatorTok{,}\NormalTok{ ChainResolver \} }\ImportTok{from} \StringTok{"@satspath/wasm"}\OperatorTok{;}
 
-\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{getPaymentQuote}\NormalTok{(alias}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{,}\NormalTok{ amountSats}\OperatorTok{:} \DataTypeTok{bigint}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{PaymentQuote}\OperatorTok{\textgreater{}}
-\ImportTok{export} \KeywordTok{function} \FunctionTok{verifyProfile}\NormalTok{(profile}\OperatorTok{:}\NormalTok{ SignedPaymentProfile)}\OperatorTok{:} \DataTypeTok{boolean}
-\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{resolveProfile}\NormalTok{(alias}\OperatorTok{:} \DataTypeTok{string}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{SignedPaymentProfile}\OperatorTok{\textgreater{}}
+\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{getPaymentQuote}\NormalTok{(}
+\NormalTok{  alias}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{,}
+\NormalTok{  amountSats}\OperatorTok{:} \DataTypeTok{bigint}\OperatorTok{,}
+\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{PaymentQuote}\OperatorTok{\textgreater{};}
+\ImportTok{export} \KeywordTok{function} \FunctionTok{verifyProfile}\NormalTok{(profile}\OperatorTok{:}\NormalTok{ SignedPaymentProfile)}\OperatorTok{:} \DataTypeTok{boolean}\OperatorTok{;}
+\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{resolveProfile}\NormalTok{(}
+\NormalTok{  alias}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{,}
+\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{SignedPaymentProfile}\OperatorTok{\textgreater{};}
 \end{Highlighting}
 \end{Shaded}
 
@@ -268,10 +307,18 @@ Input: alias + amount → satspath.quote() → shows rail + fee + QR → Pay but
 Manage identity keypair → Add payment methods → Sign profile → Publish (HTTPS/Nostr)
 \end{verbatim}
 
-\textbf{Components}: - \texttt{RailSelector.tsx} --- Shows selected
-rail, reason, fee, ETA - \texttt{OwnershipBadges.tsx} --- ✓/⚠ per method
-verification status - \texttt{ArkVtxoStatus.tsx} --- VTXO verification
-progress + sovereign exit status
+\textbf{Components}:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{RailSelector.tsx} --- Shows selected rail, reason, fee, ETA
+\item
+  \texttt{OwnershipBadges.tsx} --- ✓/⚠ per method verification status
+\item
+  \texttt{ArkVtxoStatus.tsx} --- VTXO verification progress + sovereign
+  exit status
+\end{itemize}
 
 \hypertarget{phase-5-ark-vtxo-verification-week-4}{%
 \subsubsection{Phase 5: Ark VTXO Verification (Week
@@ -409,9 +456,29 @@ manual)}\label{typescript-types-auto-generated-manual}}
 \begin{Highlighting}[]
 \CommentTok{// arkade{-}wallet/src/types/satspath.ts}
 \ImportTok{export type}\NormalTok{ PaymentMethod }\OperatorTok{=}
-  \OperatorTok{|}\NormalTok{ \{ type}\OperatorTok{:} \StringTok{"Lightning"}\OperatorTok{;}\NormalTok{ label}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ lightning\_address}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ lnurl}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ bolt12}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ receiver\_pubkey}\OperatorTok{?:} \DataTypeTok{string}\NormalTok{ \}}
-  \OperatorTok{|}\NormalTok{ \{ type}\OperatorTok{:} \StringTok{"Onchain"}\OperatorTok{;}\NormalTok{ label}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ network}\OperatorTok{:} \StringTok{"mainnet"} \OperatorTok{|} \StringTok{"testnet"} \OperatorTok{|} \StringTok{"regtest"}\OperatorTok{;}\NormalTok{ address}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ silent\_payment\_pubkey}\OperatorTok{?:} \DataTypeTok{string}\NormalTok{ \}}
-  \OperatorTok{|}\NormalTok{ \{ type}\OperatorTok{:} \StringTok{"Ark"}\OperatorTok{;}\NormalTok{ label}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ server}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ pubkey}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ vtxo\_pointer}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}\NormalTok{ opaque\_uri}\OperatorTok{?:} \DataTypeTok{string}\NormalTok{ \}}\OperatorTok{;}
+  \OperatorTok{|}\NormalTok{ \{}
+\NormalTok{      type}\OperatorTok{:} \StringTok{"Lightning"}\OperatorTok{;}
+\NormalTok{      label}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      lightning\_address}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      lnurl}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      bolt12}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      receiver\_pubkey}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{    \}}
+  \OperatorTok{|}\NormalTok{ \{}
+\NormalTok{      type}\OperatorTok{:} \StringTok{"Onchain"}\OperatorTok{;}
+\NormalTok{      label}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      network}\OperatorTok{:} \StringTok{"mainnet"} \OperatorTok{|} \StringTok{"testnet"} \OperatorTok{|} \StringTok{"regtest"}\OperatorTok{;}
+\NormalTok{      address}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      silent\_payment\_pubkey}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{    \}}
+  \OperatorTok{|}\NormalTok{ \{}
+\NormalTok{      type}\OperatorTok{:} \StringTok{"Ark"}\OperatorTok{;}
+\NormalTok{      label}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      server}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      pubkey}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      vtxo\_pointer}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{      opaque\_uri}\OperatorTok{?:} \DataTypeTok{string}\OperatorTok{;}
+\NormalTok{    \}}\OperatorTok{;}
 
 \ImportTok{export} \KeywordTok{interface}\NormalTok{ PaymentProfile \{}
 \NormalTok{  alias}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
@@ -436,7 +503,8 @@ manual)}\label{typescript-types-auto-generated-manual}}
 \NormalTok{  estimated\_fee\_sats}\OperatorTok{:} \DataTypeTok{number}\OperatorTok{;}
 \NormalTok{  estimated\_confirmation}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
 \NormalTok{  fee\_snapshot}\OperatorTok{?:}\NormalTok{ FeeSnapshot}\OperatorTok{;}
-\NormalTok{  execution\_mode}\OperatorTok{:} \StringTok{"Preview"} \OperatorTok{|} \StringTok{"MainnetPreview"} \OperatorTok{|} \StringTok{"TestnetExperimental"} \OperatorTok{|} \StringTok{"ManualWallet"}\OperatorTok{;}
+\NormalTok{  execution\_mode}\OperatorTok{:}
+    \StringTok{"Preview"} \OperatorTok{|} \StringTok{"MainnetPreview"} \OperatorTok{|} \StringTok{"TestnetExperimental"} \OperatorTok{|} \StringTok{"ManualWallet"}\OperatorTok{;}
 \NormalTok{  wallet\_hint}\OperatorTok{:} \DataTypeTok{string}\OperatorTok{;}
 \NormalTok{\}}
 
@@ -503,8 +571,8 @@ arkade-wallet/
 \subsection{Risk Mitigation}\label{risk-mitigation}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6667}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3621}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6379}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Risk

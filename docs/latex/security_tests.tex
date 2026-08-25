@@ -157,9 +157,12 @@ The defense successfully prevented the unauthorized hijack.
 foundations are secure. The protocol relies on standard, heavily-tested
 cryptographic primitives (\texttt{secp256k1} Schnorr signatures).
 Assuming the private keys are generated securely on the user's local
-device, these vectors are fully protected in production. \# SatsPath
-Router Security \& Attack Simulations - Results
+device, these vectors are fully protected in production.
 \end{quote}
+
+\hypertarget{satspath-router-security-attack-simulations---results}{%
+\section{SatsPath Router Security \& Attack Simulations -
+Results}\label{satspath-router-security-attack-simulations---results}}
 
 This document contains the execution log and results from the attack
 simulations run against the core routing logic
@@ -241,8 +244,12 @@ a strict, inert priority pipeline. It does not blindly trust external
 inputs (like fee oracles or requested payment amounts) without
 subjecting them to internal safety thresholds. These simulations prove
 the router will fail-safe or gracefully degrade to alternative rails
-when under attack. \# SatsPath Advanced Security Simulations - Results
+when under attack.
 \end{quote}
+
+\hypertarget{satspath-advanced-security-simulations---results}{%
+\section{SatsPath Advanced Security Simulations -
+Results}\label{satspath-advanced-security-simulations---results}}
 
 This document contains the execution log and results from the advanced
 network and replay attack simulations run against SatsPath.
@@ -303,8 +310,12 @@ wall-clock time and aggressively rejects the zombie profile.
 tests, SatsPath's cryptography, routing heuristics, and network
 boundaries have proven to be exceptionally robust. The system is safe
 against tampering, routing censorship, L2 liquidity traps, SSRF, and
-replay attacks. \# SatsPath P2P Testnet Security Simulations - Results
+replay attacks.
 \end{quote}
+
+\hypertarget{satspath-p2p-testnet-security-simulations---results}{%
+\section{SatsPath P2P Testnet Security Simulations -
+Results}\label{satspath-p2p-testnet-security-simulations---results}}
 
 This document contains the execution log and results from the simulated
 P2P (Hyperswarm DHT) attack vectors.

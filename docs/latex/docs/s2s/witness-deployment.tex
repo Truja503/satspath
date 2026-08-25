@@ -72,12 +72,22 @@ by presenting different valid trees to different clients.
 
 Witnesses MUST be deployed in separate administrative and cryptographic
 domains from the log operators they audit. A typical deployment topology
-includes: 1. \textbf{The Log Operator}: Hosts the primary Transparency
-Log and resolves identities. 2. \textbf{Independent Witnesses (N)}:
-Operated by different entities across diverse infrastructure providers
-(e.g.~one on AWS, one on GCP, one self-hosted). 3. \textbf{The Resolving
-Client}: Enforces a \texttt{K-of-N} witness policy defined in the
-namespace's DNS descriptor.
+includes:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{The Log Operator}: Hosts the primary Transparency Log and
+  resolves identities.
+\item
+  \textbf{Independent Witnesses (N)}: Operated by different entities
+  across diverse infrastructure providers (e.g.~one on AWS, one on GCP,
+  one self-hosted).
+\item
+  \textbf{The Resolving Client}: Enforces a \texttt{K-of-N} witness
+  policy defined in the namespace's DNS descriptor.
+\end{enumerate}
 
 \hypertarget{split-view-detection}{%
 \subsection{Split-View Detection}\label{split-view-detection}}

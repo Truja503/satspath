@@ -83,9 +83,9 @@ decoupled.
 SatsPath separates five distinct identity layers:
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.2842}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3474}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3684}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Layer
@@ -161,12 +161,26 @@ this as a \textbf{new identifier}, not a transparent migration.
 \hypertarget{export-import-format}{%
 \subsection{Export / Import Format}\label{export-import-format}}
 
-A portable \texttt{MigrationExport} contains: - Signed
-\texttt{NamespaceDescriptor} (current epoch) - Full signed event stream
-(\texttt{Vec\textless{}NameEvent\textgreater{}}) - All checkpoints with
-operator signatures - Consistency proofs bridging checkpoints -
-Current-state map reconstruction data - Witness cosignature receipts -
-Operator key transition history
+A portable \texttt{MigrationExport} contains:
+
+\begin{itemize}
+\tightlist
+\item
+  Signed \texttt{NamespaceDescriptor} (current epoch)
+\item
+  Full signed event stream
+  (\texttt{Vec\textless{}NameEvent\textgreater{}})
+\item
+  All checkpoints with operator signatures
+\item
+  Consistency proofs bridging checkpoints
+\item
+  Current-state map reconstruction data
+\item
+  Witness cosignature receipts
+\item
+  Operator key transition history
+\end{itemize}
 
 Exports contain \textbf{no identity private keys} unless a separate
 local client backup action handles them explicitly.

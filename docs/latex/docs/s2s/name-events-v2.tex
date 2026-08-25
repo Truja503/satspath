@@ -68,14 +68,43 @@ independently verifiable from the signed event history.
 \hypertarget{event-model}{%
 \subsection{Event Model}\label{event-model}}
 
-Canonical events for the lifecycle of a namespace identifier: -
-\texttt{Register} - \texttt{ProfileUpdate} - \texttt{RotateOwnerKey} -
-\texttt{Revoke} - \texttt{RecoverKey} (optional, disabled by default)
+Canonical events for the lifecycle of a namespace identifier:
 
-Every event MUST bind: - \texttt{identifier\_hash} - Namespace
-identifier - \texttt{action} (event type) - \texttt{sequence} -
-\texttt{previous\_event\_hash} - \texttt{profile\_hash} - policy epoch -
-validity/freshness fields (\texttt{created\_at})
+\begin{itemize}
+\tightlist
+\item
+  \texttt{Register}
+\item
+  \texttt{ProfileUpdate}
+\item
+  \texttt{RotateOwnerKey}
+\item
+  \texttt{Revoke}
+\item
+  \texttt{RecoverKey} (optional, disabled by default)
+\end{itemize}
+
+Every event MUST bind:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{identifier\_hash}
+\item
+  Namespace identifier
+\item
+  \texttt{action} (event type)
+\item
+  \texttt{sequence}
+\item
+  \texttt{previous\_event\_hash}
+\item
+  \texttt{profile\_hash}
+\item
+  policy epoch
+\item
+  validity/freshness fields (\texttt{created\_at})
+\end{itemize}
 
 \hypertarget{authorization-rules}{%
 \subsection{Authorization Rules}\label{authorization-rules}}

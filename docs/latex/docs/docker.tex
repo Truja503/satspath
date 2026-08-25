@@ -140,10 +140,10 @@ of payments is intentionally disabled by design.
 \subsection{Images}\label{images}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2625}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2875}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.1375}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.3125}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Image
@@ -164,11 +164,21 @@ Binary
 \textasciitilde120 MB & \texttt{node\ dist/index.js} \\
 \end{longtable}
 
-Both images use: - \textbf{Non-root user} (UID 10001 / 10002) -
-\textbf{Read-only root filesystem} (\texttt{read\_only:\ true}) -
-\textbf{All capabilities dropped} (\texttt{cap\_drop:\ ALL}) -
-\textbf{\texttt{no-new-privileges}} security option - \textbf{OCI image
-labels} for provenance
+Both images use:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Non-root user} (UID 10001 / 10002)
+\item
+  \textbf{Read-only root filesystem} (\texttt{read\_only:\ true})
+\item
+  \textbf{All capabilities dropped} (\texttt{cap\_drop:\ ALL})
+\item
+  \textbf{\texttt{no-new-privileges}} security option
+\item
+  \textbf{OCI image labels} for provenance
+\end{itemize}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -287,8 +297,8 @@ default.
 \subsubsection{What is protected}\label{what-is-protected}}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2840}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7160}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Concern

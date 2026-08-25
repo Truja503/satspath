@@ -81,12 +81,25 @@ list.
 \hypertarget{get-v2resolveidentifier}{%
 \subsubsection{\texorpdfstring{\texttt{GET\ /v2/resolve/:identifier}}{GET /v2/resolve/:identifier}}\label{get-v2resolveidentifier}}
 
-Returns a complete \texttt{ResolutionEnvelope} containing: - The signed
-payment profile. - All name events for the identifier. - Merkle
-inclusion proof binding the event to the log. - Consistency proof (if
-the client provides a pinned tree size). - Current-state map proof
-(inclusion or non-inclusion). - Witness cosignatures meeting the quorum
-threshold. - The latest signed checkpoint.
+Returns a complete \texttt{ResolutionEnvelope} containing:
+
+\begin{itemize}
+\tightlist
+\item
+  The signed payment profile.
+\item
+  All name events for the identifier.
+\item
+  Merkle inclusion proof binding the event to the log.
+\item
+  Consistency proof (if the client provides a pinned tree size).
+\item
+  Current-state map proof (inclusion or non-inclusion).
+\item
+  Witness cosignatures meeting the quorum threshold.
+\item
+  The latest signed checkpoint.
+\end{itemize}
 
 \hypertarget{get-v2checkpointlatest}{%
 \subsubsection{\texorpdfstring{\texttt{GET\ /v2/checkpoint/latest}}{GET /v2/checkpoint/latest}}\label{get-v2checkpointlatest}}

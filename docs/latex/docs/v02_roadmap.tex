@@ -115,17 +115,29 @@ Execution)}\label{a.-ejecuciuxf3n-real-de-pagos-payment-execution}}
 
 Actualmente el sistema genera \textbf{Intenciones de Pago} (URIs,
 códigos QR, facturas LN) y simula el éxito. Falta integrar la ejecución
-real: - \textbf{Lightning Network Real (§18.1 y §34)}: Pagar facturas
-automáticamente desde un nodo Lightning integrado. - \textbf{Transmisión
-On-chain Real (§34)}: Construcción de PSBTs (Partially Signed Bitcoin
-Transactions), firma de transacciones y \emph{broadcasting} a la
-mempool. - \textbf{Implementación Real de Ark (§18.3 y §34)}: Conectarse
-a un ASP (Ark Service Provider) real para transferir VTXOs. -
-\textbf{Ejecución de Pagos Divididos / Split Payments (§24)}: La
-estructura de datos ya está diseñada, pero el router aún no soporta la
-resolución recursiva y ejecución por lotes (\emph{batching}) para
-múltiples receptores. - \textbf{Custodial Escrow (§34)}: Depósito de
-garantía en custodia temporal (marcado como ``Do not build yet'').
+real:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lightning Network Real (§18.1 y §34)}: Pagar facturas
+  automáticamente desde un nodo Lightning integrado.
+\item
+  \textbf{Transmisión On-chain Real (§34)}: Construcción de PSBTs
+  (Partially Signed Bitcoin Transactions), firma de transacciones y
+  \emph{broadcasting} a la mempool.
+\item
+  \textbf{Implementación Real de Ark (§18.3 y §34)}: Conectarse a un ASP
+  (Ark Service Provider) real para transferir VTXOs.
+\item
+  \textbf{Ejecución de Pagos Divididos / Split Payments (§24)}: La
+  estructura de datos ya está diseñada, pero el router aún no soporta la
+  resolución recursiva y ejecución por lotes (\emph{batching}) para
+  múltiples receptores.
+\item
+  \textbf{Custodial Escrow (§34)}: Depósito de garantía en custodia
+  temporal (marcado como ``Do not build yet'').
+\end{itemize}
 
 \hypertarget{b.-privacidad-y-criptografuxeda}{%
 \subsubsection{B. Privacidad y
@@ -152,16 +164,26 @@ Criptografía}\label{b.-privacidad-y-criptografuxeda}}
 \subsubsection{C. Seguridad Avanzada y Modelo de Amenazas
 (§26)}\label{c.-seguridad-avanzada-y-modelo-de-amenazas-26}}
 
-Las mitigaciones a futuro para vectores de ataque avanzados incluyen: -
-\textbf{DNSSEC / BIP-353}: Validación criptográfica de resolución de
-nombres a través de DNS para mitigar registros de alias falsos. -
-\textbf{Logs de Transparencia (Transparency Logs)}: Para auditar y
-evitar la manipulación de registros en servidores centrales/HTTP. -
-\textbf{Políticas de Recuperación de Llaves (Multisig)}: Para mitigar la
-pérdida de la llave de identidad. - \textbf{Invitaciones Firmadas y
-Verificación de Dominio (§27)}: Para mitigar ataques de enlaces de
-invitación maliciosos. - \textbf{Validación de Pruebas y Reputación de
-Servidores Ark (§27)}: Para proteger a los usuarios de ASPs maliciosos.
+Las mitigaciones a futuro para vectores de ataque avanzados incluyen:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{DNSSEC / BIP-353}: Validación criptográfica de resolución de
+  nombres a través de DNS para mitigar registros de alias falsos.
+\item
+  \textbf{Logs de Transparencia (Transparency Logs)}: Para auditar y
+  evitar la manipulación de registros en servidores centrales/HTTP.
+\item
+  \textbf{Políticas de Recuperación de Llaves (Multisig)}: Para mitigar
+  la pérdida de la llave de identidad.
+\item
+  \textbf{Invitaciones Firmadas y Verificación de Dominio (§27)}: Para
+  mitigar ataques de enlaces de invitación maliciosos.
+\item
+  \textbf{Validación de Pruebas y Reputación de Servidores Ark (§27)}:
+  Para proteger a los usuarios de ASPs maliciosos.
+\end{itemize}
 
 \hypertarget{d.-experiencia-de-usuario-client-ux}{%
 \subsubsection{D. Experiencia de Usuario (Client /
