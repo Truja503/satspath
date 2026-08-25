@@ -2,7 +2,7 @@
 
 **A transport-neutral Bitcoin payment discovery and routing protocol.**
 
-> [!CAUTION]
+> **CAUTION:**
 > **EXPERIMENTAL SOFTWARE — DO NOT USE WITH REAL FUNDS.**
 > SatsPath v2 is currently undergoing internal conformance testing (Issue #60). It must not be deployed for real economic activity until the v2 conformance suite is finalized and an external cryptographic audit gate is deliberately cleared.
 

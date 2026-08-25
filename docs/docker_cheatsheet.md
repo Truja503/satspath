@@ -2,7 +2,7 @@
 
 Esta guía contiene todos los comandos necesarios para construir, ejecutar y probar la funcionalidad completa de **SatsPath** usando los contenedores de Docker de manera segura.
 
-> [!NOTE]
+> **NOTE:**
 > Dado que el CLI se ejecuta de forma efímera, el formato base para correr cualquier comando es:
 > `docker compose run --rm satspath-cli <comando>`
 
