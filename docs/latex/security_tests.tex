@@ -153,11 +153,11 @@ be signed by the \emph{previous} secret key to authorize the transition.
 The defense successfully prevented the unauthorized hijack.
 
 \begin{quote}
-{[}!TIP{]} \textbf{Production Readiness} The signature and key-rotation
-foundations are secure. The protocol relies on standard, heavily-tested
-cryptographic primitives (\texttt{secp256k1} Schnorr signatures).
-Assuming the private keys are generated securely on the user's local
-device, these vectors are fully protected in production.
+\textbf{TIP:} \textbf{Production Readiness} The signature and
+key-rotation foundations are secure. The protocol relies on standard,
+heavily-tested cryptographic primitives (\texttt{secp256k1} Schnorr
+signatures). Assuming the private keys are generated securely on the
+user's local device, these vectors are fully protected in production.
 \end{quote}
 
 \hypertarget{satspath-router-security-attack-simulations---results}{%
@@ -239,8 +239,8 @@ Lightning for this massive amount and selected Ark (L3) to protect the
 user from L2 liquidity traps.
 
 \begin{quote}
-{[}!TIP{]} \textbf{Production Readiness} The router's logic operates as
-a strict, inert priority pipeline. It does not blindly trust external
+\textbf{TIP:} \textbf{Production Readiness} The router's logic operates
+as a strict, inert priority pipeline. It does not blindly trust external
 inputs (like fee oracles or requested payment amounts) without
 subjecting them to internal safety thresholds. These simulations prove
 the router will fail-safe or gracefully degrade to alternative rails
@@ -306,7 +306,7 @@ The router checks the \texttt{expires\_at} timestamp against the current
 wall-clock time and aggressively rejects the zombie profile.
 
 \begin{quote}
-{[}!TIP{]} \textbf{Production Readiness} Combined with the previous
+\textbf{TIP:} \textbf{Production Readiness} Combined with the previous
 tests, SatsPath's cryptography, routing heuristics, and network
 boundaries have proven to be exceptionally robust. The system is safe
 against tampering, routing censorship, L2 liquidity traps, SSRF, and
@@ -377,8 +377,8 @@ function recalculates the signature over the corrupted payload, detects
 the discrepancy, and safely aborts the payment flow.
 
 \begin{quote}
-{[}!TIP{]} \textbf{Production Readiness} These tests definitively prove
-that the P2P transport layer does not require trust. The system's
+\textbf{TIP:} \textbf{Production Readiness} These tests definitively
+prove that the P2P transport layer does not require trust. The system's
 security architecture---where trust is anchored locally via cryptography
 rather than network transport---functions exactly as intended. The CLI
 and GUI clients can safely operate on Mainnet or Testnet over public,

@@ -114,9 +114,9 @@ and independent monitors \\
 replacement key & Updates reject key changes; rotation requires old
 authorization plus new acceptance at one canonical sequence &
 Independent identifier attestations and witnesses \\
-\textbf{Email takeover} & Attacker takes over alice@example.com and
-re-registers & Registry does not verify email ownership at MVP & DKIM
-challenge during registration; WebAuthn-based domain binding \\
+\textbf{Email takeover} & Attacker takes over \texttt{alice@example.com}
+and re-registers & Registry does not verify email ownership at MVP &
+DKIM challenge during registration; WebAuthn-based domain binding \\
 \textbf{LNURL spoofing} & Attacker serves a malicious LNURL endpoint &
 LNURL not verified at MVP; routing is simulated & TLS certificate
 pinning; LNURL-auth for identity binding; domain-bound LNURL
