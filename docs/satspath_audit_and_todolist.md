@@ -84,7 +84,7 @@ git branch -d feat/satspath-receiver-flow fix/v0-priority-issues feat/swap-engin
 git remote prune origin
 ```
 
-> [!IMPORTANT]
+> **IMPORTANT:**
 > Después de esto, el repo quedará con solo `main` y opcionalmente `feat/ark-vtxo-verification-integration` si decides cherry-pick.
 
 ---
@@ -406,5 +406,5 @@ git remote prune origin
 ╚════════════════════════════════════════╝
 ```
 
-> [!TIP]
+> **TIP:**
 > **Prioridad inmediata**: Limpiar ramas → compilar WASM → que la wallet pueda hacer el flujo `Receiver: crear perfil + publicar` y `Sender: resolver + quote + mostrar confirmación` de verdad. Todo lo demás viene después.

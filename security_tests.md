@@ -33,7 +33,7 @@ The attack simulations confirm that the core protocol cryptography is robust aga
 **Scenario**: An attacker attempts to hijack a user's alias by injecting a `KeyRotation` object pointing to the attacker's newly generated key. The attacker signs the rotation transition with their own key since they don't hold the original user's private key.
 **Result**: **PASS**. The `is_rotation_valid` protocol validator rejects the rotation. Key rotation transitions must be signed by the _previous_ secret key to authorize the transition. The defense successfully prevented the unauthorized hijack.
 
-> [!TIP]
+> **TIP:**
 > **Production Readiness**
 > The signature and key-rotation foundations are secure. The protocol relies on standard, heavily-tested cryptographic primitives (`secp256k1` Schnorr signatures). Assuming the private keys are generated securely on the user's local device, these vectors are fully protected in production.
 
@@ -82,7 +82,7 @@ The attack simulations confirm that the `satspath-router` incorporates strong de
 **Scenario**: An attacker generates an excessively large invoice (e.g. 10 BTC) and attempts to force it through Lightning (L2) where it is highly likely to fail or trap liquidity in HTLCs.
 **Result**: **PASS**. The router identified the transaction size as exceeding the `LARGE_PAYMENT_SATS` safety threshold. Even if fees were manipulated to force the router away from L1, it explicitly bypassed Lightning for this massive amount and selected Ark (L3) to protect the user from L2 liquidity traps.
 
-> [!TIP]
+> **TIP:**
 > **Production Readiness**
 > The router's logic operates as a strict, inert priority pipeline. It does not blindly trust external inputs (like fee oracles or requested payment amounts) without subjecting them to internal safety thresholds. These simulations prove the router will fail-safe or gracefully degrade to alternative rails when under attack.
 
@@ -121,7 +121,7 @@ The attack simulations confirm that SatsPath is protected against advanced netwo
 **Scenario**: An attacker stores a cryptographically valid profile generated 6 months ago. They replay it to a client today in an attempt to route funds to an old, compromised payment method.
 **Result**: **PASS**. Despite the ECDSA/Schnorr signatures being perfectly valid, the protocol strictly enforces `check_profile_expiry`. The router checks the `expires_at` timestamp against the current wall-clock time and aggressively rejects the zombie profile.
 
-> [!TIP]
+> **TIP:**
 > **Production Readiness**
 > Combined with the previous tests, SatsPath's cryptography, routing heuristics, and network boundaries have proven to be exceptionally robust. The system is safe against tampering, routing censorship, L2 liquidity traps, SSRF, and replay attacks.
 
@@ -162,7 +162,7 @@ The attack simulations confirm that the P2P integration (Pear/Hyperswarm) safely
 **Scenario**: A Man-in-the-Middle (MITM) attacker or malicious P2P node intercepts the JSON profile as it is being downloaded by the payer. The attacker swaps the Testnet Lightning address with their own to steal the testnet coins.
 **Result**: **PASS**. Although the P2P layer successfully transports the modified payload, the receiving Rust Core acts as the final arbiter. The `verify_signed_profile` function recalculates the signature over the corrupted payload, detects the discrepancy, and safely aborts the payment flow.
 
-> [!TIP]
+> **TIP:**
 > **Production Readiness**
 > These tests definitively prove that the P2P transport layer does not require trust. The system's security architecture—where trust is anchored locally via cryptography rather than network transport—functions exactly as intended. The CLI and GUI clients can safely operate on Mainnet or Testnet over public, untrusted networks.
 
