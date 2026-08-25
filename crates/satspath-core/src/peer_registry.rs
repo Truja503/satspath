@@ -20,7 +20,11 @@ pub fn canonicalize_identifier(identifier: &str) -> String {
     let s = identifier.trim().to_lowercase();
     // Normalize email-style: split on first @, clean each part
     if let Some((local, domain)) = s.split_once('@') {
-        format!("{}@{}", local.trim(), domain.trim())
+        let domain_clean = domain.trim();
+        // Convert domain to punycode/ascii using IDNA standard
+        let ascii_domain = idna::domain_to_ascii(domain_clean)
+            .unwrap_or_else(|_| domain_clean.to_string());
+        format!("{}@{}", local.trim(), ascii_domain)
     } else {
         s
     }
