@@ -53,7 +53,7 @@ jobs:
             type=sha,prefix=sha-,format=short
 
       - name: Build and load CLI image (with cache)
-        uses: docker/build-push-action@4f58ea79222b3b73204d3e32bc70b0de180f8ca1 # v6.9.0
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: Dockerfile
@@ -64,7 +64,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scan (CLI image)
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # 0.29.0
+        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         with:
           image-ref: satspath-cli:local
           format: sarif
@@ -75,14 +75,14 @@ jobs:
 
       - name: Upload Trivy scan results (CLI)
         if: always()
-        uses: github/codeql-action/upload-sarif@6bb034414c767602ec877db0b8202e3c8b18af36 # v3.28.11
+        uses: github/codeql-action/upload-sarif@4c50b6f6fd9dc6fe03111c2d045c8be2a724cce1 # v3.28.11
         with:
           sarif_file: trivy-cli.sarif
           category: trivy-cli
 
       - name: Push CLI image (to GHCR)
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@4f58ea79222b3b73204d3e32bc70b0de180f8ca1 # v6.9.0
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: Dockerfile
