@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: "en-US"
 early_access: false
-tone_instructions: "Act as a principal security auditor and Rust systems engineer. Perform a thorough security, memory safety, cryptography, and concurrency review of SatsPath. Highlight potential vulnerabilities, denial-of-service risks, unchecked edge cases, and cryptographic issues."
+tone_instructions: "Rigorous security auditor and Rust engineer. Audit for security vulnerabilities, cryptographic flaws, concurrency issues, DoS risks, and memory safety."
 
 reviews:
   profile: "assertive"
