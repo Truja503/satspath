@@ -29,6 +29,11 @@ docker compose ps
 
 SatsPath es una billetera "receiver-profile". Gestiona tu identidad y tus métodos de pago públicos, sin custodiar fondos.
 
+> **AVISO DE RED:** El stack de `docker-compose.yml` usa `SATSPATH_NETWORK=mainnet` por defecto.
+> Los ejemplos siguientes usan métodos y direcciones de testnet (`tb1...`). Antes de ejecutarlos,
+> asegúrese de fijar `SATSPATH_NETWORK=testnet` en su entorno o `docker-compose.yml`.
+> Nunca publique métodos de recepción de testnet en un perfil de mainnet.
+
 ```bash
 # 1. Inicializar las llaves de identidad criptográfica
 docker compose run --rm satspath-cli wallet init
@@ -52,13 +57,13 @@ Antes de enviar un pago, el sistema de SatsPath debe evaluar las tarifas de red,
 
 ```bash
 # Consultar el perfil público de otro usuario
-docker compose run --rm satspath-cli resolve bob@satspath.local
+docker compose run --rm satspath-cli dns resolve bob@satspath.local
 
 # Generar un "Quote" de pago por 50,000 sats (SatsPath decide la mejor ruta)
 docker compose run --rm satspath-cli quote bob@satspath.local 50000
 
-# Forzar una urgencia de pago rápida (altera la selección de red Lightning vs On-chain)
-docker compose run --rm satspath-cli quote bob@satspath.local 250000 --urgency fast
+# Generar un Quote para montos mayores (evalúa Lightning vs On-chain)
+docker compose run --rm satspath-cli quote bob@satspath.local 250000
 ```
 
 ---

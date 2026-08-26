@@ -11,15 +11,16 @@ jobs:
     name: Test workspace
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@a54c7dd936c13037b80f8587845012271c08ffdd
         with:
+          toolchain: "1.85.0"
           components: clippy, rustfmt
 
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772115f6ec1 # v4.2.2
         with:
           path: |
             ~/.cargo/registry
@@ -45,9 +46,11 @@ jobs:
     name: Bitcoin Core regtest anchor
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@a54c7dd936c13037b80f8587845012271c08ffdd
+        with:
+          toolchain: "1.85.0"
       - name: Start Bitcoin Core regtest
         run: >-
           docker run --detach --name satspath-bitcoind --publish 18443:18443
@@ -57,10 +60,19 @@ jobs:
           -rpcuser=satspath -rpcpassword=satspath-regtest-only
       - name: Wait for RPC and fund test wallet
         run: |
+          set -euo pipefail
+          READY=0
           for attempt in {1..30}; do
-            if curl --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"getblockchaininfo","params":[]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/ | grep -q '"chain":"regtest"'; then break; fi
+            if curl --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"getblockchaininfo","params":[]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/ | grep -q '"chain":"regtest"'; then
+              READY=1
+              break
+            fi
             sleep 1
           done
+          if [ "$READY" -ne 1 ]; then
+            echo "Error: Bitcoin Core regtest node failed to become ready within 30 seconds" >&2
+            exit 1
+          fi
           curl --fail --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"createwallet","params":["satspath-anchor"]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/
           ADDRESS=$(curl --fail --silent --user satspath:satspath-regtest-only --data-binary '{"jsonrpc":"2.0","id":"ci","method":"getnewaddress","params":[]}' -H 'content-type:text/plain;' http://127.0.0.1:18443/wallet/satspath-anchor | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"])')
           curl --fail --silent --user satspath:satspath-regtest-only --data-binary "{\"jsonrpc\":\"2.0\",\"id\":\"ci\",\"method\":\"generatetoaddress\",\"params\":[101,\"$ADDRESS\"]}" -H 'content-type:text/plain;' http://127.0.0.1:18443/wallet/satspath-anchor

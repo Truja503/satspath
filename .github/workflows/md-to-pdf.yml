@@ -15,7 +15,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           # Fetch full history to ensure committing works cleanly
           fetch-depth: 0
@@ -54,7 +54,7 @@ jobs:
           done
 
       - name: Commit and push generated files
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@8621497c800810e84ab0f44012c5240c4fb45313 # v5.0.1
         with:
           commit_message: "docs: Auto-generate LaTeX and PDF copies into docs/latex and docs/pdf"
           file_pattern: 'docs/latex/** docs/pdf/**'

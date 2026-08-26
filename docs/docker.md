@@ -21,7 +21,7 @@
 │          │                                                      │
 │          ▼                                                      │
 │  ┌──────────────────────┐                                       │
-│  │  satspath-data       │  Named volume: .satspath/ registry    │
+│  │  satspath_data       │  Named volume: .satspath/ registry    │
 │  │  (Docker volume)     │  survives container re-creation       │
 │  └──────────────────────┘                                       │
 └─────────────────────────────────────────────────────────────────┘
@@ -68,7 +68,7 @@ make init
 docker compose run --rm satspath-cli init
 ```
 
-This creates `.satspath/` inside the `satspath-data` named volume.
+This creates `.satspath/` inside the `satspath_data` named volume.
 
 ### 3. Register a profile
 
@@ -163,7 +163,7 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 - [ ] Push to a private registry (GHCR, ECR, etc.) — see `docker.yml` CI workflow
 - [ ] Pin base image digests (replace `bookworm-slim` tags with `sha256:...`)
 - [ ] Set `RUST_LOG` to `warn` in production
-- [ ] Mount `satspath-data` volume to a backed-up external path
+- [ ] Mount `satspath_data` volume to a backed-up external path
 - [ ] Run `make scan` before each release to check for CVEs
 - [ ] Review CI SARIF reports in GitHub Security tab
 
@@ -174,11 +174,8 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 **`cargo: command not found` in CI**
 → The build runs inside the container; you don't need Cargo on the host.
 
-**`Error: no such service: ark-bridge`**
-→ Add `--profile bridge` flag: `docker compose --profile bridge up`.
-
 **`Permission denied: /data`**
-→ The `satspath-data` volume ownership may be wrong. Run:
+→ The `satspath_data` volume ownership may be wrong. Run:
 
 ```bash
 docker compose run --rm --user root satspath-cli chown -R 10001:10001 /data

@@ -34,7 +34,7 @@ The core flow is:
 identifier -> resolver chain -> signed profile -> signature check -> route decision -> QR / wallet handoff
 ```
 
-Resolvers can use local files, HTTPS well-known endpoints, BIP-353 DNS, Nostr/NIP-05, or optional P2P. A receiver publishes the same signed SatsPath profile over any of those transports. A sender only trusts it after SatsPath verifies the profile signature.
+Resolvers can use local files, HTTPS well-known endpoints, BIP-353 DNS, Nostr/NIP-05, or optional P2P. For SatsPath profile transports, a receiver publishes a signed profile that senders verify cryptographically; for BIP-353 DNS, DNSSEC provides cryptographic authorization of the resolved payment instructions.
 
 ---
 
@@ -384,7 +384,7 @@ Checking available payment rails...
 Selected route: Lightning
 Reason:         Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
 
-Payment status: simulated_success (or real execution if experimental engine is enabled)
+Payment status: simulated_success
 ```
 
 ### Invite (unregistered user)

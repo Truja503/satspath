@@ -3,7 +3,7 @@
 # Convenience targets for Docker build, run, and development workflows.
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help build build-cli build-bridge build-wasm build-wasm-wallet wallet-dev test run shell up down logs clean scan
+.PHONY: help build build-cli build-wasm build-wasm-wallet wallet-dev test run shell up down logs clean scan init smoke
 
 # ── Default ──────────────────────────────────────────────────────────────────
 help: ## Show this help message
@@ -11,10 +11,10 @@ help: ## Show this help message
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-build: build-cli build-bridge ## Build all Docker images
+build: build-cli ## Build all Docker images
 
 build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli)
-	source $(HOME)/.cargo/env && \
+	. $(HOME)/.cargo/env && \
 	  cargo build -p satspath-wasm --target wasm32-unknown-unknown --release && \
 	  wasm-bindgen target/wasm32-unknown-unknown/release/satspath_wasm.wasm \
 	    --out-dir sdk/satspath-p2p/pkg --target nodejs && \
@@ -22,7 +22,7 @@ build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli
 	@echo "WASM built → sdk/satspath-p2p/pkg/"
 
 build-wasm-wallet: ## Build WASM module and copy into wallet/public/ (requires wasm-pack)
-	source $(HOME)/.cargo/env && \
+	. $(HOME)/.cargo/env && \
 	  wasm-pack build crates/satspath-wasm \
 	    --target web \
 	    --release \
@@ -34,7 +34,7 @@ wallet-dev: ## Start the Arkade Money wallet dev server
 	cd wallet && npm run dev
 
 test: ## Run all Rust workspace tests
-	source $(HOME)/.cargo/env && cargo test --workspace
+	. $(HOME)/.cargo/env && cargo test --workspace
 
 build-cli: ## Build the SatsPath CLI image
 	docker build \
@@ -44,13 +44,6 @@ build-cli: ## Build the SatsPath CLI image
 	  --build-arg BUILDKIT_INLINE_CACHE=1 \
 	  .
 
-build-bridge: ## Build the ARK bridge image
-	docker build \
-	  --target runtime \
-	  --tag satspath-ark-bridge:latest \
-	  --tag satspath-ark-bridge:$(shell git rev-parse --short HEAD 2>/dev/null || echo dev) \
-	  ark-bridge/
-
 # ── Run ───────────────────────────────────────────────────────────────────────
 run: ## Run a satspath CLI command (pass CMD=<args>, e.g. make run CMD="--help")
 	docker compose run --rm satspath-cli $(CMD)
@@ -59,36 +52,30 @@ shell: ## Open a shell in the CLI container for debugging (overrides ENTRYPOINT)
 	docker compose run --rm --entrypoint /bin/bash satspath-cli
 
 # ── Compose ──────────────────────────────────────────────────────────────────
-up: ## Start the ARK bridge service (background)
-	docker compose --profile bridge up -d ark-bridge
+up: ## Start the daemon service (background)
+	docker compose up -d
 
 down: ## Stop all services
-	docker compose --profile bridge down
+	docker compose down
 
 logs: ## Tail logs from all running services
-	docker compose --profile bridge logs -f
+	docker compose logs -f
 
 # ── Security scan ────────────────────────────────────────────────────────────
-scan: ## Run Trivy vulnerability scan on both images (requires trivy installed)
+scan: ## Run Trivy vulnerability scan on images (requires trivy installed)
 	@echo "==> Scanning satspath-cli:latest"
 	trivy image --severity HIGH,CRITICAL satspath-cli:latest
-	@echo ""
-	@echo "==> Scanning satspath-ark-bridge:latest"
-	trivy image --severity HIGH,CRITICAL satspath-ark-bridge:latest
 
 # ── Dev helpers ───────────────────────────────────────────────────────────────
 clean: ## Remove built images and dangling layers
-	docker compose --profile bridge down --volumes --remove-orphans || true
-	docker rmi satspath-cli:latest satspath-ark-bridge:latest 2>/dev/null || true
+	docker compose down --remove-orphans || true
+	docker rmi satspath-cli:latest 2>/dev/null || true
 	docker image prune -f
 
 init: ## Run satspath init inside the container (creates /data/.satspath)
 	docker compose run --rm satspath-cli init
 
 # ── Quick smoke-test ──────────────────────────────────────────────────────────
-smoke: build ## Build then verify both images produce --help output
+smoke: build-cli ## Build then verify CLI image produces --help output
 	@echo "==> CLI smoke test"
 	docker run --rm satspath-cli:latest --help
-	@echo ""
-	@echo "==> Bridge smoke test (node version)"
-	docker run --rm --entrypoint node satspath-ark-bridge:latest --version

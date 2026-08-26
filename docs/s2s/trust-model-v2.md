@@ -163,6 +163,10 @@ pub enum S2SErrorCode {
     ErrServerUnavailable,
     ErrPayloadTooLarge,
     ErrMalformedEnvelope,
+    ErrEnvelopeVerificationFailed,
+
+    // Hosted Identifiers
+    ErrHostedProviderConflict,
 }
 ```
 

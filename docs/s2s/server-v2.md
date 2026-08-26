@@ -6,13 +6,13 @@ The SatsPath v2 server is an authoritative, network-facing identity resolution s
 
 ## V2 API Endpoints
 
-### `GET /v2/namespace`
+### `GET /.well-known/satspath-authority`
 
 Returns the signed `NamespaceDescriptor` for the hosted domain, including the operator public key, witness quorum policy, and endpoint list.
 
-### `GET /v2/resolve/:identifier`
+### `GET /v2/resolve` / `POST /v2/resolve`
 
-Returns a complete `ResolutionEnvelope` containing:
+Accepts `identifier` query parameter (or POST body `{"identifier": "..."}` to prevent URL proxy logging of private sub-identifiers) and returns a complete `ResolutionEnvelope` containing:
 
 - The signed payment profile.
 - All name events for the identifier.
@@ -22,9 +22,9 @@ Returns a complete `ResolutionEnvelope` containing:
 - Witness cosignatures meeting the quorum threshold.
 - The latest signed checkpoint.
 
-### `GET /v2/checkpoint/latest`
+### `GET /v2/checkpoint`
 
-Returns the latest signed `TransparencyCheckpoint` with its witness cosignatures.
+Returns the latest signed `TransparencyCheckpoint` with its attached witness cosignatures.
 
 ### `GET /v2/health`
 
@@ -32,7 +32,7 @@ Returns readiness status, version, checkpoint age, witness quorum health, and re
 
 ## Resolution Pipeline
 
-```
+```text
 canonical identifier
 -> discover authoritative namespace
 -> fetch proof envelope

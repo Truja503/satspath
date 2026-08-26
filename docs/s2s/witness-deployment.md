@@ -2,7 +2,9 @@
 
 ## Overview
 
-A SatsPath Transparency Witness is a lightweight, stateless-by-design node that protects against split-view attacks. It acts as an independent auditor for Transparency Log operators, ensuring they do not equivocate by presenting different valid trees to different clients.
+A SatsPath Transparency Witness is a lightweight node that protects against split-view attacks. It acts as an independent auditor for Transparency Log operators, ensuring they do not equivocate by presenting different valid trees to different clients.
+
+The witness holds minimal but **durable** state: for each audited log it persists the pinned `log_id`, `tree_size`, `root_hash`, and any recorded equivocation evidence. This state MUST survive restarts. A witness deployed on ephemeral storage loses its pins and stops detecting rollback and equivocation.
 
 ## Deployment Topology
 
@@ -19,4 +21,4 @@ If a log operator equivocates, it must present two different `root_hash` values 
 ## Security Guarantees
 
 - **Non-equivocation**: As long as at least one witness in the threshold set is honest, an operator cannot conduct a split-view attack without generating permanent, cryptographic proof of fraud.
-- **No Liveness Requirement**: Witnesses are not required to be online for every resolution. They only need to be reachable by the operator when a new checkpoint is published.
+- **No Resolution-Time Liveness Requirement**: Witnesses are not required to be online for every resolution. They MUST, however, be reachable by the operator when a new checkpoint is published; otherwise the `K-of-N` policy cannot be satisfied for that checkpoint.
