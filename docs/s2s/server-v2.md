@@ -12,7 +12,7 @@ Returns the signed `NamespaceDescriptor` for the hosted domain, including the op
 
 ### `GET /v2/resolve` / `POST /v2/resolve`
 
-Accepts `identifier` query parameter (or POST body `{"identifier": "..."}` to prevent URL proxy logging of private sub-identifiers) and returns a complete `ResolutionEnvelope` containing:
+Accepts `identifier` query parameter (or POST body `{"identifier": "..."}` to avoid placing sub-identifiers directly into URL query parameters) and returns a complete `ResolutionEnvelope` containing:
 
 - The signed payment profile.
 - All name events for the identifier.
@@ -22,7 +22,7 @@ Accepts `identifier` query parameter (or POST body `{"identifier": "..."}` to pr
 - Witness cosignatures meeting the quorum threshold.
 - The latest signed checkpoint.
 
-### `GET /v2/checkpoint`
+### `GET /v2/checkpoint/latest`
 
 Returns the latest signed `TransparencyCheckpoint` with its attached witness cosignatures.
 

@@ -28,10 +28,10 @@ satspath server check yourdomain.com
 
 We provide a reproducible deployment via Docker Compose. Private user keys **never** reside on the server and are generated locally by users.
 
-Edit `docker-compose.yml` to set `SATSPATH_AUTHORITY_DOMAIN` and deploy:
+Edit `deploy/docker-compose.yml` to set `SATSPATH_AUTHORITY_DOMAIN` and deploy:
 
 ```bash
-docker-compose up -d
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 ### 4. Reverse Proxy TLS Example (Caddy)
@@ -42,7 +42,7 @@ We strongly recommend placing `satspathd` behind a TLS-terminating reverse proxy
 
 ```caddyfile
 yourdomain.com {
-    reverse_proxy localhost:4848
+    reverse_proxy localhost:9737
 }
 ```
 

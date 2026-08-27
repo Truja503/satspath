@@ -55,10 +55,17 @@ fn derive_key(password: &str, salt: &[u8]) -> Key<Aes256Gcm> {
 
 /// Persist the protocol identity secret key. Returns the path written.
 pub fn save_identity_key(base: &Path, secret_key: &SecretKey) -> Result<PathBuf> {
+    use std::io::IsTerminal;
     let password = std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
-        print!("Enter a password to encrypt your identity key (or press enter for no password): ");
-        let _ = std::io::stdout().flush();
-        rpassword::read_password().unwrap_or_default()
+        if !std::io::stdin().is_terminal() {
+            String::new()
+        } else {
+            print!(
+                "Enter a password to encrypt your identity key (or press enter for no password): "
+            );
+            let _ = std::io::stdout().flush();
+            rpassword::read_password().unwrap_or_default()
+        }
     });
     save_identity_key_with_password(base, secret_key, &password)
 }
@@ -129,13 +136,18 @@ fn load_identity_key_with_password(
         let ciphertext = &bytes[28..];
 
         let password = explicit_password.map(str::to_owned).unwrap_or_else(|| {
+            use std::io::IsTerminal;
             std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
-                print!(
-                    "Enter password to decrypt identity key {}: ",
-                    identity_pubkey_hex
-                );
-                let _ = std::io::stdout().flush();
-                rpassword::read_password().unwrap_or_default()
+                if !std::io::stdin().is_terminal() {
+                    String::new()
+                } else {
+                    print!(
+                        "Enter password to decrypt identity key {}: ",
+                        identity_pubkey_hex
+                    );
+                    let _ = std::io::stdout().flush();
+                    rpassword::read_password().unwrap_or_default()
+                }
             })
         });
         let key = derive_key(&password, salt);

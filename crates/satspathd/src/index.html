@@ -619,7 +619,7 @@
   const $ = (id) => document.getElementById(id);
   const show = (el) => { el.classList.remove("hidden"); requestAnimationFrame(() => el.classList.add("show")); };
   const hide = (el) => { el.classList.add("hidden"); el.classList.remove("show"); };
-  const esc = (s) => String(s == null ? "" : s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
   const fireLasers = (colorClass) => {
     const container = $("lasers-container");
@@ -690,6 +690,7 @@
       renderCheckpoints(checkpointPage.items || []);
       await renderMerkleTree(transparencyEvents);
     } catch (e) {
+      transparencyLoaded = false;
       $("t-alert").textContent = `SECURITY STATUS UNAVAILABLE — ${e.message}`; show($("t-alert"));
       $("t-consistency").textContent = "FAIL CLOSED"; $("t-consistency").className = "status critical";
     }
@@ -742,7 +743,7 @@
     const proofHashes=new Set(proofPath);
     const ns="http://www.w3.org/2000/svg", group=document.createElementNS(ns,"g"); group.setAttribute("transform",`translate(${treePan} 0) scale(${treeScale})`); svg.appendChild(group);
     links.forEach(([a,b])=>{ const line=document.createElementNS(ns,"line"); line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("class","tree-link "+(proofHashes.has(b.hash)?"proof":""));group.appendChild(line); });
-    nodes.forEach(n=>{ const c=document.createElementNS(ns,"circle");c.setAttribute("cx",n.x);c.setAttribute("cy",n.y);c.setAttribute("r",n.leaf!=null?9:7);c.setAttribute("class",`tree-node ${n.leaf!=null?'leaf':''} ${proofHashes.has(n.hash)?'proof':''}`);c.setAttribute("role",n.leaf!=null?"button":"img");c.setAttribute("aria-label",`${n.leaf!=null?'Leaf '+n.leaf:'Merkle node'} ${n.hash}`); if(n.leaf!=null){c.setAttribute("tabindex","0");c.addEventListener("click",()=>selectLeaf(n));c.addEventListener("keydown",event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLeaf(n)}});}group.appendChild(c); });
+    nodes.forEach(n=>{ const c=document.createElementNS(ns,"circle");c.setAttribute("cx",n.x);c.setAttribute("cy",n.y);c.setAttribute("r",n.leaf!=null?9:7);c.setAttribute("class",`tree-node ${n.leaf!=null?'leaf':''} ${proofHashes.has(n.hash)?'proof':''}`);c.setAttribute("role",n.leaf!=null?"button":"img");c.setAttribute("aria-label",`${n.leaf!=null?'Leaf '+n.leaf:'Merkle node'} ${n.hash}`); if(n.leaf!=null){c.setAttribute("tabindex","0");c.addEventListener("click",()=>selectLeaf(n).catch(e=>{$("t-alert").textContent=e.message;show($("t-alert"));}));c.addEventListener("keydown",event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLeaf(n).catch(e=>{$("t-alert").textContent=e.message;show($("t-alert"));});}});}group.appendChild(c); });
   }
 
   async function selectLeaf(node) {
@@ -760,7 +761,7 @@
     $("t-history").innerHTML=events.map(e=>`<div class="timeline-item ${esc(e.action)}"><strong>${esc(e.action.replaceAll('_',' '))}</strong><div class="reason">Sequence ${e.sequence} · ${new Date(e.created_at*1000).toLocaleString()}</div><div class="hash">key ${esc(e.identity_pubkey.slice(0,20))}…<br>profile ${esc(e.profile_hash)}</div>${e.action==='rotate_key'?'<span class="status warn">OLD AUTH + NEW ACCEPTANCE</span>':''}${e.removed_method_hashes?.length?`<div><span class="status warn">PAYMENT METHOD REMOVED</span><div class="hash">${e.removed_method_hashes.map(esc).join('<br>')}</div></div>`:''}</div>`).join("") || '<div class="reason">No matching identifier history.</div>';
   }
 
-  $("t-search-go").addEventListener("click",async()=>{ const q=$("t-search").value.trim(); if(!q)return; const byId=transparencyEvents.filter(e=>e.identifier_hash===q); if(byId.length){showHistory(q);$("t-search-result").textContent=`${byId.length} linked event(s) · latest key ${byId.at(-1).identity_pubkey}`;return;} const byEvent=await Promise.all(transparencyEvents.map(async e=>({e,h:await eventHash(e)}))); const found=byEvent.find(x=>x.h===q); $("t-search-result").textContent=found?`${found.e.action} · identifier ${found.e.identifier_hash} · profile ${found.e.profile_hash}`:"No public log match"; if(found)showHistory(found.e.identifier_hash); });
+  $("t-search-go").addEventListener("click",async()=>{ try { const q=$("t-search").value.trim(); if(!q)return; const byId=transparencyEvents.filter(e=>e.identifier_hash===q); if(byId.length){showHistory(q);$("t-search-result").textContent=`${byId.length} linked event(s) · latest key ${byId.at(-1).identity_pubkey}`;return;} const byEvent=await Promise.all(transparencyEvents.map(async e=>({e,h:await eventHash(e)}))); const found=byEvent.find(x=>x.h===q); $("t-search-result").textContent=found?`${found.e.action} · identifier ${found.e.identifier_hash} · profile ${found.e.profile_hash}`:"No public log match"; if(found)showHistory(found.e.identifier_hash); } catch(e){ $("t-search-result").textContent = e.message; } });
   $("t-verify-proof").addEventListener("click",async()=>{ try {
     const bundle=JSON.parse($("t-proof-json").value), result=await verifyProofLocal(bundle.proof);
     const expectedLeaf=bytesHex(await hashLeaf(bundle.event_hash));

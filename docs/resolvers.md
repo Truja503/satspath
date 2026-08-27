@@ -147,9 +147,9 @@ Reference event shape:
 ```json
 {
   "kind": 30078,
-  "pubkey": "<nip05 nostr pubkey hex>",
+  "pubkey": "<nip05-pubkey-hex>",
   "tags": [["d", "satspath-profile:alice@example.com"]],
-  "content": "{\"profile\":{...},\"signature\":\"3044...\"}"
+  "content": "{\"profile\":{...},\"signature\":\"<64-byte-schnorr-hex>\"}"
 }
 ```
 

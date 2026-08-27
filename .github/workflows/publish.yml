@@ -4,13 +4,20 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   publish-crates:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@7b764046ae89dd495b54e5cb0e797d6736048d2e
+        with:
+          toolchain: stable
       - name: Publish satspath-core
         run: cargo publish -p satspath-core --no-verify
         env:
@@ -26,10 +33,14 @@ jobs:
 
   publish-wasm:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@7b764046ae89dd495b54e5cb0e797d6736048d2e
+        with:
+          toolchain: stable
       - name: Install wasm-pack
         run: |
           set -euo pipefail

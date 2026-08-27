@@ -18,7 +18,7 @@ Hemos superado los requisitos básicos del Hackathon. Actualmente el sistema cue
 
 ## 2. Funcionalidades Faltantes (Roadmap v0.2 / Producción)
 
-Al revisar el documento `SatsPath Protocol v0.1.pdf`, las siguientes funcionalidades fueron explícitamente marcadas como **"Future behavior"**, **"Production rule"** o **"Do not build yet"** (Sección 34). Esto es lo que falta construir para llevar el protocolo a producción real:
+Al revisar la especificación de `SatsPath Protocol v0.1`, las siguientes funcionalidades fueron explícitamente marcadas como **"Future behavior"**, **"Production rule"** o **"Do not build yet"** (Sección 34). Esto es lo que falta construir para llevar el protocolo a producción real:
 
 ### A. Ejecución Real de Pagos (Payment Execution)
 

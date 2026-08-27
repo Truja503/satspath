@@ -51,13 +51,12 @@ Both images use:
 - Docker ≥ 24 (or Podman ≥ 4) with BuildKit enabled
 - `docker compose` v2 plugin (or `docker-compose` v1)
 
-### 1. Build all images
+### 1. Build the image
 
 ```bash
 make build
 # or manually:
 docker build -t satspath-cli:latest .
-docker build -t satspath-ark-bridge:latest -f ark-bridge/Dockerfile .
 ```
 
 ### 2. Initialize the registry

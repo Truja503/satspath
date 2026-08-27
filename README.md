@@ -384,7 +384,7 @@ Checking available payment rails...
 Selected route: Lightning
 Reason:         Amount (21000 sats) is below 100000 sats threshold and Lightning is available.
 
-Payment status: simulated_success
+Status  : intent_preview / awaiting explicit execution
 ```
 
 ### Invite (unregistered user)

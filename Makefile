@@ -11,10 +11,10 @@ help: ## Show this help message
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-build: build-cli ## Build all Docker images
+build: build-cli ## Build the SatsPath CLI Docker image
 
 build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli)
-	. $(HOME)/.cargo/env && \
+	if [ -f "$(HOME)/.cargo/env" ]; then . "$(HOME)/.cargo/env"; fi && \
 	  cargo build -p satspath-wasm --target wasm32-unknown-unknown --release && \
 	  wasm-bindgen target/wasm32-unknown-unknown/release/satspath_wasm.wasm \
 	    --out-dir sdk/satspath-p2p/pkg --target nodejs && \
@@ -22,7 +22,7 @@ build-wasm: ## Build WASM module for sdk/satspath-p2p (requires wasm-bindgen-cli
 	@echo "WASM built → sdk/satspath-p2p/pkg/"
 
 build-wasm-wallet: ## Build WASM module and copy into wallet/public/ (requires wasm-pack)
-	. $(HOME)/.cargo/env && \
+	if [ -f "$(HOME)/.cargo/env" ]; then . "$(HOME)/.cargo/env"; fi && \
 	  wasm-pack build crates/satspath-wasm \
 	    --target web \
 	    --release \
@@ -34,7 +34,7 @@ wallet-dev: ## Start the Arkade Money wallet dev server
 	cd wallet && npm run dev
 
 test: ## Run all Rust workspace tests
-	. $(HOME)/.cargo/env && cargo test --workspace
+	if [ -f "$(HOME)/.cargo/env" ]; then . "$(HOME)/.cargo/env"; fi && cargo test --workspace
 
 build-cli: ## Build the SatsPath CLI image
 	docker build \

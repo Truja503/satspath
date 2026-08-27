@@ -1,4 +1,3 @@
-#![allow(warnings)]
 //! `satspathd` is a local receiver-profile daemon.
 //!
 //! It manages SatsPath profile identity and public receive pointers only. It
@@ -12,20 +11,16 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context, Result};
-use async_trait::async_trait;
 use clap::Parser;
 use qrcode::{Color, QrCode};
 use satspath_core::ark::validate_ark_server_url;
 use satspath_core::bip321::{parse_bip321, ParsedBip321Uri};
 use satspath_core::bip353::{resolve_bip353_with, Bip353Resolution, DnssecPolicy, DohTxtResolver};
 use satspath_core::crypto::{
-    check_profile_expiry, fingerprint_pubkey, generate_identity_keypair, sign_profile,
-    verify_signed_profile,
+    fingerprint_pubkey, generate_identity_keypair, sign_profile, verify_signed_profile,
 };
-use satspath_core::peer_registry::{LocalPeerRegistry, PeerRecord, PeerRegistryBackend};
 use satspath_core::privacy::mask_identifier;
 use satspath_core::registry::Registry;
 use satspath_core::resolver::ChainResolver;
@@ -46,12 +41,9 @@ use satspath_router::select_priority_route;
 use satspath_router::QuoteResponse;
 use serde::{Deserialize, Serialize};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
-use tokio::process::Command as TokioCommand;
-use tokio::time::timeout;
 
 const DEFAULT_BIND: &str = "127.0.0.1:9737";
 const DEFAULT_NETWORK: &str = "devnet";
-const P2P_RESOLVE_TIMEOUT: Duration = Duration::from_secs(10);
 const WALLET_FILE: &str = "wallet.json";
 const IDENTITY_SUBDIR: &str = "identity";
 
@@ -104,6 +96,7 @@ struct AppState {
     bind: SocketAddr,
     network: String,
     open_ui: bool,
+    auth_token: String,
     // Removed escrow state to enforce non-custodial rule
 }
 
@@ -299,20 +292,22 @@ async fn main() -> Result<()> {
 
     // SEC-04: Daemon API Authorization
     let macaroon_path = home.join("admin.macaroon");
-    if std::env::var("SATSPATHD_AUTH_TOKEN").is_err() {
-        if !macaroon_path.exists() {
-            use secp256k1::rand::RngCore;
-            let mut token = [0u8; 32];
-            secp256k1::rand::thread_rng().fill_bytes(&mut token);
-            let token_hex = hex::encode(token);
-            fs::write(&macaroon_path, &token_hex).context("writing admin.macaroon")?;
-            #[cfg(unix)]
-            set_owner_only(&macaroon_path).ok();
-        }
-        if let Ok(token) = fs::read_to_string(&macaroon_path) {
-            std::env::set_var("SATSPATHD_AUTH_TOKEN", token.trim());
-        }
-    }
+    let auth_token = if let Ok(token) = std::env::var("SATSPATHD_AUTH_TOKEN") {
+        token.trim().to_string()
+    } else if !macaroon_path.exists() {
+        use secp256k1::rand::RngCore;
+        let mut token = [0u8; 32];
+        secp256k1::rand::thread_rng().fill_bytes(&mut token);
+        let token_hex = hex::encode(token);
+        write_owner_only_file(&macaroon_path, token_hex.as_bytes())
+            .context("writing admin.macaroon")?;
+        token_hex
+    } else {
+        fs::read_to_string(&macaroon_path)
+            .context("reading admin.macaroon")?
+            .trim()
+            .to_string()
+    };
 
     load_or_create_identity(&home)?;
 
@@ -321,7 +316,7 @@ async fn main() -> Result<()> {
         bind,
         network,
         open_ui: !cli.no_open,
-        // Removed escrow init
+        auth_token,
     };
 
     print_startup_status(&state)?;
@@ -329,42 +324,68 @@ async fn main() -> Result<()> {
 }
 
 async fn serve(state: AppState) -> Result<()> {
-    let server = Server::http(state.bind).map_err(|e| {
+    let server = Arc::new(Server::http(state.bind).map_err(|e| {
         anyhow::anyhow!(
             "could not bind {}: {e}\n\nThe address may already be in use by another \
              satspathd instance. Stop it, or choose another port with \
              `--bind 127.0.0.1:<port>`.",
             state.bind
         )
-    })?;
+    })?);
     let url = format!("http://{}/", state.bind);
     println!("Wallet UI → {url}");
     if state.open_ui {
         open_browser(&url);
     }
     let state = Arc::new(state);
-    for request in server.incoming_requests() {
-        let state = Arc::clone(&state);
-        if let Err(e) = handle_request(request, &state).await {
-            eprintln!("request error: {e}");
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Request>(64);
+    let srv = Arc::clone(&server);
+    tokio::task::spawn_blocking(move || {
+        for request in srv.incoming_requests() {
+            if tx.blocking_send(request).is_err() {
+                break;
+            }
         }
+    });
+
+    while let Some(request) = rx.recv().await {
+        let state = Arc::clone(&state);
+        tokio::spawn(async move {
+            if let Err(e) = handle_request(request, &state).await {
+                eprintln!("request error: {e}");
+            }
+        });
     }
     Ok(())
 }
 
-fn check_auth(request: &Request) -> anyhow::Result<()> {
-    if let Ok(token) = std::env::var("SATSPATHD_AUTH_TOKEN") {
-        for header in request.headers() {
-            if header.field.equiv("Authorization") {
-                let val = header.value.as_str();
-                if val == format!("Bearer {}", token) {
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+fn check_auth(request: &Request, expected_token: &str) -> anyhow::Result<()> {
+    if expected_token.is_empty() {
+        anyhow::bail!("Unauthorized: Admin auth token is not configured (fail-closed)");
+    }
+    for header in request.headers() {
+        if header.field.equiv("Authorization") {
+            let val = header.value.as_str();
+            if let Some(bearer) = val.strip_prefix("Bearer ") {
+                if constant_time_eq(bearer.trim().as_bytes(), expected_token.as_bytes()) {
                     return Ok(());
                 }
             }
         }
-        anyhow::bail!("Unauthorized: Invalid or missing Bearer token");
     }
-    Ok(())
+    anyhow::bail!("Unauthorized: Invalid or missing Bearer token");
 }
 
 async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
@@ -372,12 +393,14 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let raw_url = request.url().to_string();
     let path = raw_url.split('?').next().unwrap_or("/").to_string();
 
-    // SEC: Auth check for profile mutations (admin)
-    if (path.starts_with("/v1/profile") || path == "/v1/transparency/anchors")
-        && method != Method::Get
-        && method != Method::Options
-    {
-        if let Err(e) = check_auth(&request) {
+    let is_mutation = !matches!(method, Method::Get | Method::Head | Method::Options);
+    let is_public_mutation = path == "/v1/receive"
+        || path == "/v1/send"
+        || path == "/v1/dns/resolve"
+        || path == "/v1/transparency/verify/inclusion";
+
+    if is_mutation && !is_public_mutation {
+        if let Err(e) = check_auth(&request, &state.auth_token) {
             let _ = request.respond(json_error(StatusCode(401), e));
             return Ok(());
         }
@@ -397,6 +420,19 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         (Method::Post, "/v1/broadcast") => json_result(StatusCode(200), broadcast(state)),
         (Method::Get, "/health") => {
             json_response(StatusCode(200), &serde_json::json!({"ok": true}))
+        }
+        (Method::Get, v2_api::routes::HEALTH) => {
+            let log_opt = transparency_log(state).ok();
+            let checkpoint_age = log_opt
+                .as_ref()
+                .map(|log| {
+                    let latest = log.checkpoints().last().map(|c| c.created_at).unwrap_or(0);
+                    let now = chrono::Utc::now().timestamp();
+                    (now - latest).max(0)
+                })
+                .unwrap_or(0);
+            let resp = v2_api::build_health_response(checkpoint_age, true, 1);
+            json_response(StatusCode(200), &resp)
         }
         (Method::Get, "/v1/node") => json_result(StatusCode(200), node_response(state)),
         (Method::Get, "/v1/status") => json_result(StatusCode(200), status_response(state)),
@@ -573,7 +609,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
 }
 
 fn transparency_log(state: &AppState) -> Result<TransparencyLog> {
-    Ok(TransactionalTransparencyStore::open(&state.home)?.load_log()?)
+    transparency_log_at(&state.home)
 }
 
 fn query_u64(url: &str, name: &str) -> Option<u64> {
@@ -848,13 +884,7 @@ fn load_or_create_transparency_operator(home: &Path) -> Result<secp256k1::Secret
         return secp256k1::SecretKey::from_slice(&bytes).map_err(Into::into);
     }
     let key = generate_identity_keypair().secret_key;
-    let tmp = path.with_extension("key.tmp");
-    fs::write(&tmp, hex::encode(key.secret_bytes()))?;
-    #[cfg(unix)]
-    set_owner_only(&tmp).ok();
-    fs::rename(tmp, &path)?;
-    #[cfg(unix)]
-    set_owner_only(&path).ok();
+    write_owner_only_file(&path, hex::encode(key.secret_bytes()).as_bytes())?;
     Ok(key)
 }
 
@@ -1316,8 +1346,7 @@ fn save_identity_key(home: &Path, secret_key: &secp256k1::SecretKey) -> Result<P
     let dir = home.join(IDENTITY_SUBDIR);
     fs::create_dir_all(&dir)?;
     let path = dir.join(format!("{}.key", hex::encode(pubkey.serialize())));
-    fs::write(&path, hex::encode(secret_key.secret_bytes()))?;
-    set_owner_only(&path)?;
+    write_owner_only_file(&path, hex::encode(secret_key.secret_bytes()).as_bytes())?;
     Ok(path)
 }
 
@@ -1337,17 +1366,24 @@ fn load_identity_key(home: &Path, identity_pubkey: &str) -> Result<secp256k1::Se
     Ok(secret)
 }
 
-#[cfg(unix)]
-fn set_owner_only(path: &Path) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = fs::metadata(path)?.permissions();
-    perms.set_mode(0o600);
-    fs::set_permissions(path, perms)?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn set_owner_only(_path: &Path) -> Result<()> {
+fn write_owner_only_file(path: &Path, content: &[u8]) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)?;
+        file.write_all(content)?;
+    }
+    #[cfg(not(unix))]
+    {
+        fs::write(path, content)?;
+    }
     Ok(())
 }
 
@@ -1380,9 +1416,13 @@ fn print_startup_status(state: &AppState) -> Result<()> {
     Ok(())
 }
 
+const MAX_JSON_BODY_BYTES: u64 = 1024 * 1024; // 1 MB limit to prevent DoS
+
 fn read_json<T: for<'de> Deserialize<'de>>(request: &mut Request) -> Result<T> {
+    use std::io::Read;
     let mut body = String::new();
-    request.as_reader().read_to_string(&mut body)?;
+    let mut reader = request.as_reader().take(MAX_JSON_BODY_BYTES);
+    reader.read_to_string(&mut body)?;
     if body.trim().is_empty() {
         anyhow::bail!("request body must be JSON");
     }
@@ -1395,7 +1435,7 @@ fn json_result<T: Serialize>(
 ) -> Response<std::io::Cursor<Vec<u8>>> {
     match result {
         Ok(value) => json_response(status, &value),
-        Err(e) => json_error(StatusCode(500), e),
+        Err(e) => json_error(status, e),
     }
 }
 
@@ -1534,11 +1574,23 @@ fn qr_svg(data: &str) -> Result<String> {
 }
 
 fn html_response(body: &str) -> Response<std::io::Cursor<Vec<u8>>> {
-    let header = Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
+    let ct = Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
         .expect("static header");
+    let xcto =
+        Header::from_bytes(&b"X-Content-Type-Options"[..], &b"nosniff"[..]).expect("static header");
+    let xfo = Header::from_bytes(&b"X-Frame-Options"[..], &b"DENY"[..]).expect("static header");
+    let csp = Header::from_bytes(
+        &b"Content-Security-Policy"[..],
+        &b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"[..],
+    )
+    .expect("static header");
+
     Response::from_data(body.as_bytes().to_vec())
         .with_status_code(StatusCode(200))
-        .with_header(header)
+        .with_header(ct)
+        .with_header(xcto)
+        .with_header(xfo)
+        .with_header(csp)
         .with_header(cors_origin_header())
 }
 
@@ -1691,6 +1743,7 @@ mod tests {
             bind: "127.0.0.1:0".parse().unwrap(),
             network: "devnet".into(),
             open_ui: false,
+            auth_token: "test_auth_token".into(),
         }
     }
 

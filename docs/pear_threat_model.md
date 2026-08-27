@@ -17,11 +17,9 @@ To prevent passive scraping of the Hyperswarm DHT, the following privacy rules a
 
 ## 3. Threat Vectors and Mitigations
 
-| Threat                                   | Mitigation                                                                                                                                                                                                                   | Layer       |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| **Passive DHT Scraping**                 | Topics are `SHA256(alias)`, making it impossible to harvest a list of registered emails/aliases by simply listening to the DHT.                                                                                              | Pear / JS   |
+| **Passive DHT Scraping**                 | Topics are `SHA256(alias)`. This prevents naive plaintext harvesting, though an adversary can test candidate email dictionaries offline.                                                                                   | Pear / JS   |
 | **Profile Spoofing / Man-in-the-Middle** | The Rust resolver verifies the `secp256k1` signature of every profile returned by a peer against the declared `identity_pubkey`. A malicious peer cannot forge a signature for an identity they do not control.              | Rust Core   |
-| **Replay Attacks**                       | The `SignedPaymentProfile` includes an `expires_at` timestamp. The Rust resolver rejects expired profiles.                                                                                                                   | Rust Core   |
+| **Replay Attacks**                       | The `SignedPaymentProfile` includes `expires_at` and `sequence` fields. The Rust resolver rejects expired profiles and verifies sequence freshness against known history to prevent replay of stale revoked state.       | Rust Core   |
 | **Denial of Service (DHT Spam)**         | An attacker could spam the topic with junk data. The `satspath-pear` resolver will disconnect from peers sending non-JSON or invalid schema data. The Rust resolver handles validation quickly and drops invalid signatures. | Pear + Rust |
 | **Alias Collision (Intentional)**        | Two users cannot easily claim the same alias because the sender verifies the profile signature against the expected identity, or trust is established via out-of-band exchange (TOFU or verified channels).                  | Rust Core   |
 
