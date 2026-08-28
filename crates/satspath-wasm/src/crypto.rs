@@ -43,7 +43,10 @@ pub fn generate_identity_keypair() -> IdentityKeypair {
 
 /// Derive a deterministic secp256k1 identity keypair from wallet seed bytes.
 #[wasm_bindgen]
-pub fn derive_identity_keypair_from_seed(seed: &[u8], account_index: u32) -> Option<IdentityKeypair> {
+pub fn derive_identity_keypair_from_seed(
+    seed: &[u8],
+    account_index: u32,
+) -> Option<IdentityKeypair> {
     if seed.is_empty() {
         return None;
     }
@@ -60,7 +63,7 @@ pub fn derive_identity_keypair_from_seed(seed: &[u8], account_index: u32) -> Opt
     candidate.copy_from_slice(&result[..32]);
 
     let secp = secp256k1::Secp256k1::new();
-    let sk = secp256k1::SecretKey::from_byte_array(candidate).ok()?;
+    let sk = secp256k1::SecretKey::from_slice(&candidate).ok()?;
     let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
 
     Some(IdentityKeypair {

@@ -32,7 +32,9 @@ pub fn generate_identity_keypair() -> IdentityKeypair {
 /// without exposing wallet spending keys or risking loss of alias control.
 pub fn derive_identity_key_from_seed(seed: &[u8], account_index: u32) -> Result<SecretKey> {
     if seed.is_empty() {
-        return Err(SatsPathError::ValidationError("Seed cannot be empty".into()));
+        return Err(SatsPathError::ValidationError(
+            "Seed cannot be empty".into(),
+        ));
     }
     use hmac::{Hmac, Mac};
     use sha2::Sha512;
@@ -47,7 +49,7 @@ pub fn derive_identity_key_from_seed(seed: &[u8], account_index: u32) -> Result<
     let mut candidate = [0u8; 32];
     candidate.copy_from_slice(&result[..32]);
 
-    SecretKey::from_byte_array(candidate)
+    SecretKey::from_slice(&candidate)
         .map_err(|e| SatsPathError::CryptoError(format!("Derived scalar invalid: {e}")))
 }
 
