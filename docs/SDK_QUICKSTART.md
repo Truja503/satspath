@@ -73,22 +73,26 @@ Cuando el usuario ingresa un destinatario (ej. `chelo@satspath.dev`) y un monto 
 import { quote } from '@satspath/wasm';
 
 async function handleSendPayment(recipientAlias: string, amountSats: bigint) {
-  // Resuelve el alias y evalúa comisiones de mempool en vivo
-  const quoteResult = await quote(recipientAlias, amountSats);
+  try {
+    // Resuelve el alias y evalúa comisiones de mempool en vivo
+    const quoteResult = await quote(recipientAlias, amountSats);
 
-  if (quoteResult.status === "ok") {
-    console.log("Riel Seleccionado:", quoteResult.selected_method.type); // "Lightning" | "Ark" | "Onchain"
-    console.log("Comisión Estimada:", quoteResult.fee_sats, "sats");
-    console.log("Payload de Pago:", quoteResult.qr); 
-    
-    // quoteResult.qr contiene el string listo para pagar:
-    // - Si fue Lightning: "lnbc10u1p..." o BOLT12 offer
-    // - Si fue Ark: "satspath:ark?server=...&pubkey=...&amount=10000"
-    // - Si fue Onchain: "bitcoin:bc1q...?amount=0.0001"
-    
-    return quoteResult.qr;
-  } else {
-    console.error("No se pudo rutear el pago:", quoteResult.reason);
+    if (quoteResult.status === "ok") {
+      console.log("Riel Seleccionado:", quoteResult.selected_method.type); // "Lightning" | "Ark" | "Onchain"
+      console.log("Comisión Estimada:", quoteResult.fee_sats, "sats");
+      console.log("Payload de Pago:", quoteResult.qr); 
+      
+      // quoteResult.qr contiene el string listo para pagar:
+      // - Si fue Lightning: "lnbc10u1p..." o BOLT12 offer
+      // - Si fue Ark: "ark:<pubkey>?server=...&amount=10000"
+      // - Si fue Onchain: "bitcoin:bc1q...?amount=0.0001"
+      
+      return quoteResult.qr;
+    } else {
+      console.error("No se pudo rutear el pago:", quoteResult.reason);
+    }
+  } catch (error) {
+    console.error("Error resolviendo o cotizando pago:", error);
   }
 }
 ```
@@ -120,9 +124,9 @@ export function PaymentScreen({ invoicePayload }: { invoicePayload: string }) {
 
 | Función | Parámetros | Retorno | Descripción |
 | :--- | :--- | :--- | :--- |
-| `derive_identity_keypair_from_seed` | `seed: Uint8Array, index: number` | `{ pubkey_hex, secret_key_hex }` | Deriva el par de claves de identidad determinísticamente bajo `m/9737'/0'`. |
+| `derive_identity_keypair_from_seed` | `seed: Uint8Array, index: number` | `{ pubkey_hex, secret_key_hex }` | Deriva el par de claves de identidad determinísticamente bajo el namespace `m/9737'/0'`. |
 | `quote` | `recipient: string, amount_sats: bigint` | `QuoteResponse` | Resuelve el alias a través de la cadena S2S/DNSSEC y selecciona el riel óptimo (Lightning, Ark u Onchain). |
-| `resolve_alias` | `alias: string` | `SignedPaymentProfile` | Resuelve y verifica criptográficamente el perfil completo del destinatario. |
+| `resolve_alias` | `alias: string` | `SignedPaymentProfile` | Resuelve y obtiene el perfil firmado del destinatario (la firma se valida con `verify_signed_profile`). |
 | `verify_signed_profile` | `profile_json: string` | `boolean` | Verifica la firma Schnorr `secp256k1` del perfil recibido. |
 
 ---
@@ -131,4 +135,4 @@ export function PaymentScreen({ invoicePayload }: { invoicePayload: string }) {
 
 1. **Zero Custody:** El SDK nunca almacena ni solicita claves privadas de Bitcoin (`xprv`/`tprv`).
 2. **Fail-Closed:** Si un perfil tiene firma inválida o el DNSSEC falla, la función `quote` rechaza la transacción automáticamente.
-3. **Mempool Smart Routing:** Si el monto es pequeño (< 100k sats), el SDK prioriza Lightning o Ark para evitar comisiones altas de minería L1.
+3. **Mempool Smart Routing:** Evalúa Lightning primero, selecciona On-chain cuando la tarifa de red está por debajo del umbral, y recurre a Ark como alternativa off-chain.

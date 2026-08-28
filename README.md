@@ -88,8 +88,10 @@ import * as bip39 from 'bip39';
 // 1. Initialize WASM module
 await init();
 
-// 2. Deterministically derive SatsPath identity inside the trusted wallet boundary (m/9737'/0')
-// Seed/mnemonic remains private and is never transmitted or exposed to external APIs.
+// 2. Deterministically derive SatsPath identity inside the trusted wallet boundary
+// Uses HMAC-SHA512 with domain separator "SatsPath Identity Key m/9737'/0'" and big-endian account index.
+// Seed/mnemonic remains private inside the wallet context and is never transmitted.
+const walletSeedMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const seed = bip39.mnemonicToSeedSync(walletSeedMnemonic);
 const identity = derive_identity_keypair_from_seed(seed, 0);
 console.log("SatsPath Identity Pubkey:", identity.pubkey_hex);

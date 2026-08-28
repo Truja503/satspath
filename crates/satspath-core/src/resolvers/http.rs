@@ -81,10 +81,7 @@ impl HttpResolver {
         let is_local = parsed.username().is_empty()
             && parsed.password().is_none()
             && matches!(parsed.host_str(), Some("localhost" | "127.0.0.1"));
-        let is_test = cfg!(test)
-            || std::env::var("SATSPATH_TEST").is_ok()
-            || std::env::var("CARGO_MANIFEST_DIR").is_ok();
-        if is_local && is_test {
+        if is_local {
             if let Some(port) = parsed.port() {
                 if matches!(port, 22 | 3306 | 5432 | 6379 | 27017) {
                     return Err(SatsPathError::ValidationError(format!(
