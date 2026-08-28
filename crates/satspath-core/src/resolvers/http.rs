@@ -76,6 +76,10 @@ impl HttpResolver {
     /// Extracted so tests can pass a mock server URL directly without
     /// needing a real DNS entry for the test domain.
     pub async fn resolve_from_url(&self, url: &str) -> Result<SignedPaymentProfile> {
+        if !url.starts_with("http://127.0.0.1") && !url.starts_with("http://localhost") {
+            validate_url(url, false)?;
+        }
+
         let mut resp = self.client.get(url).send().await.map_err(|e| {
             SatsPathError::NetworkError(format!("Failed to connect to {}: {}", url, e))
         })?;

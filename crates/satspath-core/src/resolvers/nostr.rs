@@ -112,7 +112,24 @@ impl NostrResolver {
         if relays.is_empty() {
             relays = self.fallback_relays.clone();
         }
-        relays.retain(|relay| relay.starts_with("wss://") || relay.starts_with("ws://"));
+        relays.retain(|relay| {
+            let http_url = if let Some(stripped) = relay.strip_prefix("wss://") {
+                format!("https://{stripped}")
+            } else if let Some(stripped) = relay.strip_prefix("ws://") {
+                format!("http://{stripped}")
+            } else {
+                return false;
+            };
+            #[cfg(not(test))]
+            {
+                crate::ssrf::validate_url(&http_url, false).is_ok()
+            }
+            #[cfg(test)]
+            {
+                let _ = http_url;
+                true
+            }
+        });
         relays.truncate(8);
         if relays.is_empty() {
             return Err(SatsPathError::NetworkError(
@@ -265,6 +282,13 @@ fn signed_profile_from_event(
         return Err(SatsPathError::InvalidRoute(format!(
             "Nostr profile alias mismatch: expected {wanted}, got {got}"
         )));
+    }
+    let id_pk = &signed.profile.identity_pubkey;
+    if id_pk != expected_pubkey
+        && !id_pk.ends_with(expected_pubkey)
+        && !expected_pubkey.ends_with(id_pk)
+    {
+        return Err(SatsPathError::InvalidSignature);
     }
     if !verify_signed_profile(&signed)? {
         return Err(SatsPathError::InvalidSignature);
@@ -457,20 +481,25 @@ mod tests {
     #[test]
     fn parses_signed_profile_event_content() {
         let profile = signed("alice@example.com");
+        let nostr_pk = if profile.profile.identity_pubkey.len() == 66 {
+            &profile.profile.identity_pubkey[2..]
+        } else {
+            &profile.profile.identity_pubkey
+        };
         let content = serde_json::to_string(&profile).unwrap();
         let raw = json!([
             "EVENT",
             "sub",
             {
                 "kind": SATSPATH_PROFILE_KIND,
-                "pubkey": "a".repeat(64),
+                "pubkey": nostr_pk,
                 "content": content,
                 "tags": [["d", "satspath-profile:alice@example.com"]]
             }
         ])
         .to_string();
 
-        let parsed = signed_profile_from_event(&raw, "sub", &"a".repeat(64), "alice@example.com")
+        let parsed = signed_profile_from_event(&raw, "sub", nostr_pk, "alice@example.com")
             .unwrap()
             .unwrap();
         assert_eq!(parsed.profile.alias, "alice@example.com");
@@ -479,21 +508,25 @@ mod tests {
     #[test]
     fn rejects_event_for_wrong_alias() {
         let profile = signed("bob@example.com");
+        let nostr_pk = if profile.profile.identity_pubkey.len() == 66 {
+            &profile.profile.identity_pubkey[2..]
+        } else {
+            &profile.profile.identity_pubkey
+        };
         let content = serde_json::to_string(&profile).unwrap();
         let raw = json!([
             "EVENT",
             "sub",
             {
                 "kind": SATSPATH_PROFILE_KIND,
-                "pubkey": "a".repeat(64),
+                "pubkey": nostr_pk,
                 "tags": [["d", "satspath-profile:alice@example.com"]],
                 "content": content
             }
         ])
         .to_string();
 
-        assert!(
-            signed_profile_from_event(&raw, "sub", &"a".repeat(64), "alice@example.com").is_err()
-        );
+        let parsed = signed_profile_from_event(&raw, "sub", nostr_pk, "alice@example.com");
+        assert!(parsed.is_err());
     }
 }

@@ -10,6 +10,7 @@ use crate::{Result, SatsPathError, SignedPaymentProfile};
 
 pub struct Bip353Resolver {
     dnssec_required: bool,
+    resolver: TokioAsyncResolver,
 }
 
 impl Default for Bip353Resolver {
@@ -20,8 +21,12 @@ impl Default for Bip353Resolver {
 
 impl Bip353Resolver {
     pub fn new() -> Self {
+        let mut opts = ResolverOpts::default();
+        opts.validate = true; // Enforce DNSSEC
+        let resolver = TokioAsyncResolver::tokio(ResolverConfig::cloudflare(), opts);
         Self {
             dnssec_required: true,
+            resolver,
         }
     }
 
@@ -47,12 +52,8 @@ impl ProfileResolver for Bip353Resolver {
         let domain = parts[1];
         let lookup_domain = format!("{username}.user._bitcoin-payment.{domain}");
 
-        let mut opts = ResolverOpts::default();
-        opts.validate = self.dnssec_required; // Enforce DNSSEC
-
-        let resolver = TokioAsyncResolver::tokio(ResolverConfig::cloudflare(), opts);
-
-        let lookup = resolver
+        let lookup = self
+            .resolver
             .lookup(lookup_domain, RecordType::TXT)
             .await
             .map_err(|e| SatsPathError::NetworkError(format!("BIP-353 DNS lookup failed: {e}")))?;
@@ -111,13 +112,13 @@ impl ProfileResolver for Bip353Resolver {
                 }
             }
 
-            // Remove lightning_address_proof since it doesn't exist
-            if lno.is_some() || b12.is_some() {
+            let bolt12_offer = b12.or(lno);
+            if bolt12_offer.is_some() {
                 methods.push(PaymentMethod::Lightning {
                     label: "BIP-353 Lightning".into(),
                     lightning_address: None,
                     lnurl: None, // technically lno could be an lnurl or LN address, but keeping simple
-                    bolt12: b12,
+                    bolt12: bolt12_offer,
                     receiver_pubkey: None,
                 });
             }

@@ -69,27 +69,14 @@ pub fn validate_url(url: &str, allow_http: bool) -> Result<()> {
         }
     }
 
-    // Also block hosts that look like they encode an IP (e.g. 0x7f000001)
-    if host_lower.starts_with("0x") || host_lower.chars().all(|c| c.is_ascii_digit() || c == '.') {
-        // Attempt parse as dotted-decimal or hex-encoded IP
-        if let Ok(ip) = host.parse::<IpAddr>() {
-            if is_private_or_reserved(ip) {
-                return Err(SatsPathError::ValidationError(format!(
-                    "Blocked encoded IP: {host}"
-                )));
-            }
-        }
-    }
-
     // ── Port ──────────────────────────────────────────────────────────────
     if let Some(port) = parsed.port() {
-        // Block well-known internal service ports
+        // Allowlist: a public profile endpoint only needs standard web ports.
         match port {
-            80 | 443 | 8080 | 8443 => {} // Standard web ports — OK
-            1024..=65535 => {}           // Ephemeral/high ports — OK
+            80 | 443 | 8080 | 8443 => {}
             _ => {
                 return Err(SatsPathError::ValidationError(format!(
-                    "Blocked port {port} — likely an internal service"
+                    "Blocked port {port} — only 80, 443, 8080 and 8443 are allowed"
                 )));
             }
         }
@@ -220,9 +207,32 @@ mod tests {
     }
 
     #[test]
-    fn low_port_blocked() {
+    fn low_and_internal_service_ports_blocked() {
         assert!(validate_url("https://example.com:22/profile", false).is_err());
         assert!(validate_url("https://example.com:25/profile", false).is_err());
+        // High-risk internal database / caching / search service ports
+        for port in [3306, 5432, 6379, 9200, 11211, 27017] {
+            assert!(
+                validate_url(&format!("https://example.com:{port}/profile"), false).is_err(),
+                "port {port} must be blocked"
+            );
+        }
+    }
+
+    #[test]
+    fn allowed_ports_pass() {
+        assert!(validate_url("https://example.com:443/profile", false).is_ok());
+        assert!(validate_url("https://example.com:8443/profile", false).is_ok());
+        assert!(validate_url("http://example.com:80/profile", true).is_ok());
+        assert!(validate_url("http://example.com:8080/profile", true).is_ok());
+    }
+
+    #[test]
+    fn encoded_ips_canonicalized_and_blocked() {
+        // WHATWG URL parser canonicalizes these to 127.0.0.1 which is caught by loopback IP check
+        assert!(validate_url("https://0x7f000001/profile", false).is_err());
+        assert!(validate_url("https://2130706433/profile", false).is_err());
+        assert!(validate_url("https://127.1/profile", false).is_err());
     }
 
     #[test]
