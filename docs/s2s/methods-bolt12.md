@@ -22,8 +22,7 @@ The exact BOLT12 string (`lno1...`) is preserved and signed directly within the 
 
 SatsPath validates offers before allowing them into the profile:
 
-- **Prefix validation**: Accepts BOLT12 offer strings starting with `lno1`.
-- **String checks**: Validates non-empty payload and format prefix.
+- **Prefix validation**: Verifies that BOLT12 offer strings start with the `lno1` Bech32 prefix.
 
 _Future extensions will decode full TLV trees to validate expiry, unknown required feature bits, and amount constraints directly._
 

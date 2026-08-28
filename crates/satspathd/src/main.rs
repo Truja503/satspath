@@ -441,7 +441,8 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
                 Ok(log) => {
                     let latest = log.checkpoints().last().map(|c| c.created_at).unwrap_or(0);
                     let now = chrono::Utc::now().timestamp();
-                    ((now - latest).max(0), true)
+                    let age = if latest == 0 { 0 } else { now - latest };
+                    (age, true)
                 }
                 Err(_) => (-1, false),
             };

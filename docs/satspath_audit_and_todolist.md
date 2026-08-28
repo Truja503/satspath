@@ -95,12 +95,15 @@ for b in \
   feature/mainnet-preview-mode-v2 \
   feature/mainnet-ln-test \
   feat/arkade-wallet-integration; do
-  if git merge-base --is-ancestor "origin/$b" "origin/main" 2>/dev/null; then
+  sha=$(git rev-parse --verify "origin/$b" 2>/dev/null) || continue
+  if git merge-base --is-ancestor "$sha" "origin/main" 2>/dev/null; then
     if [ "$DRY_RUN" = "1" ]; then
-      echo "[DRY-RUN] SE BORRARÍA (contenida en main): $b"
+      echo "[DRY-RUN] SE BORRARÍA (contenida en main): $b ($sha)"
     else
-      echo "Borrando rama remota: $b"
-      git push origin --delete "$b"
+      echo "Borrando rama remota: $b ($sha)"
+      git push --force-with-lease="refs/heads/$b:$sha" origin --delete "$b" || {
+        echo "Advertencia: no se pudo borrar $b (el ref remoto cambió); se omite." >&2
+      }
     fi
   else
     echo "[OMITIDA] $b NO está contenida completamente en main"

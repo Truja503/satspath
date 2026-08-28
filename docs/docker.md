@@ -159,7 +159,7 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 - [ ] Push to a private registry (GHCR, ECR, etc.) — see `docker.yml` CI workflow
 - [ ] Pin base image digests (replace `bookworm-slim` tags with `sha256:...`)
 - [ ] Set `RUST_LOG` to `warn` in production
-- [ ] Mount `satspath_data` volume to a backed-up external path
+- [ ] Configure backup for `satspath_data` volume (e.g. `docker run --rm -v satspath_data:/data -v $(pwd):/backup debian:bookworm-slim tar czf /backup/satspath_data_$(date +%F).tar.gz -C /data .`)
 - [ ] Run `make scan` before each release to check for CVEs
 - [ ] Review CI SARIF reports in GitHub Security tab
 
@@ -171,10 +171,14 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 → The build runs inside the container; you don't need Cargo on the host.
 
 **`Permission denied: /data`**
-→ The `satspath_data` volume ownership may be wrong. Run:
+→ The `satspath_data` volume ownership may be wrong. Run an entrypoint override as root:
 
 ```bash
-docker compose run --rm --user root satspath-cli chown -R 10001:10001 /data
+# For CLI container (UID 10001):
+docker compose run --rm --entrypoint /bin/sh --user root satspath-cli -c "chown -R 10001:10001 /data && chmod -R 770 /data"
+
+# For Daemon container (UID 10002):
+docker compose run --rm --entrypoint /bin/sh --user root satspathd -c "chown -R 10002:10002 /data && chmod -R 770 /data"
 ```
 
 **Build fails on `is_multiple_of` (pre-existing)**
