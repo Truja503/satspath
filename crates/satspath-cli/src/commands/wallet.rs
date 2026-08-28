@@ -296,12 +296,11 @@ pub fn cmd_wallet_init() -> Result<()> {
     let mut state = load_wallet()?;
 
     if let Some(pubkey) = &state.identity_pubkey {
-        if keystore::load_identity_key(&satspath_dir(), pubkey).is_ok() {
-            println!("Wallet already initialized.");
-            println!("Identity fingerprint: {}", fingerprint_pubkey(pubkey)?);
-            print_receiver_warning();
-            return Ok(());
-        }
+        keystore::load_identity_key(&satspath_dir(), pubkey)?;
+        println!("Wallet already initialized.");
+        println!("Identity fingerprint: {}", fingerprint_pubkey(pubkey)?);
+        print_receiver_warning();
+        return Ok(());
     }
 
     let kp = generate_identity_keypair();

@@ -113,20 +113,20 @@ impl NostrResolver {
             relays = self.fallback_relays.clone();
         }
         relays.retain(|relay| {
-            let http_url = if let Some(stripped) = relay.strip_prefix("wss://") {
-                format!("https://{stripped}")
+            let (http_url, allow_http) = if let Some(stripped) = relay.strip_prefix("wss://") {
+                (format!("https://{stripped}"), false)
             } else if let Some(stripped) = relay.strip_prefix("ws://") {
-                format!("http://{stripped}")
+                (format!("http://{stripped}"), true)
             } else {
                 return false;
             };
             #[cfg(not(test))]
             {
-                crate::ssrf::validate_url(&http_url, false).is_ok()
+                crate::ssrf::validate_url(&http_url, allow_http).is_ok()
             }
             #[cfg(test)]
             {
-                let _ = http_url;
+                let _ = (http_url, allow_http);
                 true
             }
         });

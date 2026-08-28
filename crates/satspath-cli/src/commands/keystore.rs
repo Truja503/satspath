@@ -134,31 +134,40 @@ fn load_identity_key_with_password(
         let salt = &bytes[0..16];
         let nonce_bytes = &bytes[16..28];
         let ciphertext = &bytes[28..];
-
-        let password = explicit_password.map(str::to_owned).unwrap_or_else(|| {
-            use std::io::IsTerminal;
-            std::env::var("SATSPATH_PASSWORD").unwrap_or_else(|_| {
-                if !std::io::stdin().is_terminal() {
-                    String::new()
-                } else {
-                    print!(
-                        "Enter password to decrypt identity key {}: ",
-                        identity_pubkey_hex
-                    );
-                    let _ = std::io::stdout().flush();
-                    rpassword::read_password().unwrap_or_default()
-                }
-            })
-        });
-        let key = derive_key(&password, salt);
-        let cipher = Aes256Gcm::new(&key);
         let nonce = Nonce::from_slice(nonce_bytes);
 
-        let plaintext = cipher
-            .decrypt(nonce, ciphertext)
-            .map_err(|_| anyhow::anyhow!("incorrect password or corrupted key file"))?;
+        let try_decrypt = |pwd: &str| -> Option<SecretKey> {
+            let key = derive_key(pwd, salt);
+            let cipher = Aes256Gcm::new(&key);
+            cipher
+                .decrypt(nonce, ciphertext)
+                .ok()
+                .and_then(|pt| SecretKey::from_slice(&pt).ok())
+        };
 
-        SecretKey::from_slice(&plaintext).context("parsing decrypted identity key")?
+        if let Some(pwd) = explicit_password {
+            try_decrypt(pwd).context("incorrect explicit password or corrupted key file")?
+        } else if let Ok(pwd) = std::env::var("SATSPATH_PASSWORD") {
+            try_decrypt(&pwd).context("incorrect SATSPATH_PASSWORD or corrupted key file")?
+        } else if let Some(sk) = try_decrypt("") {
+            // Key was saved without password (empty password)
+            sk
+        } else {
+            use std::io::IsTerminal;
+            if !std::io::stdin().is_terminal() {
+                anyhow::bail!(
+                    "SATSPATH_PASSWORD environment variable required to decrypt identity key in non-interactive environment"
+                );
+            } else {
+                print!(
+                    "Enter password to decrypt identity key {}: ",
+                    identity_pubkey_hex
+                );
+                let _ = std::io::stdout().flush();
+                let pwd = rpassword::read_password().context("reading password")?;
+                try_decrypt(&pwd).context("incorrect password or corrupted key file")?
+            }
+        }
     } else {
         anyhow::bail!("invalid key file length");
     };
@@ -210,6 +219,32 @@ mod tests {
         let pubkey_hex = hex::encode(kp.public_key.serialize());
         assert!(
             load_identity_key_with_password(dir.path(), &pubkey_hex, Some("testpass")).is_err()
+        );
+    }
+
+    #[test]
+    fn save_then_load_unencrypted_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let kp = generate_identity_keypair();
+        let pubkey_hex = hex::encode(kp.public_key.serialize());
+
+        let path = save_identity_key_with_password(dir.path(), &kp.secret_key, "").unwrap();
+        assert!(path.exists());
+
+        let loaded = load_identity_key_with_password(dir.path(), &pubkey_hex, None).unwrap();
+        assert_eq!(loaded.secret_bytes(), kp.secret_key.secret_bytes());
+    }
+
+    #[test]
+    fn load_with_wrong_password_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let kp = generate_identity_keypair();
+        let pubkey_hex = hex::encode(kp.public_key.serialize());
+
+        save_identity_key_with_password(dir.path(), &kp.secret_key, "correct_password").unwrap();
+        assert!(
+            load_identity_key_with_password(dir.path(), &pubkey_hex, Some("wrong_password"))
+                .is_err()
         );
     }
 

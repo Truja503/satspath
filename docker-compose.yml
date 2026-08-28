@@ -12,9 +12,19 @@ services:
     volumes:
       - satspath_data:/data
     environment:
-      - SATSPATH_NETWORK=mainnet
+      - SATSPATH_NETWORK=${SATSPATH_NETWORK:-mainnet}
       # - SATSPATHD_AUTH_TOKEN=your_secure_token_here (optional, auto-generated if missing)
       # - SATSPATHD_CORS_ORIGIN=https://your-domain.com
+
+  satspath-cli:
+    build:
+      context: .
+      target: runtime
+    container_name: satspath-cli
+    volumes:
+      - satspath_data:/data
+    environment:
+      - SATSPATH_NETWORK=${SATSPATH_NETWORK:-mainnet}
 
 volumes:
   satspath_data:

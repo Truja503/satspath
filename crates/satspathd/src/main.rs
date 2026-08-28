@@ -97,7 +97,7 @@ struct AppState {
     network: String,
     open_ui: bool,
     auth_token: String,
-    // Removed escrow state to enforce non-custodial rule
+    mutation_lock: Arc<tokio::sync::Mutex<()>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -293,7 +293,13 @@ async fn main() -> Result<()> {
     // SEC-04: Daemon API Authorization
     let macaroon_path = home.join("admin.macaroon");
     let auth_token = if let Ok(token) = std::env::var("SATSPATHD_AUTH_TOKEN") {
-        token.trim().to_string()
+        let t = token.trim().to_string();
+        if t.len() != 64 || hex::decode(&t).is_err() {
+            anyhow::bail!(
+                "SATSPATHD_AUTH_TOKEN must be a valid 64-character hex string (32 bytes)"
+            );
+        }
+        t
     } else if !macaroon_path.exists() {
         use secp256k1::rand::RngCore;
         let mut token = [0u8; 32];
@@ -303,10 +309,12 @@ async fn main() -> Result<()> {
             .context("writing admin.macaroon")?;
         token_hex
     } else {
-        fs::read_to_string(&macaroon_path)
-            .context("reading admin.macaroon")?
-            .trim()
-            .to_string()
+        let content = fs::read_to_string(&macaroon_path).context("reading admin.macaroon")?;
+        let t = content.trim().to_string();
+        if t.len() != 64 || hex::decode(&t).is_err() {
+            anyhow::bail!("admin.macaroon must be a valid 64-character hex string (32 bytes)");
+        }
+        t
     };
 
     load_or_create_identity(&home)?;
@@ -317,6 +325,7 @@ async fn main() -> Result<()> {
         network,
         open_ui: !cli.no_open,
         auth_token,
+        mutation_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     print_startup_status(&state)?;
@@ -349,9 +358,15 @@ async fn serve(state: AppState) -> Result<()> {
         }
     });
 
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
     while let Some(request) = rx.recv().await {
         let state = Arc::clone(&state);
+        let sem = Arc::clone(&semaphore);
         tokio::spawn(async move {
+            let _permit = match sem.acquire_owned().await {
+                Ok(p) => p,
+                Err(_) => return,
+            };
             if let Err(e) = handle_request(request, &state).await {
                 eprintln!("request error: {e}");
             }
@@ -422,17 +437,25 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             json_response(StatusCode(200), &serde_json::json!({"ok": true}))
         }
         (Method::Get, v2_api::routes::HEALTH) => {
-            let log_opt = transparency_log(state).ok();
-            let checkpoint_age = log_opt
-                .as_ref()
-                .map(|log| {
+            let (checkpoint_age, log_ok) = match transparency_log(state) {
+                Ok(log) => {
                     let latest = log.checkpoints().last().map(|c| c.created_at).unwrap_or(0);
                     let now = chrono::Utc::now().timestamp();
-                    (now - latest).max(0)
-                })
-                .unwrap_or(0);
-            let resp = v2_api::build_health_response(checkpoint_age, true, 1);
-            json_response(StatusCode(200), &resp)
+                    ((now - latest).max(0), true)
+                }
+                Err(_) => (-1, false),
+            };
+            let resp = v2_api::build_health_response(checkpoint_age, log_ok, 1);
+            let status = if resp.status == "healthy" {
+                StatusCode(200)
+            } else {
+                StatusCode(503)
+            };
+            json_response(status, &resp)
+        }
+        (Method::Get, "/.well-known/satspath-authority")
+        | (Method::Get, v2_api::routes::NAMESPACE) => {
+            json_result(StatusCode(200), namespace_descriptor(state))
         }
         (Method::Get, "/v1/node") => json_result(StatusCode(200), node_response(state)),
         (Method::Get, "/v1/status") => json_result(StatusCode(200), status_response(state)),
@@ -535,6 +558,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             }
         }
         (Method::Put, "/v1/profile") | (Method::Post, "/v1/profile") => {
+            let _guard = state.mutation_lock.lock().await;
             match read_json::<ProfileUpdateRequest>(&mut request)
                 .and_then(|body| update_profile(state, body))
             {
@@ -551,6 +575,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             }
         }
         (Method::Post, "/v1/profile/verify") => {
+            let _guard = state.mutation_lock.lock().await;
             match read_json::<VerifyRequest>(&mut request)
                 .and_then(|body| verify_challenge(state, body))
             {
@@ -559,6 +584,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             }
         }
         (Method::Post, "/v1/profile/methods") => {
+            let _guard = state.mutation_lock.lock().await;
             match read_json::<ProfileUpdateRequest>(&mut request)
                 .and_then(|body| update_profile_methods(state, body))
             {
@@ -566,10 +592,13 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
                 Err(e) => json_error(StatusCode(400), e),
             }
         }
-        (Method::Post, "/v1/profile/rotate-key") => match rotate_profile_key(state) {
-            Ok(response) => json_response(StatusCode(200), &response),
-            Err(error) => json_error(StatusCode(400), error),
-        },
+        (Method::Post, "/v1/profile/rotate-key") => {
+            let _guard = state.mutation_lock.lock().await;
+            match rotate_profile_key(state) {
+                Ok(response) => json_response(StatusCode(200), &response),
+                Err(error) => json_error(StatusCode(400), error),
+            }
+        }
         (Method::Post, "/v1/resolve") => match read_json::<AliasRequest>(&mut request)
             .and_then(|body| resolve_profile(state, &body.alias))
         {
@@ -1336,7 +1365,7 @@ fn save_wallet(home: &Path, wallet: &WalletState) -> Result<()> {
     fs::create_dir_all(home)?;
     let json = serde_json::to_string_pretty(wallet)?;
     assert_no_private_material(&json)?;
-    fs::write(wallet_path(home), json)?;
+    write_owner_only_file(&wallet_path(home), json.as_bytes())?;
     Ok(())
 }
 
@@ -1367,24 +1396,66 @@ fn load_identity_key(home: &Path, identity_pubkey: &str) -> Result<secp256k1::Se
 }
 
 fn write_owner_only_file(path: &Path, content: &[u8]) -> Result<()> {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    fs::create_dir_all(parent)?;
+    use secp256k1::rand::RngCore;
+    let mut rand_bytes = [0u8; 16];
+    secp256k1::rand::thread_rng().fill_bytes(&mut rand_bytes);
+    let tmp_path = parent.join(format!(".tmp-{}", hex::encode(rand_bytes)));
     #[cfg(unix)]
     {
         use std::fs::OpenOptions;
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
         let mut file = OpenOptions::new()
-            .create(true)
+            .create_new(true)
             .write(true)
-            .truncate(true)
             .mode(0o600)
-            .open(path)?;
+            .open(&tmp_path)?;
         file.write_all(content)?;
+        file.sync_all()?;
     }
     #[cfg(not(unix))]
     {
-        fs::write(path, content)?;
+        fs::write(&tmp_path, content)?;
     }
+    fs::rename(&tmp_path, path)?;
     Ok(())
+}
+
+fn namespace_descriptor(
+    state: &AppState,
+) -> Result<satspath_core::transparency::NamespaceDescriptor> {
+    let domain =
+        std::env::var("SATSPATH_AUTHORITY_DOMAIN").unwrap_or_else(|_| "localhost".to_string());
+    let wallet = load_wallet(&state.home)?;
+    let authority_pubkey = wallet.identity_pubkey.clone().unwrap_or_else(|| {
+        "0000000000000000000000000000000000000000000000000000000000000000".to_string()
+    });
+    let log = transparency_log(state).ok();
+    let log_id = log
+        .as_ref()
+        .map(|l| l.log_id().to_string())
+        .unwrap_or_else(|| format!("satspath:{domain}"));
+    let endpoint_urls = vec![format!("http://{}/v2", state.bind)];
+    let quorum = std::env::var("SATSPATH_WITNESS_QUORUM")
+        .ok()
+        .and_then(|q| q.parse::<u8>().ok())
+        .unwrap_or(1);
+    let now = chrono::Utc::now().timestamp();
+
+    Ok(satspath_core::transparency::NamespaceDescriptor {
+        version: 2,
+        domain,
+        log_id,
+        authority_pubkey,
+        endpoint_urls,
+        witness_quorum: quorum,
+        witness_pubkeys: vec![],
+        valid_from: now,
+        expires_at: now + 30 * 86400,
+        signature: String::new(),
+    })
 }
 
 fn print_startup_status(state: &AppState) -> Result<()> {
@@ -1744,6 +1815,7 @@ mod tests {
             network: "devnet".into(),
             open_ui: false,
             auth_token: "test_auth_token".into(),
+            mutation_lock: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
 

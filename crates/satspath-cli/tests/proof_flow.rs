@@ -20,6 +20,7 @@ fn run(dir: &Path, args: &[&str]) -> (String, String, bool) {
     let out = Command::new(bin())
         .args(args)
         .current_dir(dir)
+        .env("SATSPATH_PASSWORD", "")
         .output()
         .expect("failed to run satspath binary");
     (

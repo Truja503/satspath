@@ -96,8 +96,7 @@ DNSSEC-backed payment instructions but never pays, signs, or broadcasts.
 - **No private material** may ever appear in a published or resolved DNS payload
   (`seed`, `xprv`/`tprv`, `mnemonic`, `macaroon`, `cert`, `api_key`, `claim_key`,
   `refund_key`, `preimage`, …) — screened on both publish and resolve.
-- **Record authorization relies on DNSSEC validation.** Email access alone never
-  authorizes a DNS payment-instruction change.
+- **Record authorization relies on DNSSEC validation while signed profile verification remains mandatory.** DNSSEC cryptographically authorizes the DNS record, while the signed profile, including its secp256k1 identity-key signature, alias equality, and payment-method validation, remains strictly required. Email access alone never authorizes a payment-instruction change.
 - **Consumer email domains** (e.g. `gmail.com`) cannot use BIP-353; they fall back
   to platform verification / the invite flow.
 - **DNS-provider credentials are never committed** — only a trait + mock publisher

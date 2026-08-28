@@ -53,9 +53,9 @@ yourdomain.com {
 
 ## Upgrade Guidance
 
-Upgrading `satspathd` is as simple as pulling the latest container image and restarting:
+Upgrading `satspathd` involves updating the pinned image tag in `deploy/docker-compose.yml` to the desired release and restarting:
 
 ```bash
-docker-compose pull
-docker-compose up -d
+docker compose -f deploy/docker-compose.yml pull
+docker compose -f deploy/docker-compose.yml up -d
 ```

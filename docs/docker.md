@@ -12,18 +12,18 @@
 │  docker-compose services                                        │
 │                                                                 │
 │  ┌──────────────────────┐     ┌────────────────────────────┐   │
-│  │  satspath-cli        │     │  ark-bridge (--profile     │   │
-│  │  Rust / Debian Slim  │────▶│  bridge)   Node 20 Slim    │   │
-│  │  non-root uid:10001  │     │  non-root uid:10002        │   │
+│  │  satspath-cli        │     │  satspathd                 │   │
+│  │  Rust / Debian Slim  │     │  Rust / Debian Slim        │   │
+│  │  non-root uid:10001  │     │  non-root uid:10001        │   │
 │  │  read-only rootfs    │     │  read-only rootfs          │   │
 │  │  cap_drop: ALL       │     │  cap_drop: ALL             │   │
 │  └──────────────────────┘     └────────────────────────────┘   │
-│          │                                                      │
-│          ▼                                                      │
-│  ┌──────────────────────┐                                       │
-│  │  satspath_data       │  Named volume: .satspath/ registry    │
-│  │  (Docker volume)     │  survives container re-creation       │
-│  └──────────────────────┘                                       │
+│          │                                 │                    │
+│          ▼                                 ▼                    │
+│  ┌────────────────────────────────────────────────────────┐     │
+│  │  satspath_data (Docker volume)                         │     │
+│  │  Named volume: .satspath/ registry survives containers │     │
+│  └────────────────────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -32,11 +32,11 @@
 | Image                 | Base                    | Size target | Binary                    |
 | --------------------- | ----------------------- | ----------- | ------------------------- |
 | `satspath-cli`        | `debian:bookworm-slim`  | ~25 MB      | `/usr/local/bin/satspath` |
-| `satspath-ark-bridge` | `node:20-bookworm-slim` | ~120 MB     | `node dist/index.js`      |
+| `satspathd`           | `debian:bookworm-slim`  | ~30 MB      | `/usr/local/bin/satspathd`|
 
 Both images use:
 
-- **Non-root user** (UID 10001 / 10002)
+- **Non-root user** (UID 10001)
 - **Read-only root filesystem** (`read_only: true`)
 - **All capabilities dropped** (`cap_drop: ALL`)
 - **`no-new-privileges`** security option
@@ -92,13 +92,11 @@ docker compose run --rm satspath-cli register user@example.com \
 docker compose run --rm satspath-cli quote user@example.com 21000
 ```
 
-### 5. Start the ARK bridge (optional)
-
-The bridge is only needed for Ark swap validation and is disabled by default.
+### 5. Start the SatsPath Daemon (satspathd)
 
 ```bash
-docker compose --profile bridge up -d ark-bridge
-docker compose --profile bridge logs -f ark-bridge
+docker compose up -d satspathd
+docker compose logs -f satspathd
 ```
 
 ---
@@ -107,17 +105,16 @@ docker compose --profile bridge logs -f ark-bridge
 
 ```bash
 make help          # Show all targets
-make build         # Build all images
-make build-cli     # Build CLI image only
-make build-bridge  # Build bridge image only
+make build         # Build CLI image
+make build-cli     # Build CLI image
 make run CMD="--help"  # Run any CLI command
 make shell         # Open a debug shell in the CLI container
-make up            # Start bridge in background
+make up            # Start daemon service in background
 make down          # Stop all services
 make logs          # Tail all service logs
-make scan          # Run Trivy vulnerability scan (requires trivy)
-make clean         # Remove images and volumes
-make smoke         # Build + verify --help / node --version
+make scan          # Run Trivy vulnerability scan on CLI & daemon
+make clean         # Remove built images and dangling layers
+make smoke         # Build + verify --help output
 ```
 
 ---

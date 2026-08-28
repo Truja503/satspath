@@ -48,18 +48,31 @@ Estas ramas ya están contenidas en `main` — su trabajo ya está ahí:
 
 ```bash
 # 1. Mergear la rama actual a main, abortando si falla
-git checkout main
+git checkout main || {
+  echo "No se pudo cambiar a main; se cancela la limpieza." >&2
+  exit 1
+}
 git merge feat/satspath-receiver-flow --no-ff -m "feat: merge wallet + receiver flow into main" || {
   echo "Merge falló. Resuelva los conflictos antes de borrar cualquier rama." >&2
   exit 1
 }
 
 # 2. Respaldar las referencias de todas las ramas remotas antes de borrar
-git ls-remote --heads origin > branch-tips-backup-$(date +%F).txt
+backup="branch-tips-backup-$(date +%F).txt"
+tmp="${backup}.tmp"
+git ls-remote --heads origin > "$tmp" || {
+  rm -f "$tmp"
+  echo "No se pudo crear el respaldo remoto; se cancela la limpieza." >&2
+  exit 1
+}
+mv "$tmp" "$backup"
 
-# 3. Borrar de forma segura solo las ramas remotas contenidas en main
+# 3. Borrar de forma segura solo las ramas remotas contenidas en origin/main
 # Cambie DRY_RUN=0 para ejecutar la eliminación real
 DRY_RUN=1
+
+# Refrescar referencias de seguimiento remoto antes de evaluar la seguridad de borrado
+git fetch origin --prune || exit 1
 
 for b in \
   chore/remove-stray-scratch-files \
@@ -78,7 +91,7 @@ for b in \
   feature/mainnet-preview-mode-v2 \
   feature/mainnet-ln-test \
   feat/arkade-wallet-integration; do
-  if git merge-base --is-ancestor "origin/$b" main 2>/dev/null; then
+  if git merge-base --is-ancestor "origin/$b" "origin/main" 2>/dev/null; then
     if [ "$DRY_RUN" = "1" ]; then
       echo "[DRY-RUN] SE BORRARÍA (contenida en main): $b"
     else

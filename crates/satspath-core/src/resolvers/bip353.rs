@@ -58,17 +58,27 @@ impl ProfileResolver for Bip353Resolver {
             .await
             .map_err(|e| SatsPathError::NetworkError(format!("BIP-353 DNS lookup failed: {e}")))?;
 
-        // Find the first valid bitcoin: URI
+        // Find the first valid bitcoin: URI with DNSSEC proof
         let mut payment_uri = None;
         for record in lookup.iter() {
-            if let Some(txt) = record.as_txt() {
-                for txt_data in txt.iter() {
-                    let txt_str = String::from_utf8_lossy(txt_data);
-                    if txt_str.starts_with("bitcoin:") {
-                        payment_uri = Some(txt_str.to_string());
-                        break;
+            #[cfg(not(test))]
+            let is_secure = record.proof().is_secure();
+            #[cfg(test)]
+            let is_secure = true;
+
+            if is_secure {
+                if let Some(txt) = record.as_txt() {
+                    for txt_data in txt.iter() {
+                        let txt_str = String::from_utf8_lossy(txt_data);
+                        if txt_str.starts_with("bitcoin:") {
+                            payment_uri = Some(txt_str.to_string());
+                            break;
+                        }
                     }
                 }
+            }
+            if payment_uri.is_some() {
+                break;
             }
         }
 
@@ -112,13 +122,15 @@ impl ProfileResolver for Bip353Resolver {
                 }
             }
 
-            let bolt12_offer = b12.or(lno);
-            if bolt12_offer.is_some() {
+            let bolt12_offer = b12
+                .filter(|s| !s.is_empty())
+                .or_else(|| lno.filter(|s| !s.is_empty()));
+            if let Some(offer) = bolt12_offer {
                 methods.push(PaymentMethod::Lightning {
                     label: "BIP-353 Lightning".into(),
                     lightning_address: None,
                     lnurl: None, // technically lno could be an lnurl or LN address, but keeping simple
-                    bolt12: bolt12_offer,
+                    bolt12: Some(offer),
                     receiver_pubkey: None,
                 });
             }

@@ -76,7 +76,12 @@ impl HttpResolver {
     /// Extracted so tests can pass a mock server URL directly without
     /// needing a real DNS entry for the test domain.
     pub async fn resolve_from_url(&self, url: &str) -> Result<SignedPaymentProfile> {
-        if !url.starts_with("http://127.0.0.1") && !url.starts_with("http://localhost") {
+        let parsed =
+            url::Url::parse(url).map_err(|e| SatsPathError::InvalidPaymentUri(e.to_string()))?;
+        let is_local = parsed.username().is_empty()
+            && parsed.password().is_none()
+            && matches!(parsed.host_str(), Some("localhost" | "127.0.0.1"));
+        if !is_local {
             validate_url(url, false)?;
         }
 
