@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SatsPath v2 server is an authoritative, network-facing identity resolution service that hosts one or more namespaces and returns fully proof-carrying resolution envelopes. It is strictly a discovery layer: it does not sign or broadcast payments and accepts no wallet spending secrets.
+The SatsPath v2 server is an authoritative, network-facing identity resolution service that hosts one or more namespaces and returns proof-carrying resolution envelopes. It is strictly a discovery layer: it does not sign or broadcast payments and accepts no wallet spending secrets. Every `ResolutionEnvelope` delivers mandatory cryptographic evidence (`signed_profile`, `name_events`, `inclusion_proof`, and `checkpoint`), while optional extended proofs (`consistency_proof`, `current_state_proof`, and `witness_cosignatures`) are populated when requested by the client or configured by the namespace operator.
 
 ## V2 API Endpoints
 

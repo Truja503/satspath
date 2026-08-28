@@ -21,7 +21,7 @@ Witnesses MUST be deployed in separate administrative and cryptographic domains 
 
 If a log operator equivocates, it must present two different `root_hash` values for the same `log_id` and `tree_size`. When a witness encounters a checkpoint whose size matches its pinned state but the root differs, it halts and persistently records the permanent evidence of cryptographic failure. The witness will never sign a checkpoint for that log again until a manual operator-key rotation resets trust.
 
-## Security Guarantees
+## Security Guarantees (v0.2 Architecture)
 
-- **Non-equivocation**: As long as at least one witness in the threshold set is honest, an operator cannot conduct a split-view attack without generating permanent, cryptographic proof of fraud.
+- **Non-equivocation**: In the v0.2 production specification with cryptographic cosigning, as long as at least one witness in the threshold set is honest, an operator cannot conduct a split-view attack without generating permanent, cryptographic proof of fraud. In the current reference prototype, witness state pinning provides local rollback detection.
 - **No Resolution-Time Liveness Requirement**: Witnesses are not required to be online for every resolution. At least K of N witnesses MUST, however, be reachable by the operator when a new checkpoint is published in order to satisfy the quorum policy for that checkpoint.
