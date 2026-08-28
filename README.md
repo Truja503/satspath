@@ -13,7 +13,7 @@
 **SatsPath** is an open-source, non-custodial protocol that maps human-readable identifiers (e.g., `alice@domain.com` or `chelo@satspath.dev`) to **cryptographically signed payment profiles** across all major Bitcoin payment rails:
 
 - **⚡ Lightning Network:** Instant micro-payments via BOLT11 invoices, BOLT12 offers, and LNURL-pay.
-- **🏹 Ark Protocol:** Instant, zero-fee Layer-2 settlements via virtual UTXOs (VTXOs).
+- **🏹 Ark Protocol:** Layer-2 payment URI preview and intent generation via virtual UTXOs (VTXOs) (execution preview-only).
 - **⛓️ Bitcoin On-Chain:** Standard BIP-21 addresses and privacy-preserving Silent Payments (BIP-352).
 
 SatsPath acts as a **zero-trust cryptographic GPS for Bitcoin payments**: it never holds custody of funds, never generates or accesses wallet spending keys (`xprv`/`tprv`), and never broadcasts financial transactions.
@@ -72,7 +72,7 @@ Integrate SatsPath resolution into your web app, PWA, or wallet frontend in minu
 ### 1. Installation
 
 ```bash
-pnpm add @satspath/wasm
+pnpm add @satspath/wasm bip39
 # or modular TS packages
 pnpm add @satspath/resolvers @satspath/router
 ```
@@ -88,8 +88,9 @@ import * as bip39 from 'bip39';
 // 1. Initialize WASM module
 await init();
 
-// 2. Deterministically derive SatsPath identity keypair (m/9737'/0')
-const seed = bip39.mnemonicToSeedSync(userMnemonic);
+// 2. Deterministically derive SatsPath identity inside the trusted wallet boundary (m/9737'/0')
+// Seed/mnemonic remains private and is never transmitted or exposed to external APIs.
+const seed = bip39.mnemonicToSeedSync(walletSeedMnemonic);
 const identity = derive_identity_keypair_from_seed(seed, 0);
 console.log("SatsPath Identity Pubkey:", identity.pubkey_hex);
 
@@ -119,12 +120,15 @@ cargo build --release
 ### Core Commands
 
 #### 1. Register a Profile
+
 ```bash
 satspath register chelo@satspath.dev --testnet
 ```
+
 Generates identity keys, derives public addresses (Lightning, On-Chain, Ark), signs the profile with Schnorr `secp256k1`, and records it in the local transparency log.
 
 #### 2. Quote & Smart Route
+
 ```bash
 # Micro-payment (< 100k sats) -> Routes to Lightning
 satspath quote chelo@satspath.dev 21000 --testnet
@@ -134,6 +138,7 @@ satspath quote chelo@satspath.dev 500000 --testnet
 ```
 
 #### 3. Encode & Decode Universal Payment URIs
+
 ```bash
 # Encode payment request
 satspath encode chelo@satspath.dev 50000 --memo "SatsPath MVP"
@@ -143,10 +148,13 @@ satspath decode "satspath:v1:eyJ2ZXJzaW9uIjoxLCJhbGlhcyI6ImNoZWxvQHNhdHNwYXRoLmR
 ```
 
 #### 4. Authoritative Server Daemon (`satspathd`)
+
 Run the S2S v2 daemon locally or in Docker:
+
 ```bash
 docker-compose up -d satspathd
 ```
+
 Exposes:
 - `GET /.well-known/satspath-authority` — Signed namespace descriptor
 - `GET /v2/resolve?identifier=user@domain` / `POST /v2/resolve` — Proof-carrying `ResolutionEnvelope`

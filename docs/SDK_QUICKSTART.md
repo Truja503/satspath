@@ -9,13 +9,14 @@ Guía rápida para desarrolladores de wallets, PWAs y aplicaciones web (React, V
 Instala los paquetes oficiales de SatsPath utilizando **`pnpm`**:
 
 ```bash
-pnpm add @satspath/wasm
+pnpm add @satspath/wasm bip39 react-qr-code
 # o los paquetes de TypeScript modulares:
 pnpm add @satspath/resolvers @satspath/router
 ```
 
 > [!TIP]
 > Si estás compilando el paquete WebAssembly directamente desde el repositorio local:
+>
 > ```bash
 > cd crates/satspath-wasm
 > wasm-pack build --target web --out-dir ../../pkg/satspath-wasm
@@ -40,7 +41,8 @@ pnpm add @satspath/resolvers @satspath/router
 ## 💻 3. Código de Ejemplo (TypeScript / React)
 
 ### Paso 1: Inicializar el SDK y Derivar la Identidad
-Deriva una clave de identidad segura y determinista a partir de las 12/24 palabras semilla de la wallet sin tocar las claves de gasto de Bitcoin.
+
+Deriva una clave de identidad segura y determinista dentro del entorno de la wallet sin tocar ni exponer las claves de gasto de Bitcoin:
 
 ```typescript
 import init, { derive_identity_keypair_from_seed } from '@satspath/wasm';
@@ -49,7 +51,8 @@ import * as bip39 from 'bip39';
 // 1. Inicializar el motor WASM al montar la aplicación
 await init();
 
-// 2. Derivar la identidad SatsPath (m/9737'/0')
+// 2. Derivar la identidad SatsPath dentro del entorno seguro de la wallet (m/9737'/0')
+// La frase semilla permanece estrictamente dentro de la wallet y nunca se transmite.
 const mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const seed = bip39.mnemonicToSeedSync(mnemonic);
 
@@ -57,12 +60,13 @@ const seed = bip39.mnemonicToSeedSync(mnemonic);
 const identity = derive_identity_keypair_from_seed(seed, 0);
 
 console.log("Tu Clave Pública SatsPath:", identity.pubkey_hex);
-// => "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+// => "03e0fa79bc28965724d3eee52d58cf0cd11f712462582f42e79a545d13d85aac0b"
 ```
 
 ---
 
 ### Paso 2: Resolver un Alias y Cotizar la Mejor Ruta (`quote`)
+
 Cuando el usuario ingresa un destinatario (ej. `chelo@satspath.dev`) y un monto en Satoshis:
 
 ```typescript
@@ -124,6 +128,7 @@ export function PaymentScreen({ invoicePayload }: { invoicePayload: string }) {
 ---
 
 ## 🛡️ 5. Principios de Seguridad para Wallets
+
 1. **Zero Custody:** El SDK nunca almacena ni solicita claves privadas de Bitcoin (`xprv`/`tprv`).
 2. **Fail-Closed:** Si un perfil tiene firma inválida o el DNSSEC falla, la función `quote` rechaza la transacción automáticamente.
 3. **Mempool Smart Routing:** Si el monto es pequeño (< 100k sats), el SDK prioriza Lightning o Ark para evitar comisiones altas de minería L1.
