@@ -58,14 +58,18 @@ git merge feat/satspath-receiver-flow --no-ff -m "feat: merge wallet + receiver 
 }
 
 # 2. Respaldar las referencias de todas las ramas remotas antes de borrar
-backup="branch-tips-backup-$(date +%F).txt"
+backup="branch-tips-backup-$(date +%Y%m%d-%H%M%S)-$$.txt"
 tmp="${backup}.tmp"
 git ls-remote --heads origin > "$tmp" || {
   rm -f "$tmp"
   echo "No se pudo crear el respaldo remoto; se cancela la limpieza." >&2
   exit 1
 }
-mv "$tmp" "$backup"
+mv "$tmp" "$backup" || {
+  rm -f "$tmp"
+  echo "No se pudo publicar el respaldo; se cancela la limpieza." >&2
+  exit 1
+}
 
 # 3. Borrar de forma segura solo las ramas remotas contenidas en origin/main
 # Cambie DRY_RUN=0 para ejecutar la eliminación real

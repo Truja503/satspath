@@ -66,11 +66,11 @@ scan: ## Run Trivy vulnerability scan on images (requires trivy installed)
 	@echo "==> Scanning satspath-cli:latest"
 	trivy image --severity HIGH,CRITICAL satspath-cli:latest
 	@echo "==> Scanning satspathd:latest"
-	trivy image --severity HIGH,CRITICAL satspathd:latest || true
+	trivy image --severity HIGH,CRITICAL satspathd:latest
 
 # ── Dev helpers ───────────────────────────────────────────────────────────────
 clean: ## Remove built images and dangling layers
-	docker compose down --remove-orphans || true
+	docker compose down --remove-orphans --rmi local || true
 	docker images satspath-cli -q | xargs -r docker rmi 2>/dev/null || true
 	docker images satspathd -q | xargs -r docker rmi 2>/dev/null || true
 	docker image prune -f

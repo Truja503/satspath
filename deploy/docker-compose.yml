@@ -13,7 +13,7 @@ services:
       - RUST_LOG=info
       # Sovereign Authority settings
       - SATSPATH_NETWORK=${SATSPATH_NETWORK:-mainnet}
-      - SATSPATH_AUTHORITY_DOMAIN=${SATSPATH_AUTHORITY_DOMAIN:-example.com}
+      - SATSPATH_AUTHORITY_DOMAIN=${SATSPATH_AUTHORITY_DOMAIN:?SATSPATH_AUTHORITY_DOMAIN must be set}
       - SATSPATH_WITNESS_QUORUM=${SATSPATH_WITNESS_QUORUM:-3}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9737/health"]

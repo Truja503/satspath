@@ -231,7 +231,7 @@ mod tests {
         let path = save_identity_key_with_password(dir.path(), &kp.secret_key, "").unwrap();
         assert!(path.exists());
 
-        let loaded = load_identity_key_with_password(dir.path(), &pubkey_hex, None).unwrap();
+        let loaded = load_identity_key_with_password(dir.path(), &pubkey_hex, Some("")).unwrap();
         assert_eq!(loaded.secret_bytes(), kp.secret_key.secret_bytes());
     }
 

@@ -78,9 +78,12 @@ impl HttpResolver {
     pub async fn resolve_from_url(&self, url: &str) -> Result<SignedPaymentProfile> {
         let parsed =
             url::Url::parse(url).map_err(|e| SatsPathError::InvalidPaymentUri(e.to_string()))?;
+        #[cfg(test)]
         let is_local = parsed.username().is_empty()
             && parsed.password().is_none()
             && matches!(parsed.host_str(), Some("localhost" | "127.0.0.1"));
+        #[cfg(not(test))]
+        let is_local = false;
         if !is_local {
             validate_url(url, false)?;
         }

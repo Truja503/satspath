@@ -1437,7 +1437,13 @@ fn namespace_descriptor(
         .as_ref()
         .map(|l| l.log_id().to_string())
         .unwrap_or_else(|| format!("satspath:{domain}"));
-    let endpoint_urls = vec![format!("http://{}/v2", state.bind)];
+    let endpoint_urls = if let Ok(custom_url) = std::env::var("SATSPATH_AUTHORITY_URL") {
+        vec![custom_url]
+    } else if domain != "localhost" {
+        vec![format!("https://{domain}/v2")]
+    } else {
+        vec![format!("http://{}/v2", state.bind)]
+    };
     let quorum = std::env::var("SATSPATH_WITNESS_QUORUM")
         .ok()
         .and_then(|q| q.parse::<u8>().ok())

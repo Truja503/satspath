@@ -14,7 +14,7 @@
 │  ┌──────────────────────┐     ┌────────────────────────────┐   │
 │  │  satspath-cli        │     │  satspathd                 │   │
 │  │  Rust / Debian Slim  │     │  Rust / Debian Slim        │   │
-│  │  non-root uid:10001  │     │  non-root uid:10001        │   │
+│  │  non-root uid:10001  │     │  non-root uid:10002        │   │
 │  │  read-only rootfs    │     │  read-only rootfs          │   │
 │  │  cap_drop: ALL       │     │  cap_drop: ALL             │   │
 │  └──────────────────────┘     └────────────────────────────┘   │
@@ -36,7 +36,7 @@
 
 Both images use:
 
-- **Non-root user** (UID 10001)
+- **Non-root user** (UID 10001 for CLI, UID 10002 for daemon)
 - **Read-only root filesystem** (`read_only: true`)
 - **All capabilities dropped** (`cap_drop: ALL`)
 - **`no-new-privileges`** security option
