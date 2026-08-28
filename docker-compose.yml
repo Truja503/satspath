@@ -28,3 +28,4 @@ services:
 
 volumes:
   satspath_data:
+    name: satspath_data

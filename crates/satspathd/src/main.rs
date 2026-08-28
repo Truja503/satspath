@@ -412,7 +412,8 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let is_public_mutation = path == "/v1/receive"
         || path == "/v1/send"
         || path == "/v1/dns/resolve"
-        || path == "/v1/transparency/verify/inclusion";
+        || path == "/v1/transparency/verify/inclusion"
+        || path == "/v2/resolve";
 
     if is_mutation && !is_public_mutation {
         if let Err(e) = check_auth(&request, &state.auth_token) {
@@ -457,6 +458,44 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         (Method::Get, "/.well-known/satspath-authority")
         | (Method::Get, v2_api::routes::NAMESPACE) => {
             json_result(StatusCode(200), namespace_descriptor(state))
+        }
+        (Method::Get, v2_api::routes::RESOLVE) => {
+            let identifier = match query_str(&raw_url, "identifier") {
+                Some(id) if !id.trim().is_empty() => id,
+                _ => {
+                    return Ok(request.respond(json_error(
+                        StatusCode(400),
+                        anyhow::anyhow!("missing or empty 'identifier' query parameter"),
+                    ))?)
+                }
+            };
+            match resolve_v2_envelope(state, &identifier) {
+                Ok(envelope) => json_response(StatusCode(200), &envelope),
+                Err(e) => {
+                    let status = if e.to_string().contains("not found") {
+                        StatusCode(404)
+                    } else {
+                        StatusCode(400)
+                    };
+                    json_error(status, e)
+                }
+            }
+        }
+        (Method::Post, v2_api::routes::RESOLVE) => {
+            match read_json::<satspath_core::transparency::ResolutionRequest>(&mut request) {
+                Ok(body) => match resolve_v2_envelope(state, &body.identifier) {
+                    Ok(envelope) => json_response(StatusCode(200), &envelope),
+                    Err(e) => {
+                        let status = if e.to_string().contains("not found") {
+                            StatusCode(404)
+                        } else {
+                            StatusCode(400)
+                        };
+                        json_error(status, e)
+                    }
+                },
+                Err(e) => json_error(StatusCode(400), e),
+            }
         }
         (Method::Get, "/v1/node") => json_result(StatusCode(200), node_response(state)),
         (Method::Get, "/v1/status") => json_result(StatusCode(200), status_response(state)),
@@ -646,6 +685,20 @@ fn query_u64(url: &str, name: &str) -> Option<u64> {
     url.split_once('?')?.1.split('&').find_map(|part| {
         let (key, value) = part.split_once('=')?;
         (key == name).then(|| value.parse().ok()).flatten()
+    })
+}
+
+fn query_str(url: &str, name: &str) -> Option<String> {
+    url.split_once('?')?.1.split('&').find_map(|part| {
+        let (key, value) = part.split_once('=')?;
+        if key == name {
+            url::form_urlencoded::parse(part.as_bytes())
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.into_owned())
+                .or_else(|| Some(value.to_string()))
+        } else {
+            None
+        }
     })
 }
 
@@ -1081,6 +1134,59 @@ fn resolve_profile(state: &AppState, alias: &str) -> Result<ResolvedTransparentP
             payment_methods_verified,
             payment_method_states,
         },
+    })
+}
+
+fn resolve_v2_envelope(
+    state: &AppState,
+    alias: &str,
+) -> Result<satspath_core::transparency::ResolutionEnvelope> {
+    let store = TransactionalTransparencyStore::open(&state.home)?;
+    let signed = store
+        .profile(alias)?
+        .ok_or_else(|| SatsPathError::AliasNotFound(alias.into()))?;
+    if !verify_signed_profile(&signed)? {
+        anyhow::bail!("stored profile signature is invalid");
+    }
+    let log = transparency_log(state)?;
+    let identifier_hash = satspath_core::privacy::identifier_hash(alias);
+    let history: Vec<_> = log.history(&identifier_hash).into_iter().cloned().collect();
+    satspath_core::transparency::verify_identifier_history(&history)?;
+    let latest_event = history
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("profile has no transparency history"))?;
+    if !satspath_core::transparency::verify_event_profile(&latest_event, &signed)? {
+        anyhow::bail!("profile does not match its latest transparency event");
+    }
+    let event_hash = latest_event.event_hash()?;
+    let inclusion_proof = log.inclusion(&event_hash, None)?;
+    let checkpoint = log
+        .checkpoints()
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("transparency checkpoint unavailable"))?;
+    satspath_core::transparency::verify_checkpoint_inclusion(
+        &event_hash,
+        &inclusion_proof,
+        &checkpoint,
+    )?;
+
+    let descriptor = namespace_descriptor(state)?;
+    let served_at = chrono::Utc::now().timestamp();
+
+    Ok(satspath_core::transparency::ResolutionEnvelope {
+        version: 2,
+        identifier: alias.to_string(),
+        namespace_descriptor: descriptor,
+        signed_profile: signed,
+        name_events: history,
+        inclusion_proof,
+        checkpoint,
+        consistency_proof: None,
+        current_state_proof: None,
+        witness_cosignatures: vec![],
+        served_at,
     })
 }
 
@@ -1964,6 +2070,27 @@ mod tests {
             }
             other => panic!("expected on-chain method, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn v2_resolve_envelope_success_and_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let mut wallet = load_or_create_identity(dir.path()).unwrap();
+        wallet.alias = Some("alice@example.com".into());
+        wallet.lightning_address = Some("alice@example.com".into());
+        sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
+        save_wallet(dir.path(), &wallet).unwrap();
+
+        let env = resolve_v2_envelope(&state, "alice@example.com").unwrap();
+        assert_eq!(env.version, 2);
+        assert_eq!(env.identifier, "alice@example.com");
+        assert_eq!(env.signed_profile.profile.alias, "alice@example.com");
+        assert_eq!(env.namespace_descriptor.version, 2);
+        assert!(!env.name_events.is_empty());
+
+        let not_found = resolve_v2_envelope(&state, "bob@example.com");
+        assert!(not_found.is_err());
     }
 }
 

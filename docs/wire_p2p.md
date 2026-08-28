@@ -115,7 +115,7 @@ Returns a signed profile.
         "identity_pubkey": "02...",
         "methods": []
       },
-      "signature": "<64-byte-schnorr-hex>"
+      "signature": "<128-hex-character-schnorr-signature>"
     }
   }
 }
