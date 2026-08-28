@@ -48,12 +48,13 @@ pub fn validate_url(url: &str, allow_http: bool) -> Result<()> {
         .ok_or_else(|| SatsPathError::ValidationError("URL has no host".to_string()))?;
 
     let host_lower = host.to_ascii_lowercase();
+    let host_clean = host_lower.strip_suffix('.').unwrap_or(&host_lower);
 
     // Block known internal hostnames
-    if BLOCKED_HOSTS
-        .iter()
-        .any(|blocked| host_lower == *blocked || host_lower.ends_with(&format!(".{blocked}")))
-    {
+    if BLOCKED_HOSTS.iter().any(|blocked| {
+        let blocked_clean = blocked.strip_suffix('.').unwrap_or(blocked);
+        host_clean == blocked_clean || host_clean.ends_with(&format!(".{blocked_clean}"))
+    }) {
         return Err(SatsPathError::ValidationError(format!(
             "Blocked host: {host} (internal/metadata endpoint)"
         )));
@@ -233,6 +234,7 @@ mod tests {
         assert!(validate_url("https://0x7f000001/profile", false).is_err());
         assert!(validate_url("https://2130706433/profile", false).is_err());
         assert!(validate_url("https://127.1/profile", false).is_err());
+        assert!(validate_url("https://localhost./profile", false).is_err());
     }
 
     #[test]

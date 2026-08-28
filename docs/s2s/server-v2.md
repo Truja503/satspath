@@ -12,15 +12,15 @@ Returns the signed `NamespaceDescriptor` for the hosted domain, including the op
 
 ### `GET /v2/resolve` / `POST /v2/resolve`
 
-Accepts `identifier` query parameter (or POST body `{"identifier": "..."}` to avoid placing sub-identifiers directly into URL query parameters) and returns a complete `ResolutionEnvelope` containing:
+Accepts `identifier` query parameter (or POST body `{"identifier": "..."}` to avoid placing sub-identifiers directly into URL query parameters) and returns a `ResolutionEnvelope` containing:
 
-- The signed payment profile.
-- All name events for the identifier.
-- Merkle inclusion proof binding the event to the log.
-- Consistency proof (if the client provides a pinned tree size).
-- Current-state map proof (inclusion or non-inclusion).
-- Witness cosignatures meeting the quorum threshold.
-- The latest signed checkpoint.
+- The signed payment profile (`signed_profile`).
+- All name events for the identifier (`name_events`).
+- Merkle inclusion proof binding the event to the log (`inclusion_proof`).
+- The latest signed checkpoint (`checkpoint`).
+- Consistency proof (if requested or pinned) (`consistency_proof`).
+- Current-state map proof (when configured) (`current_state_proof`).
+- Witness cosignatures (when witness quorum is configured) (`witness_cosignatures`).
 
 ### `GET /v2/checkpoint/latest`
 

@@ -24,4 +24,4 @@ If a log operator equivocates, it must present two different `root_hash` values 
 ## Security Guarantees
 
 - **Non-equivocation**: As long as at least one witness in the threshold set is honest, an operator cannot conduct a split-view attack without generating permanent, cryptographic proof of fraud.
-- **No Resolution-Time Liveness Requirement**: Witnesses are not required to be online for every resolution. They MUST, however, be reachable by the operator when a new checkpoint is published; otherwise the `K-of-N` policy cannot be satisfied for that checkpoint.
+- **No Resolution-Time Liveness Requirement**: Witnesses are not required to be online for every resolution. At least K of N witnesses MUST, however, be reachable by the operator when a new checkpoint is published in order to satisfy the quorum policy for that checkpoint.
