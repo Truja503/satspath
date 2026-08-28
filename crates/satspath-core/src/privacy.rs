@@ -13,12 +13,22 @@ const DEFAULT_PEPPER: &[u8] = b"satspath-dev-pepper-change-in-production";
 
 /// Get the pepper for identifier hashing.
 /// Reads from SATSPATH_PEPPER env var (hex-encoded 32 bytes) or uses default.
-fn get_pepper() -> Vec<u8> {
-    std::env::var("SATSPATH_PEPPER")
-        .ok()
-        .and_then(|s| hex::decode(s).ok())
-        .filter(|b| b.len() == 32)
-        .unwrap_or_else(|| DEFAULT_PEPPER.to_vec())
+/// If SATSPATH_PEPPER is configured but malformed, fails closed.
+fn get_pepper() -> Result<Vec<u8>> {
+    match std::env::var("SATSPATH_PEPPER") {
+        Ok(s) => {
+            let bytes = hex::decode(&s).map_err(|e| {
+                SatsPathError::CryptoError(format!("Invalid SATSPATH_PEPPER hex: {e}"))
+            })?;
+            if bytes.len() != 32 {
+                return Err(SatsPathError::CryptoError(
+                    "SATSPATH_PEPPER must be exactly 32 bytes (64 hex characters)".into(),
+                ));
+            }
+            Ok(bytes)
+        }
+        Err(_) => Ok(DEFAULT_PEPPER.to_vec()),
+    }
 }
 
 /// Canonicalize an identifier for consistent hashing/lookup.
@@ -45,10 +55,11 @@ pub fn validate_ascii_identifier(identifier: &str) -> Result<()> {
 /// This prevents rainbow table attacks on low-entropy identifiers (emails).
 ///
 /// The pepper is loaded from SATSPATH_PEPPER env var or uses a dev default.
+/// Fails closed if SATSPATH_PEPPER is set but unusable.
 pub fn identifier_hash(identifier: &str) -> String {
     let canonical = canonical_identifier(identifier);
     let data = canonical.as_bytes();
-    let pepper = get_pepper();
+    let pepper = get_pepper().expect("SATSPATH_PEPPER must be valid if configured");
 
     let mut mac = HmacSha256::new_from_slice(&pepper).expect("HMAC key must be valid");
     mac.update(data);

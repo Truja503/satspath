@@ -683,8 +683,13 @@ fn verify_well_known(
             "well-known proof URL must be https".into(),
         ));
     }
+    let host = parsed.host_str().unwrap_or("");
+    if host.is_empty() || host == "localhost" || host.parse::<std::net::IpAddr>().is_ok() {
+        return Err(SatsPathError::OwnershipProofInvalid(
+            "well-known proof URL host must be a valid non-IP domain".into(),
+        ));
+    }
     if let Some(domain) = expected_domain {
-        let host = parsed.host_str().unwrap_or("");
         if !host.eq_ignore_ascii_case(domain) {
             return Err(SatsPathError::OwnershipProofInvalid(format!(
                 "well-known host '{host}' does not match expected domain '{domain}'"

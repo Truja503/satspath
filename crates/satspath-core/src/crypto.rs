@@ -121,13 +121,15 @@ pub fn verify_signed_profile(signed: &SignedPaymentProfile) -> Result<bool> {
 ///
 /// Returns `Ok(())` if:
 /// - `expires_at` is `None` (profile is non-expiring — backward-compatible).
-/// - `expires_at` is in the future relative to the current UTC wall clock.
+/// - `expires_at` is in the future relative to the current UTC wall clock
+///   (with a 60-second grace window `exp + 60` to tolerate minor clock skew across distributed resolvers).
 ///
 /// Returns `Err(SatsPathError::RegistryError(...))` if the profile has
 /// explicitly expired. Callers must treat expired profiles as invalid.
 pub fn check_profile_expiry(profile: &PaymentProfile) -> Result<()> {
     if let Some(exp) = profile.expires_at {
         let now = chrono::Utc::now().timestamp();
+        // 60-second grace window for inter-server clock skew tolerance
         if now >= exp + 60 {
             return Err(SatsPathError::RegistryError(format!(
                 "profile for '{}' expired at unix timestamp {} (now: {})",

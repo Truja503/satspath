@@ -143,6 +143,12 @@ pub fn apply_key_rotation(
         crate::errors::SatsPathError::CryptoError("no key rotation in profile".into())
     })?;
 
+    if rotation.previous_pubkey != profile.profile.identity_pubkey {
+        return Err(crate::errors::SatsPathError::CryptoError(
+            "previous pubkey doesn't match profile identity pubkey".into(),
+        ));
+    }
+
     if rotation.new_pubkey != new_pubkey_hex {
         return Err(crate::errors::SatsPathError::CryptoError(
             "new pubkey doesn't match rotation".into(),
@@ -173,7 +179,7 @@ pub fn apply_key_rotation(
 /// Otherwise returns the profile's identity_pubkey.
 pub fn get_effective_identity_pubkey(profile: &SignedPaymentProfile) -> Result<String> {
     if let Some(rotation) = &profile.profile.rotation {
-        if rotation.verify()? {
+        if rotation.previous_pubkey == profile.profile.identity_pubkey && rotation.verify()? {
             return Ok(rotation.new_pubkey.clone());
         }
     }
