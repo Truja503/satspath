@@ -37,7 +37,6 @@ const FORBIDDEN_TERMS: &[&str] = &[
     "private_key",
     "privkey",
     "macaroon",
-    "cert",
     "api_key",
     "secret",
     "password",

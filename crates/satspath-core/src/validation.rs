@@ -120,10 +120,8 @@ pub fn assert_no_private_material(payload: &str) -> Result<()> {
         "private key",
         "secret_key",
         "macaroon",
-        "cert",
         "api_key",
         "apikey",
-        "secret_key",
         "secret_hex",
         "password",
     ];

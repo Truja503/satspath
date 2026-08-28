@@ -114,10 +114,12 @@ pub fn create_invite(
         amount_sats
     );
 
+    let bounded_ttl = ttl_seconds.clamp(60, 30 * 86400);
+    let expires_at = now.saturating_add(bounded_ttl);
+
     // Build the message to sign: includes all critical invite fields
     let message = format!(
-        "SatsPath Invite v1\nalias_hash={alias_hash}\namount_sats={amount_sats}\ncreated_at={now}\nexpires_at={}",
-        now + ttl_seconds
+        "SatsPath Invite v1\nalias_hash={alias_hash}\namount_sats={amount_sats}\ncreated_at={now}\nexpires_at={expires_at}"
     );
 
     let (sender_signature, sender_pubkey) = if let Some(sk) = sender_secret_key {
@@ -133,7 +135,7 @@ pub fn create_invite(
         alias_hash,
         amount_sats,
         created_at: now,
-        expires_at: now + ttl_seconds,
+        expires_at,
         claim_url,
         warning: "The receiver must claim this payment by generating their own keys locally. \
                   SatsPath never holds or generates keys on behalf of users."
@@ -177,6 +179,7 @@ pub fn create_invite_record(
     ttl_seconds: i64,
 ) -> InviteRecord {
     let now = chrono::Utc::now().timestamp();
+    let bounded_ttl = ttl_seconds.clamp(60, 30 * 86400);
     InviteRecord {
         invite_id: uuid::Uuid::new_v4().to_string(),
         identifier_hash: privacy::identifier_hash(identifier),
@@ -186,7 +189,7 @@ pub fn create_invite_record(
         sender_fingerprint,
         status: InviteStatus::Created,
         created_at: now,
-        expires_at: now + ttl_seconds,
+        expires_at: now.saturating_add(bounded_ttl),
     }
 }
 

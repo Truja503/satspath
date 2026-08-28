@@ -133,11 +133,17 @@ impl PeerRecord {
                 crate::profile::PaymentMethod::Onchain {
                     address,
                     silent_payment_pubkey,
+                    network,
                     ..
                 } => {
                     if onchain.is_none() {
+                        let net_str = match network {
+                            crate::pointer::BitcoinNetwork::Mainnet => "mainnet",
+                            crate::pointer::BitcoinNetwork::Testnet => "testnet",
+                            crate::pointer::BitcoinNetwork::Regtest => "regtest",
+                        };
                         onchain = Some(OnchainPointer {
-                            network: "mainnet".into(),
+                            network: net_str.into(),
                             address: silent_payment_pubkey
                                 .clone()
                                 .unwrap_or_else(|| address.clone().unwrap_or_default()),
@@ -217,7 +223,9 @@ impl LocalPeerRegistry {
         }
         let json = serde_json::to_string_pretty(&self.data)
             .map_err(|e| SatsPathError::SerializationError(e.to_string()))?;
-        std::fs::write(&self.path, json)?;
+        let tmp = self.path.with_extension("json.tmp");
+        std::fs::write(&tmp, json)?;
+        std::fs::rename(tmp, &self.path)?;
         Ok(())
     }
 
@@ -237,13 +245,16 @@ impl PeerRegistryBackend for LocalPeerRegistry {
         // Conflict check: if a record exists and has a different identity_pubkey, warn.
         if let Some(existing) = self.data.records.get(&key) {
             if existing.identity_pubkey != record.identity_pubkey {
+                let key_prefix: String = key.chars().take(16).collect();
+                let existing_prefix: String = existing.identity_pubkey.chars().take(16).collect();
+                let record_prefix: String = record.identity_pubkey.chars().take(16).collect();
                 return Err(SatsPathError::RegistryError(format!(
                     "Conflicting record for identifier hash {}. \
                      Existing pubkey: {} — new pubkey: {}. \
                      Manual resolution required.",
-                    &key[..16],
-                    &existing.identity_pubkey[..16],
-                    &record.identity_pubkey[..16],
+                    key_prefix,
+                    existing_prefix,
+                    record_prefix,
                 )));
             }
         }

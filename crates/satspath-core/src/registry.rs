@@ -170,6 +170,7 @@ impl Registry {
             }
         }
 
+        self.data.profiles.remove(&alias);
         self.data.profiles.insert(key, signed);
         self.save()
     }

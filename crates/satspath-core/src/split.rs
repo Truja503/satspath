@@ -19,16 +19,16 @@ pub struct SplitRecipient {
 impl SplitPaymentRequest {
     /// Validate that percentages sum to 100 and all aliases are valid.
     pub fn validate(&self) -> crate::Result<()> {
+        if self.splits.is_empty() {
+            return Err(crate::SatsPathError::InvalidPaymentPointer(
+                "split payment requires at least one recipient".into(),
+            ));
+        }
         let total: u16 = self.splits.iter().map(|s| s.percent as u16).sum();
         if total != 100 {
             return Err(crate::SatsPathError::InvalidPaymentPointer(format!(
                 "split percentages sum to {total}, expected 100"
             )));
-        }
-        if self.splits.is_empty() {
-            return Err(crate::SatsPathError::InvalidPaymentPointer(
-                "split payment requires at least one recipient".into(),
-            ));
         }
         for split in &self.splits {
             if split.percent == 0 {
@@ -47,7 +47,7 @@ impl SplitPaymentRequest {
         self.splits
             .iter()
             .map(|s| {
-                let amount = self.total_amount_sats * u64::from(s.percent) / 100;
+                let amount = (self.total_amount_sats as u128 * u128::from(s.percent) / 100) as u64;
                 (s.alias.as_str(), amount)
             })
             .collect()
