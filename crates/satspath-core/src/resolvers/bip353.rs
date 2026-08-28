@@ -60,14 +60,14 @@ impl ProfileResolver for Bip353Resolver {
 
         // Find the first valid bitcoin: URI with DNSSEC proof
         let mut payment_uri = None;
-        for record in lookup.iter() {
+        for record in lookup.record_iter() {
             #[cfg(not(test))]
             let is_secure = record.proof().is_secure();
             #[cfg(test)]
             let is_secure = true;
 
             if is_secure {
-                if let Some(txt) = record.as_txt() {
+                if let Some(txt) = record.data().and_then(|d| d.as_txt()) {
                     for txt_data in txt.iter() {
                         let txt_str = String::from_utf8_lossy(txt_data);
                         if txt_str.starts_with("bitcoin:") {
