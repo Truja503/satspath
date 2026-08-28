@@ -58,6 +58,9 @@ const seed = bip39.mnemonicToSeedSync(mnemonic);
 
 // Cuenta 0 por defecto
 const identity = derive_identity_keypair_from_seed(seed, 0);
+if (!identity) {
+  throw new Error("No se pudo derivar el par de claves de identidad");
+}
 
 console.log("Tu Clave Pública SatsPath:", identity.pubkey_hex);
 // => "03e0fa79bc28965724d3eee52d58cf0cd11f712462582f42e79a545d13d85aac0b"
@@ -88,8 +91,12 @@ async function handleSendPayment(recipientAlias: string, amountSats: bigint) {
       // - Si fue Onchain: "bitcoin:bc1q...?amount=0.0001"
       
       return quoteResult.qr;
-    } else {
+    } else if (quoteResult.status === "invalid_signature") {
+      console.error("Firma inválida en el perfil del destinatario:", quoteResult.recipient.alias);
+    } else if (quoteResult.status === "no_route") {
       console.error("No se pudo rutear el pago:", quoteResult.reason);
+    } else if (quoteResult.status === "not_registered") {
+      console.error("Destinatario no registrado");
     }
   } catch (error) {
     console.error("Error resolviendo o cotizando pago:", error);
@@ -124,7 +131,7 @@ export function PaymentScreen({ invoicePayload }: { invoicePayload: string }) {
 
 | Función | Parámetros | Retorno | Descripción |
 | :--- | :--- | :--- | :--- |
-| `derive_identity_keypair_from_seed` | `seed: Uint8Array, index: number` | `{ pubkey_hex, secret_key_hex }` | Deriva el par de claves de identidad determinísticamente bajo el namespace `m/9737'/0'`. |
+| `derive_identity_keypair_from_seed` | `seed: Uint8Array, index: number` | `{ pubkey_hex, secret_key_hex } \| undefined` | Deriva el par de claves de identidad determinísticamente bajo el namespace `m/9737'/0'`. |
 | `quote` | `recipient: string, amount_sats: bigint` | `QuoteResponse` | Resuelve el alias a través de la cadena S2S/DNSSEC y selecciona el riel óptimo (Lightning, Ark u Onchain). |
 | `resolve_alias` | `alias: string` | `SignedPaymentProfile` | Resuelve y obtiene el perfil firmado del destinatario (la firma se valida con `verify_signed_profile`). |
 | `verify_signed_profile` | `profile_json: string` | `boolean` | Verifica la firma Schnorr `secp256k1` del perfil recibido. |

@@ -94,7 +94,9 @@ await init();
 const walletSeedMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const seed = bip39.mnemonicToSeedSync(walletSeedMnemonic);
 const identity = derive_identity_keypair_from_seed(seed, 0);
-console.log("SatsPath Identity Pubkey:", identity.pubkey_hex);
+if (identity) {
+  console.log("SatsPath Identity Pubkey:", identity.pubkey_hex);
+}
 
 // 3. Resolve alias and quote the best payment route
 const quoteResult = await quote("chelo@satspath.dev", 25000n);
