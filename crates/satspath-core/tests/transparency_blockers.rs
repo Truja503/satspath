@@ -86,7 +86,9 @@ fn merkle_leaf_commits_to_complete_owner_signature() {
     );
     let original = event(&profile, 0, None, &key.secret_key);
     let mut changed = original.clone();
-    changed.owner_signature.replace_range(0..2, "00");
+    let first_two = &original.owner_signature[0..2];
+    let new_prefix = if first_two == "00" { "ff" } else { "00" };
+    changed.owner_signature.replace_range(0..2, new_prefix);
     assert_eq!(
         original.signing_payload_hash().unwrap(),
         changed.signing_payload_hash().unwrap()
