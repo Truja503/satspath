@@ -252,9 +252,7 @@ impl PeerRegistryBackend for LocalPeerRegistry {
                     "Conflicting record for identifier hash {}. \
                      Existing pubkey: {} — new pubkey: {}. \
                      Manual resolution required.",
-                    key_prefix,
-                    existing_prefix,
-                    record_prefix,
+                    key_prefix, existing_prefix, record_prefix,
                 )));
             }
         }
