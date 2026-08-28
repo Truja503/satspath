@@ -26,6 +26,31 @@ pub fn generate_identity_keypair() -> IdentityKeypair {
     }
 }
 
+/// Derive a deterministic secp256k1 identity key from a wallet seed.
+/// Uses HMAC-SHA512 with domain separator `b"SatsPath Identity Key m/9737'/0'"`
+/// to ensure reproducible recovery across wallets (e.g. from BIP-39 seed phrase)
+/// without exposing wallet spending keys or risking loss of alias control.
+pub fn derive_identity_key_from_seed(seed: &[u8], account_index: u32) -> Result<SecretKey> {
+    if seed.is_empty() {
+        return Err(SatsPathError::ValidationError("Seed cannot be empty".into()));
+    }
+    use hmac::{Hmac, Mac};
+    use sha2::Sha512;
+    type HmacSha512 = Hmac<Sha512>;
+
+    let mut mac = HmacSha512::new_from_slice(b"SatsPath Identity Key m/9737'/0'")
+        .map_err(|e| SatsPathError::CryptoError(e.to_string()))?;
+    mac.update(seed);
+    mac.update(&account_index.to_be_bytes());
+    let result = mac.finalize().into_bytes();
+
+    let mut candidate = [0u8; 32];
+    candidate.copy_from_slice(&result[..32]);
+
+    SecretKey::from_byte_array(candidate)
+        .map_err(|e| SatsPathError::CryptoError(format!("Derived scalar invalid: {e}")))
+}
+
 /// Produce a deterministic canonical JSON serialization of a PaymentProfile.
 /// Uses canonical_json crate which sorts object keys for deterministic output.
 pub fn canonical_profile_bytes(profile: &PaymentProfile) -> Result<Vec<u8>> {
@@ -351,5 +376,19 @@ mod tests {
         let other_pubkey = hex::encode(other.public_key.serialize());
         let sig = sign_message("msg", &kp.secret_key);
         assert!(!verify_message_signature("msg", &sig, &other_pubkey).unwrap());
+    }
+
+    #[test]
+    fn deterministic_seed_derivation_is_reproducible() {
+        let seed = b"correct horse battery staple test seed 12345678901234567890";
+        let key1 = derive_identity_key_from_seed(seed, 0).unwrap();
+        let key2 = derive_identity_key_from_seed(seed, 0).unwrap();
+        let key_acc1 = derive_identity_key_from_seed(seed, 1).unwrap();
+
+        assert_eq!(key1.secret_bytes(), key2.secret_bytes());
+        assert_ne!(key1.secret_bytes(), key_acc1.secret_bytes());
+
+        // Empty seed rejected
+        assert!(derive_identity_key_from_seed(&[], 0).is_err());
     }
 }
