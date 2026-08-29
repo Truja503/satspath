@@ -77,7 +77,7 @@ pnpm add @satspath/wasm bip39
 pnpm add @satspath/resolvers @satspath/router
 ```
 
-For full integration instructions, see [docs/SDK_QUICKSTART.md](docs/SDK_QUICKSTART.md).
+For full integration instructions, see [docs/SDK_QUICKSTART.md](docs/SDK_QUICKSTART.md) or use the [AI Vibe-Coding Master Prompt](docs/VIBECODE_INTEGRATION_PROMPT.md) for Cursor/Claude.
 
 ### 2. Basic TypeScript Integration
 
@@ -181,6 +181,7 @@ SatsPath v2 is built under strict **zero-trust, fail-closed security principles*
 ## 📚 Documentation Index
 
 - [⚡ SDK Quickstart (`pnpm`)](docs/SDK_QUICKSTART.md) — Fast integration guide for frontend/wallet devs.
+- [🤖 AI Vibe-Coding Integration Prompt](docs/VIBECODE_INTEGRATION_PROMPT.md) — Plug-and-play prompt for Cursor/Claude/Copilot.
 - [📐 Protocol Specification v2](docs/protocol.md) — Wire format, profile structures, and state transitions.
 - [🌐 S2S Protocol & Server v2](docs/s2s/server-v2.md) — Authoritative server and namespace endpoints.
 - [🛡️ Trust Model & Cryptographic Guarantees](docs/s2s/trust-model-v2.md) — Merkle proofs, witness quorums, and split-view prevention.
