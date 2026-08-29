@@ -1,21 +1,21 @@
 # ⚡ SatsPath SDK Quickstart Guide
 
-Guía rápida para desarrolladores de wallets, PWAs y aplicaciones web (React, Vite, React Native, Arkade).
+Quickstart guide for wallet developers, PWAs, and web applications (React, Vite, React Native, Arkade).
 
 ---
 
-## 📦 1. Instalación (con `pnpm`)
+## 📦 1. Installation (with `pnpm`)
 
-Instala los paquetes oficiales de SatsPath utilizando **`pnpm`**:
+Install official SatsPath packages using **`pnpm`**:
 
 ```bash
 pnpm add @satspath/wasm bip39 react-qr-code
-# o los paquetes de TypeScript modulares:
+# or modular TypeScript packages:
 pnpm add @satspath/resolvers @satspath/router
 ```
 
 > [!TIP]
-> Si estás compilando el paquete WebAssembly directamente desde el repositorio local:
+> If you are building the WebAssembly package directly from the local repository:
 >
 > ```bash
 > cd crates/satspath-wasm
@@ -26,87 +26,87 @@ pnpm add @satspath/resolvers @satspath/router
 
 ---
 
-## 🚀 2. Flujo Básico en 3 Pasos
+## 🚀 2. Basic 3-Step Flow
 
 ```text
 ┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
-│  1. DERIVAR IDENTIDAD   │ ──> │   2. RESOLVER & QUOTE   │ ──> │    3. EJECUTAR PAGO     │
-│  Seed (12 palabras)     │     │   "user@domain" + sats  │     │   QR / BOLT11 / BIP-21  │
-│  m/9737'/0'             │     │   Smart Route Selection │     │   Wallet nativa paga    │
+│ 1. DERIVE IDENTITY      │ ──> │ 2. RESOLVE & QUOTE      │ ──> │ 3. EXECUTE PAYMENT      │
+│ Seed (12 words)         │     │ "user@domain" + sats    │     │ QR / BOLT11 / BIP-21    │
+│ m/9737'/0'              │     │ Smart Route Selection   │     │ Host wallet pays        │
 └─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
 ```
 
 ---
 
-## 💻 3. Código de Ejemplo (TypeScript / React)
+## 💻 3. Code Example (TypeScript / React)
 
-### Paso 1: Inicializar el SDK y Derivar la Identidad
+### Step 1: Initialize the SDK and Derive Identity
 
-Deriva una clave de identidad segura y determinista dentro del entorno de la wallet sin tocar ni exponer las claves de gasto de Bitcoin:
+Deterministically derive a secure identity keypair inside the trusted wallet boundary without accessing or exposing Bitcoin spending keys:
 
 ```typescript
 import init, { derive_identity_keypair_from_seed } from '@satspath/wasm';
 import * as bip39 from 'bip39';
 
-// 1. Inicializar el motor WASM al montar la aplicación
+// 1. Initialize WASM module when mounting the app
 await init();
 
-// 2. Derivar la identidad SatsPath dentro del entorno seguro de la wallet (m/9737'/0')
-// La frase semilla permanece estrictamente dentro de la wallet y nunca se transmite.
+// 2. Derive SatsPath identity inside the trusted wallet boundary (m/9737'/0')
+// Seed/mnemonic remains strictly private inside the wallet context and is never transmitted.
 const mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const seed = bip39.mnemonicToSeedSync(mnemonic);
 
-// Cuenta 0 por defecto
+// Account 0 by default
 const identity = derive_identity_keypair_from_seed(seed, 0);
 if (!identity) {
-  throw new Error("No se pudo derivar el par de claves de identidad");
+  throw new Error("Failed to derive identity keypair");
 }
 
-console.log("Tu Clave Pública SatsPath:", identity.pubkey_hex);
+console.log("Your SatsPath Public Key:", identity.pubkey_hex);
 // => "03e0fa79bc28965724d3eee52d58cf0cd11f712462582f42e79a545d13d85aac0b"
 ```
 
 ---
 
-### Paso 2: Resolver un Alias y Cotizar la Mejor Ruta (`quote`)
+### Step 2: Resolve an Alias and Quote Best Route (`quote`)
 
-Cuando el usuario ingresa un destinatario (ej. `chelo@satspath.dev`) y un monto en Satoshis:
+When a user inputs a recipient identifier (e.g. `chelo@satspath.dev`) and an amount in Satoshis:
 
 ```typescript
 import { quote } from '@satspath/wasm';
 
 async function handleSendPayment(recipientAlias: string, amountSats: bigint) {
   try {
-    // Resuelve el alias y evalúa comisiones de mempool en vivo
+    // Resolves alias and evaluates live mempool fees
     const quoteResult = await quote(recipientAlias, amountSats);
 
     if (quoteResult.status === "ok") {
-      console.log("Riel Seleccionado:", quoteResult.selected_method.type); // "Lightning" | "Ark" | "Onchain"
-      console.log("Comisión Estimada:", quoteResult.fee_sats, "sats");
-      console.log("Payload de Pago:", quoteResult.qr); 
+      console.log("Selected Rail:", quoteResult.selected_method.type); // "Lightning" | "Ark" | "Onchain"
+      console.log("Estimated Fee:", quoteResult.fee_sats, "sats");
+      console.log("Payment Payload:", quoteResult.qr); 
       
-      // quoteResult.qr contiene el string listo para pagar:
-      // - Si fue Lightning: "lnbc10u1p..." o BOLT12 offer
-      // - Si fue Ark: "ark:<pubkey>?server=...&amount=10000"
-      // - Si fue Onchain: "bitcoin:bc1q...?amount=0.0001"
+      // quoteResult.qr contains the string ready for wallet payment:
+      // - Lightning: "lnbc10u1p..." or BOLT12 offer
+      // - Ark: "ark:<pubkey>?server=...&amount=10000"
+      // - On-Chain: "bitcoin:bc1q...?amount=0.0001"
       
       return quoteResult.qr;
     } else if (quoteResult.status === "invalid_signature") {
-      console.error("Firma inválida en el perfil del destinatario:", quoteResult.recipient.alias);
+      console.error("Invalid signature on recipient profile:", quoteResult.recipient.alias);
     } else if (quoteResult.status === "no_route") {
-      console.error("No se pudo rutear el pago:", quoteResult.reason);
+      console.error("No valid payment route found:", quoteResult.reason);
     } else if (quoteResult.status === "not_registered") {
-      console.error("Destinatario no registrado");
+      console.error("Recipient is not registered");
     }
   } catch (error) {
-    console.error("Error resolviendo o cotizando pago:", error);
+    console.error("Error resolving or quoting payment:", error);
   }
 }
 ```
 
 ---
 
-### Paso 3: Renderizar el Código QR en la UI (React)
+### Step 3: Render Payment QR Code in UI (React)
 
 ```tsx
 import React from 'react';
@@ -115,7 +115,7 @@ import QRCode from 'react-qr-code';
 export function PaymentScreen({ invoicePayload }: { invoicePayload: string }) {
   return (
     <div className="payment-card">
-      <h3>Escanea para Pagar</h3>
+      <h3>Scan to Pay</h3>
       <div style={{ background: 'white', padding: '16px', borderRadius: '8px' }}>
         <QRCode value={invoicePayload} size={256} />
       </div>
@@ -127,19 +127,19 @@ export function PaymentScreen({ invoicePayload }: { invoicePayload: string }) {
 
 ---
 
-## 📖 4. Tabla de Métodos Principales
+## 📖 4. Main Methods Reference
 
-| Función | Parámetros | Retorno | Descripción |
+| Function | Parameters | Return Type | Description |
 | :--- | :--- | :--- | :--- |
-| `derive_identity_keypair_from_seed` | `seed: Uint8Array, index: number` | `{ pubkey_hex, secret_key_hex } \| undefined` | Deriva el par de claves de identidad determinísticamente bajo el namespace `m/9737'/0'`. |
-| `quote` | `recipient: string, amount_sats: bigint` | `QuoteResponse` | Resuelve el alias a través de la cadena S2S/DNSSEC y selecciona el riel óptimo (Lightning, Ark u Onchain). |
-| `resolve_alias` | `alias: string` | `SignedPaymentProfile` | Resuelve y obtiene el perfil firmado del destinatario (la firma se valida con `verify_signed_profile`). |
-| `verify_signed_profile` | `profile_json: string` | `boolean` | Verifica la firma Schnorr `secp256k1` del perfil recibido. |
+| `derive_identity_keypair_from_seed` | `seed: Uint8Array, index: number` | `{ pubkey_hex, secret_key_hex } \| undefined` | Deterministically derives identity keypair under the `m/9737'/0'` HMAC namespace. |
+| `quote` | `recipient: string, amount_sats: bigint` | `QuoteResponse` | Resolves alias across S2S/DNSSEC chain and selects the optimal rail (Lightning, Ark, or On-chain). |
+| `resolve_alias` | `alias: string` | `SignedPaymentProfile` | Resolves and retrieves the signed recipient profile (signature is verified with `verify_signed_profile`). |
+| `verify_signed_profile` | `profile_json: string` | `boolean` | Verifies the `secp256k1` Schnorr signature of a received profile. |
 
 ---
 
-## 🛡️ 5. Principios de Seguridad para Wallets
+## 🛡️ 5. Security Principles for Wallets
 
-1. **Zero Custody:** El SDK nunca almacena ni solicita claves privadas de Bitcoin (`xprv`/`tprv`).
-2. **Fail-Closed:** Si un perfil tiene firma inválida o el DNSSEC falla, la función `quote` rechaza la transacción automáticamente.
-3. **Mempool Smart Routing:** Evalúa Lightning primero, selecciona On-chain cuando la tarifa de red está por debajo del umbral, y recurre a Ark como alternativa off-chain.
+1. **Zero Custody:** The SDK never requests or stores private Bitcoin spending keys (`xprv`/`tprv`).
+2. **Fail-Closed:** If a profile signature is invalid or DNSSEC fails, `quote` automatically rejects the payment.
+3. **Mempool Smart Routing:** Evaluates Lightning first, selects On-chain when mempool fees are below threshold, and falls back to Ark as an off-chain alternative.

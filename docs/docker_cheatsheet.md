@@ -1,125 +1,125 @@
 # 🐳 SatsPath Docker Cheat Sheet
 
-Esta guía contiene todos los comandos necesarios para construir, ejecutar y probar la funcionalidad completa de **SatsPath** usando los contenedores de Docker de manera segura.
+This guide contains all necessary commands to build, run, and test the full functionality of **SatsPath** securely using Docker containers.
 
 > **NOTE:**
-> Dado que el CLI se ejecuta de forma efímera, el formato base para correr cualquier comando es:
-> `docker compose run --rm satspath-cli <comando>`
+> Since the CLI container runs ephemerally, the standard format to execute any command is:
+> `docker compose run --rm satspath-cli <command>`
 
 ---
 
-## 1. Construcción y Entorno Base
+## 1. Build and Base Environment
 
-Antes de ejecutar comandos, necesitas construir las imágenes e iniciar el daemon en segundo plano.
+Before running commands, build the container images and launch the background daemon:
 
 ```bash
-# Construir todas las imágenes (CLI, Daemon y Ark Bridge)
+# Build all images (CLI, Daemon, and Ark Bridge)
 docker compose build
 
-# Levantar el Daemon local (satspathd) en segundo plano
+# Start the local Daemon (satspathd) in background
 docker compose up -d satspathd
 
-# Verificar que el Daemon esté corriendo y saludable (Healthcheck)
+# Verify the Daemon is running and healthy (Healthcheck)
 docker compose ps
 ```
 
 ---
 
-## 2. Inicialización de Billetera y Perfil
+## 2. Wallet and Profile Initialization
 
-SatsPath es una billetera "receiver-profile". Gestiona tu identidad y tus métodos de pago públicos, sin custodiar fondos.
+SatsPath operates as a "receiver-profile" wallet. It manages your identity and public payment methods without taking custody of funds.
 
-> **AVISO DE RED:** El stack de `docker-compose.yml` usa `SATSPATH_NETWORK=mainnet` por defecto.
-> Los ejemplos siguientes usan métodos y direcciones de testnet (`tb1...`). Antes de ejecutarlos,
-> asegúrese de fijar `SATSPATH_NETWORK=testnet` en su entorno o `docker-compose.yml`.
-> Nunca publique métodos de recepción de testnet en un perfil de mainnet.
+> **NETWORK NOTICE:** The `docker-compose.yml` stack defaults to `SATSPATH_NETWORK=mainnet`.
+> The examples below use testnet methods and addresses (`tb1...`). Before executing them,
+> ensure you set `SATSPATH_NETWORK=testnet` in your environment or `docker-compose.yml`.
+> Never publish testnet receive methods to a mainnet profile.
 
 ```bash
-# 1. Inicializar las llaves de identidad criptográfica
+# 1. Initialize cryptographic identity keys
 docker compose run --rm satspath-cli wallet init
 
-# 2. Registrar tu alias y configurar tus métodos de pago públicos
+# 2. Register your alias and configure public payment methods
 docker compose run --rm satspath-cli wallet add-methods bob@satspath.local \
     --lightning-address bob@getalby.com \
     --onchain-address tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx \
     --ark-server https://ark-testnet.example.com \
     --ark-pubkey 025b90f4a...
 
-# 3. Ver tu perfil actual y el estado de la firma criptográfica
+# 3. View current profile and cryptographic signature status
 docker compose run --rm satspath-cli wallet show
 ```
 
 ---
 
-## 3. Resolviendo Pagos (Simulaciones y Quotes)
+## 3. Resolving Payments (Simulations and Quotes)
 
-Antes de enviar un pago, el sistema de SatsPath debe evaluar las tarifas de red, urgencia y métodos de la contraparte para decidir la ruta óptima.
+Before sending a payment, SatsPath evaluates network fees, urgency, and counterparty receive methods to determine the optimal route:
 
 ```bash
-# Consultar el perfil público de otro usuario
+# Query the public profile of another user
 docker compose run --rm satspath-cli dns resolve bob@satspath.local
 
-# Generar un "Quote" de pago por 50,000 sats (SatsPath decide la mejor ruta)
+# Generate a payment "Quote" for 50,000 sats (SatsPath selects the optimal rail)
 docker compose run --rm satspath-cli quote bob@satspath.local 50000
 
-# Generar un Quote para montos mayores (evalúa Lightning vs On-chain)
+# Generate a Quote for larger amounts (evaluates Lightning vs On-chain)
 docker compose run --rm satspath-cli quote bob@satspath.local 250000
 ```
 
 ---
 
-## 4. Ejecución de Pagos y Swaps
+## 4. Payment Execution & Swaps
 
-El comando `pay` muestra la instrucción de pago. Si le agregas los flags experimentales, puedes simular la ejecución a través del `LightningExecutor` u orquestar Swaps Submarinos.
+The `pay` command renders payment instructions. When passing experimental flags, you can simulate execution through `LightningExecutor` or orchestrate Submarine Swaps:
 
 ```bash
-# Pagar a un destinatario y ver las instrucciones del QR (No mueve fondos)
+# Display payment instruction and QR payload for a recipient (does not move funds)
 docker compose run --rm satspath-cli pay bob@satspath.local 1000
 
-# Simular la ejecución experimental del pago/swap en testnet
+# Simulate experimental payment/swap execution on testnet
 docker compose run --rm satspath-cli pay bob@satspath.local 100000 --testnet --experimental-swaps
 ```
 
 ---
 
-## 5. El Flujo de Invitaciones (Invites & Claims)
+## 5. Invite and Claim Flow
 
-Si le pagas a un usuario que **no** tiene un perfil registrado, SatsPath genera automáticamente un enlace de invitación.
+When paying a user who does **not** have a registered profile, SatsPath automatically generates an invite link:
 
 ```bash
-# 1. Intentar pagarle a un usuario nuevo (Genera la invitación)
-docker compose run --rm satspath-cli pay nuevo_usuario@satspath.local 50000
+# 1. Attempt payment to an unregistered user (generates an invite)
+docker compose run --rm satspath-cli pay new_user@satspath.local 50000
 
-# El comando anterior te devolverá un enlace (ej: https://satspath.local/claim?alias_hash=...)
-# 2. El nuevo usuario reclama su perfil usando el enlace
+# The above command returns a claim link (e.g. https://satspath.local/claim?alias_hash=...)
+# 2. The recipient claims their profile using the link
 docker compose run --rm satspath-cli claim "https://satspath.local/claim?alias_hash=abc123def456&amount=50000"
 ```
 
 ---
 
-## 6. Mantenimiento de Seguridad (Rotación de Llaves)
+## 6. Security Maintenance (Key Rotation)
 
-Si crees que tu llave de identidad fue comprometida, debes rotarla. SatsPath usa rotación criptográfica con pruebas `KeyRotation`.
+If an identity key is compromised or rotated per policy, SatsPath performs cryptographic rotation with `KeyRotation` proofs:
 
 ```bash
-# 1. Rotar las llaves de identidad (crea una nueva llave y adjunta la prueba)
+# 1. Rotate identity keys (generates new key and attaches rotation proof)
 docker compose run --rm satspath-cli wallet rotate
 
-# 2. Validar el estado del perfil
-# Deberías ver un aviso indicando que el perfil ha sido rotado recientemente
+# 2. Inspect profile status
+# You should see a notification that the profile has been recently rotated
 docker compose run --rm satspath-cli wallet show
 ```
 
 ---
 
-## 7. ARK Bridge (Opcional)
+## 7. ARK Bridge (Optional)
 
-Si necesitas utilizar el puente TypeScript de Ark para validación avanzada del cliente, debes levantar el perfil `bridge`.
+To use the TypeScript Ark bridge for advanced client validation, launch the `bridge` profile:
 
 ```bash
-# Iniciar el contenedor de ark-bridge
+# Start the ark-bridge container
 docker compose --profile bridge up -d ark-bridge
 
-# Detener todos los servicios al terminar
+# Stop all services when finished
 docker compose --profile bridge down
 ```
