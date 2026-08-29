@@ -1,4 +1,3 @@
-#![allow(warnings)]
 //! `satspathd` is a local receiver-profile daemon.
 //!
 //! It manages SatsPath profile identity and public receive pointers only. It
@@ -12,20 +11,16 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context, Result};
-use async_trait::async_trait;
 use clap::Parser;
 use qrcode::{Color, QrCode};
 use satspath_core::ark::validate_ark_server_url;
 use satspath_core::bip321::{parse_bip321, ParsedBip321Uri};
 use satspath_core::bip353::{resolve_bip353_with, Bip353Resolution, DnssecPolicy, DohTxtResolver};
 use satspath_core::crypto::{
-    check_profile_expiry, fingerprint_pubkey, generate_identity_keypair, sign_profile,
-    verify_signed_profile,
+    fingerprint_pubkey, generate_identity_keypair, sign_profile, verify_signed_profile,
 };
-use satspath_core::peer_registry::{LocalPeerRegistry, PeerRecord, PeerRegistryBackend};
 use satspath_core::privacy::mask_identifier;
 use satspath_core::registry::Registry;
 use satspath_core::resolver::ChainResolver;
@@ -46,12 +41,9 @@ use satspath_router::select_priority_route;
 use satspath_router::QuoteResponse;
 use serde::{Deserialize, Serialize};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
-use tokio::process::Command as TokioCommand;
-use tokio::time::timeout;
 
 const DEFAULT_BIND: &str = "127.0.0.1:9737";
 const DEFAULT_NETWORK: &str = "devnet";
-const P2P_RESOLVE_TIMEOUT: Duration = Duration::from_secs(10);
 const WALLET_FILE: &str = "wallet.json";
 const IDENTITY_SUBDIR: &str = "identity";
 
@@ -104,7 +96,8 @@ struct AppState {
     bind: SocketAddr,
     network: String,
     open_ui: bool,
-    // Removed escrow state to enforce non-custodial rule
+    auth_token: String,
+    mutation_lock: Arc<tokio::sync::Mutex<()>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -299,20 +292,30 @@ async fn main() -> Result<()> {
 
     // SEC-04: Daemon API Authorization
     let macaroon_path = home.join("admin.macaroon");
-    if std::env::var("SATSPATHD_AUTH_TOKEN").is_err() {
-        if !macaroon_path.exists() {
-            use secp256k1::rand::RngCore;
-            let mut token = [0u8; 32];
-            secp256k1::rand::thread_rng().fill_bytes(&mut token);
-            let token_hex = hex::encode(token);
-            fs::write(&macaroon_path, &token_hex).context("writing admin.macaroon")?;
-            #[cfg(unix)]
-            set_owner_only(&macaroon_path).ok();
+    let auth_token = if let Ok(token) = std::env::var("SATSPATHD_AUTH_TOKEN") {
+        let t = token.trim().to_string();
+        if t.len() != 64 || hex::decode(&t).is_err() {
+            anyhow::bail!(
+                "SATSPATHD_AUTH_TOKEN must be a valid 64-character hex string (32 bytes)"
+            );
         }
-        if let Ok(token) = fs::read_to_string(&macaroon_path) {
-            std::env::set_var("SATSPATHD_AUTH_TOKEN", token.trim());
+        t
+    } else if !macaroon_path.exists() {
+        use secp256k1::rand::RngCore;
+        let mut token = [0u8; 32];
+        secp256k1::rand::thread_rng().fill_bytes(&mut token);
+        let token_hex = hex::encode(token);
+        write_owner_only_file(&macaroon_path, token_hex.as_bytes())
+            .context("writing admin.macaroon")?;
+        token_hex
+    } else {
+        let content = fs::read_to_string(&macaroon_path).context("reading admin.macaroon")?;
+        let t = content.trim().to_string();
+        if t.len() != 64 || hex::decode(&t).is_err() {
+            anyhow::bail!("admin.macaroon must be a valid 64-character hex string (32 bytes)");
         }
-    }
+        t
+    };
 
     load_or_create_identity(&home)?;
 
@@ -321,7 +324,8 @@ async fn main() -> Result<()> {
         bind,
         network,
         open_ui: !cli.no_open,
-        // Removed escrow init
+        auth_token,
+        mutation_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     print_startup_status(&state)?;
@@ -329,42 +333,74 @@ async fn main() -> Result<()> {
 }
 
 async fn serve(state: AppState) -> Result<()> {
-    let server = Server::http(state.bind).map_err(|e| {
+    let server = Arc::new(Server::http(state.bind).map_err(|e| {
         anyhow::anyhow!(
             "could not bind {}: {e}\n\nThe address may already be in use by another \
              satspathd instance. Stop it, or choose another port with \
              `--bind 127.0.0.1:<port>`.",
             state.bind
         )
-    })?;
+    })?);
     let url = format!("http://{}/", state.bind);
     println!("Wallet UI → {url}");
     if state.open_ui {
         open_browser(&url);
     }
     let state = Arc::new(state);
-    for request in server.incoming_requests() {
-        let state = Arc::clone(&state);
-        if let Err(e) = handle_request(request, &state).await {
-            eprintln!("request error: {e}");
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Request>(64);
+    let srv = Arc::clone(&server);
+    tokio::task::spawn_blocking(move || {
+        for request in srv.incoming_requests() {
+            if tx.blocking_send(request).is_err() {
+                break;
+            }
         }
+    });
+
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(64));
+    while let Some(request) = rx.recv().await {
+        let state = Arc::clone(&state);
+        let sem = Arc::clone(&semaphore);
+        tokio::spawn(async move {
+            let _permit = match sem.acquire_owned().await {
+                Ok(p) => p,
+                Err(_) => return,
+            };
+            if let Err(e) = handle_request(request, &state).await {
+                eprintln!("request error: {e}");
+            }
+        });
     }
     Ok(())
 }
 
-fn check_auth(request: &Request) -> anyhow::Result<()> {
-    if let Ok(token) = std::env::var("SATSPATHD_AUTH_TOKEN") {
-        for header in request.headers() {
-            if header.field.equiv("Authorization") {
-                let val = header.value.as_str();
-                if val == format!("Bearer {}", token) {
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+fn check_auth(request: &Request, expected_token: &str) -> anyhow::Result<()> {
+    if expected_token.is_empty() {
+        anyhow::bail!("Unauthorized: Admin auth token is not configured (fail-closed)");
+    }
+    for header in request.headers() {
+        if header.field.equiv("Authorization") {
+            let val = header.value.as_str();
+            if let Some(bearer) = val.strip_prefix("Bearer ") {
+                if constant_time_eq(bearer.trim().as_bytes(), expected_token.as_bytes()) {
                     return Ok(());
                 }
             }
         }
-        anyhow::bail!("Unauthorized: Invalid or missing Bearer token");
     }
-    Ok(())
+    anyhow::bail!("Unauthorized: Invalid or missing Bearer token");
 }
 
 async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
@@ -372,12 +408,15 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
     let raw_url = request.url().to_string();
     let path = raw_url.split('?').next().unwrap_or("/").to_string();
 
-    // SEC: Auth check for profile mutations (admin)
-    if (path.starts_with("/v1/profile") || path == "/v1/transparency/anchors")
-        && method != Method::Get
-        && method != Method::Options
-    {
-        if let Err(e) = check_auth(&request) {
+    let is_mutation = !matches!(method, Method::Get | Method::Head | Method::Options);
+    let is_public_mutation = path == "/v1/receive"
+        || path == "/v1/send"
+        || path == "/v1/dns/resolve"
+        || path == "/v1/transparency/verify/inclusion"
+        || path == "/v2/resolve";
+
+    if is_mutation && !is_public_mutation {
+        if let Err(e) = check_auth(&request, &state.auth_token) {
             let _ = request.respond(json_error(StatusCode(401), e));
             return Ok(());
         }
@@ -397,6 +436,66 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
         (Method::Post, "/v1/broadcast") => json_result(StatusCode(200), broadcast(state)),
         (Method::Get, "/health") => {
             json_response(StatusCode(200), &serde_json::json!({"ok": true}))
+        }
+        (Method::Get, v2_api::routes::HEALTH) => {
+            let (checkpoint_age, log_ok) = match transparency_log(state) {
+                Ok(log) => {
+                    let latest = log.checkpoints().last().map(|c| c.created_at).unwrap_or(0);
+                    let now = chrono::Utc::now().timestamp();
+                    let age = if latest == 0 { 0 } else { now - latest };
+                    (age, true)
+                }
+                Err(_) => (-1, false),
+            };
+            let resp = v2_api::build_health_response(checkpoint_age, log_ok, 1);
+            let status = if resp.status == "healthy" {
+                StatusCode(200)
+            } else {
+                StatusCode(503)
+            };
+            json_response(status, &resp)
+        }
+        (Method::Get, "/.well-known/satspath-authority")
+        | (Method::Get, v2_api::routes::NAMESPACE) => {
+            json_result(StatusCode(200), namespace_descriptor(state))
+        }
+        (Method::Get, v2_api::routes::RESOLVE) => {
+            let identifier = match query_str(&raw_url, "identifier") {
+                Some(id) if !id.trim().is_empty() => id,
+                _ => {
+                    return Ok(request.respond(json_error(
+                        StatusCode(400),
+                        anyhow::anyhow!("missing or empty 'identifier' query parameter"),
+                    ))?)
+                }
+            };
+            match resolve_v2_envelope(state, &identifier) {
+                Ok(envelope) => json_response(StatusCode(200), &envelope),
+                Err(e) => {
+                    let status = if e.to_string().contains("not found") {
+                        StatusCode(404)
+                    } else {
+                        StatusCode(400)
+                    };
+                    json_error(status, e)
+                }
+            }
+        }
+        (Method::Post, v2_api::routes::RESOLVE) => {
+            match read_json::<satspath_core::transparency::ResolutionRequest>(&mut request) {
+                Ok(body) => match resolve_v2_envelope(state, &body.identifier) {
+                    Ok(envelope) => json_response(StatusCode(200), &envelope),
+                    Err(e) => {
+                        let status = if e.to_string().contains("not found") {
+                            StatusCode(404)
+                        } else {
+                            StatusCode(400)
+                        };
+                        json_error(status, e)
+                    }
+                },
+                Err(e) => json_error(StatusCode(400), e),
+            }
         }
         (Method::Get, "/v1/node") => json_result(StatusCode(200), node_response(state)),
         (Method::Get, "/v1/status") => json_result(StatusCode(200), status_response(state)),
@@ -499,6 +598,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             }
         }
         (Method::Put, "/v1/profile") | (Method::Post, "/v1/profile") => {
+            let _guard = state.mutation_lock.lock().await;
             match read_json::<ProfileUpdateRequest>(&mut request)
                 .and_then(|body| update_profile(state, body))
             {
@@ -515,6 +615,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             }
         }
         (Method::Post, "/v1/profile/verify") => {
+            let _guard = state.mutation_lock.lock().await;
             match read_json::<VerifyRequest>(&mut request)
                 .and_then(|body| verify_challenge(state, body))
             {
@@ -523,6 +624,7 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
             }
         }
         (Method::Post, "/v1/profile/methods") => {
+            let _guard = state.mutation_lock.lock().await;
             match read_json::<ProfileUpdateRequest>(&mut request)
                 .and_then(|body| update_profile_methods(state, body))
             {
@@ -530,10 +632,13 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
                 Err(e) => json_error(StatusCode(400), e),
             }
         }
-        (Method::Post, "/v1/profile/rotate-key") => match rotate_profile_key(state) {
-            Ok(response) => json_response(StatusCode(200), &response),
-            Err(error) => json_error(StatusCode(400), error),
-        },
+        (Method::Post, "/v1/profile/rotate-key") => {
+            let _guard = state.mutation_lock.lock().await;
+            match rotate_profile_key(state) {
+                Ok(response) => json_response(StatusCode(200), &response),
+                Err(error) => json_error(StatusCode(400), error),
+            }
+        }
         (Method::Post, "/v1/resolve") => match read_json::<AliasRequest>(&mut request)
             .and_then(|body| resolve_profile(state, &body.alias))
         {
@@ -573,13 +678,27 @@ async fn handle_request(mut request: Request, state: &AppState) -> Result<()> {
 }
 
 fn transparency_log(state: &AppState) -> Result<TransparencyLog> {
-    Ok(TransactionalTransparencyStore::open(&state.home)?.load_log()?)
+    transparency_log_at(&state.home)
 }
 
 fn query_u64(url: &str, name: &str) -> Option<u64> {
     url.split_once('?')?.1.split('&').find_map(|part| {
         let (key, value) = part.split_once('=')?;
         (key == name).then(|| value.parse().ok()).flatten()
+    })
+}
+
+fn query_str(url: &str, name: &str) -> Option<String> {
+    url.split_once('?')?.1.split('&').find_map(|part| {
+        let (key, value) = part.split_once('=')?;
+        if key == name {
+            url::form_urlencoded::parse(part.as_bytes())
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.into_owned())
+                .or_else(|| Some(value.to_string()))
+        } else {
+            None
+        }
     })
 }
 
@@ -848,13 +967,7 @@ fn load_or_create_transparency_operator(home: &Path) -> Result<secp256k1::Secret
         return secp256k1::SecretKey::from_slice(&bytes).map_err(Into::into);
     }
     let key = generate_identity_keypair().secret_key;
-    let tmp = path.with_extension("key.tmp");
-    fs::write(&tmp, hex::encode(key.secret_bytes()))?;
-    #[cfg(unix)]
-    set_owner_only(&tmp).ok();
-    fs::rename(tmp, &path)?;
-    #[cfg(unix)]
-    set_owner_only(&path).ok();
+    write_owner_only_file(&path, hex::encode(key.secret_bytes()).as_bytes())?;
     Ok(key)
 }
 
@@ -1021,6 +1134,59 @@ fn resolve_profile(state: &AppState, alias: &str) -> Result<ResolvedTransparentP
             payment_methods_verified,
             payment_method_states,
         },
+    })
+}
+
+fn resolve_v2_envelope(
+    state: &AppState,
+    alias: &str,
+) -> Result<satspath_core::transparency::ResolutionEnvelope> {
+    let store = TransactionalTransparencyStore::open(&state.home)?;
+    let signed = store
+        .profile(alias)?
+        .ok_or_else(|| SatsPathError::AliasNotFound(alias.into()))?;
+    if !verify_signed_profile(&signed)? {
+        anyhow::bail!("stored profile signature is invalid");
+    }
+    let log = transparency_log(state)?;
+    let identifier_hash = satspath_core::privacy::identifier_hash(alias);
+    let history: Vec<_> = log.history(&identifier_hash).into_iter().cloned().collect();
+    satspath_core::transparency::verify_identifier_history(&history)?;
+    let latest_event = history
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("profile has no transparency history"))?;
+    if !satspath_core::transparency::verify_event_profile(&latest_event, &signed)? {
+        anyhow::bail!("profile does not match its latest transparency event");
+    }
+    let event_hash = latest_event.event_hash()?;
+    let inclusion_proof = log.inclusion(&event_hash, None)?;
+    let checkpoint = log
+        .checkpoints()
+        .last()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("transparency checkpoint unavailable"))?;
+    satspath_core::transparency::verify_checkpoint_inclusion(
+        &event_hash,
+        &inclusion_proof,
+        &checkpoint,
+    )?;
+
+    let descriptor = namespace_descriptor(state)?;
+    let served_at = chrono::Utc::now().timestamp();
+
+    Ok(satspath_core::transparency::ResolutionEnvelope {
+        version: 2,
+        identifier: alias.to_string(),
+        namespace_descriptor: descriptor,
+        signed_profile: signed,
+        name_events: history,
+        inclusion_proof,
+        checkpoint,
+        consistency_proof: None,
+        current_state_proof: None,
+        witness_cosignatures: vec![],
+        served_at,
     })
 }
 
@@ -1306,7 +1472,7 @@ fn save_wallet(home: &Path, wallet: &WalletState) -> Result<()> {
     fs::create_dir_all(home)?;
     let json = serde_json::to_string_pretty(wallet)?;
     assert_no_private_material(&json)?;
-    fs::write(wallet_path(home), json)?;
+    write_owner_only_file(&wallet_path(home), json.as_bytes())?;
     Ok(())
 }
 
@@ -1316,8 +1482,7 @@ fn save_identity_key(home: &Path, secret_key: &secp256k1::SecretKey) -> Result<P
     let dir = home.join(IDENTITY_SUBDIR);
     fs::create_dir_all(&dir)?;
     let path = dir.join(format!("{}.key", hex::encode(pubkey.serialize())));
-    fs::write(&path, hex::encode(secret_key.secret_bytes()))?;
-    set_owner_only(&path)?;
+    write_owner_only_file(&path, hex::encode(secret_key.secret_bytes()).as_bytes())?;
     Ok(path)
 }
 
@@ -1337,18 +1502,73 @@ fn load_identity_key(home: &Path, identity_pubkey: &str) -> Result<secp256k1::Se
     Ok(secret)
 }
 
-#[cfg(unix)]
-fn set_owner_only(path: &Path) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = fs::metadata(path)?.permissions();
-    perms.set_mode(0o600);
-    fs::set_permissions(path, perms)?;
+fn write_owner_only_file(path: &Path, content: &[u8]) -> Result<()> {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    fs::create_dir_all(parent)?;
+    use secp256k1::rand::RngCore;
+    let mut rand_bytes = [0u8; 16];
+    secp256k1::rand::thread_rng().fill_bytes(&mut rand_bytes);
+    let tmp_path = parent.join(format!(".tmp-{}", hex::encode(rand_bytes)));
+    #[cfg(unix)]
+    {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .mode(0o600)
+            .open(&tmp_path)?;
+        file.write_all(content)?;
+        file.sync_all()?;
+    }
+    #[cfg(not(unix))]
+    {
+        fs::write(&tmp_path, content)?;
+    }
+    fs::rename(&tmp_path, path)?;
     Ok(())
 }
 
-#[cfg(not(unix))]
-fn set_owner_only(_path: &Path) -> Result<()> {
-    Ok(())
+fn namespace_descriptor(
+    state: &AppState,
+) -> Result<satspath_core::transparency::NamespaceDescriptor> {
+    let domain =
+        std::env::var("SATSPATH_AUTHORITY_DOMAIN").unwrap_or_else(|_| "localhost".to_string());
+    let wallet = load_wallet(&state.home)?;
+    let authority_pubkey = wallet.identity_pubkey.clone().unwrap_or_else(|| {
+        "0000000000000000000000000000000000000000000000000000000000000000".to_string()
+    });
+    let log = transparency_log(state).ok();
+    let log_id = log
+        .as_ref()
+        .map(|l| l.log_id().to_string())
+        .unwrap_or_else(|| format!("satspath:{domain}"));
+    let endpoint_urls = if let Ok(custom_url) = std::env::var("SATSPATH_AUTHORITY_URL") {
+        vec![custom_url]
+    } else if domain != "localhost" {
+        vec![format!("https://{domain}/v2")]
+    } else {
+        vec![format!("http://{}/v2", state.bind)]
+    };
+    let quorum = std::env::var("SATSPATH_WITNESS_QUORUM")
+        .ok()
+        .and_then(|q| q.parse::<u8>().ok())
+        .unwrap_or(1);
+    let now = chrono::Utc::now().timestamp();
+
+    Ok(satspath_core::transparency::NamespaceDescriptor {
+        version: 2,
+        domain,
+        log_id,
+        authority_pubkey,
+        endpoint_urls,
+        witness_quorum: quorum,
+        witness_pubkeys: vec![],
+        valid_from: now,
+        expires_at: now + 30 * 86400,
+        signature: String::new(),
+    })
 }
 
 fn print_startup_status(state: &AppState) -> Result<()> {
@@ -1380,9 +1600,13 @@ fn print_startup_status(state: &AppState) -> Result<()> {
     Ok(())
 }
 
+const MAX_JSON_BODY_BYTES: u64 = 1024 * 1024; // 1 MB limit to prevent DoS
+
 fn read_json<T: for<'de> Deserialize<'de>>(request: &mut Request) -> Result<T> {
+    use std::io::Read;
     let mut body = String::new();
-    request.as_reader().read_to_string(&mut body)?;
+    let mut reader = request.as_reader().take(MAX_JSON_BODY_BYTES);
+    reader.read_to_string(&mut body)?;
     if body.trim().is_empty() {
         anyhow::bail!("request body must be JSON");
     }
@@ -1395,7 +1619,7 @@ fn json_result<T: Serialize>(
 ) -> Response<std::io::Cursor<Vec<u8>>> {
     match result {
         Ok(value) => json_response(status, &value),
-        Err(e) => json_error(StatusCode(500), e),
+        Err(e) => json_error(status, e),
     }
 }
 
@@ -1534,11 +1758,23 @@ fn qr_svg(data: &str) -> Result<String> {
 }
 
 fn html_response(body: &str) -> Response<std::io::Cursor<Vec<u8>>> {
-    let header = Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
+    let ct = Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
         .expect("static header");
+    let xcto =
+        Header::from_bytes(&b"X-Content-Type-Options"[..], &b"nosniff"[..]).expect("static header");
+    let xfo = Header::from_bytes(&b"X-Frame-Options"[..], &b"DENY"[..]).expect("static header");
+    let csp = Header::from_bytes(
+        &b"Content-Security-Policy"[..],
+        &b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"[..],
+    )
+    .expect("static header");
+
     Response::from_data(body.as_bytes().to_vec())
         .with_status_code(StatusCode(200))
-        .with_header(header)
+        .with_header(ct)
+        .with_header(xcto)
+        .with_header(xfo)
+        .with_header(csp)
         .with_header(cors_origin_header())
 }
 
@@ -1691,6 +1927,8 @@ mod tests {
             bind: "127.0.0.1:0".parse().unwrap(),
             network: "devnet".into(),
             open_ui: false,
+            auth_token: "test_auth_token".into(),
+            mutation_lock: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
 
@@ -1832,6 +2070,27 @@ mod tests {
             }
             other => panic!("expected on-chain method, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn v2_resolve_envelope_success_and_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let mut wallet = load_or_create_identity(dir.path()).unwrap();
+        wallet.alias = Some("alice@example.com".into());
+        wallet.lightning_address = Some("alice@example.com".into());
+        sign_and_store(dir.path(), &mut wallet, "devnet").unwrap();
+        save_wallet(dir.path(), &wallet).unwrap();
+
+        let env = resolve_v2_envelope(&state, "alice@example.com").unwrap();
+        assert_eq!(env.version, 2);
+        assert_eq!(env.identifier, "alice@example.com");
+        assert_eq!(env.signed_profile.profile.alias, "alice@example.com");
+        assert_eq!(env.namespace_descriptor.version, 2);
+        assert!(!env.name_events.is_empty());
+
+        let not_found = resolve_v2_envelope(&state, "bob@example.com");
+        assert!(not_found.is_err());
     }
 }
 

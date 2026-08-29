@@ -1,4 +1,3 @@
-#![allow(warnings)]
 //! V2 API route handlers for the authoritative SatsPath server.
 //!
 //! These handlers serve proof-carrying resolution envelopes,
@@ -19,6 +18,7 @@ pub struct V2HealthResponse {
 }
 
 /// All V2 API route paths.
+#[allow(dead_code)]
 pub mod routes {
     pub const NAMESPACE: &str = "/v2/namespace";
     pub const RESOLVE: &str = "/v2/resolve";
@@ -34,7 +34,7 @@ pub fn build_health_response(
 ) -> V2HealthResponse {
     V2HealthResponse {
         version: "2.0.0".to_string(),
-        status: if witness_quorum_healthy && checkpoint_age_secs < 3600 {
+        status: if witness_quorum_healthy && (0..3600).contains(&checkpoint_age_secs) {
             "healthy".to_string()
         } else {
             "degraded".to_string()

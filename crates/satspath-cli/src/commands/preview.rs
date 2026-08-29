@@ -292,8 +292,7 @@ async fn method_preview(
             ))
         }
         PaymentMethod::Bolt12(offer_data) => {
-            let mut warnings = Vec::new();
-            warnings.push("BOLT12 offer pointer only (no invoice fetched).".into());
+            let warnings = vec!["BOLT12 offer pointer only (no invoice fetched).".into()];
             Ok((
                 SelectedMethodResponse::Bolt12 {
                     label: offer_data.label.clone(),

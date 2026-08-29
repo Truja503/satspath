@@ -20,11 +20,9 @@ The exact BOLT12 string (`lno1...`) is preserved and signed directly within the 
 
 ## Validation & Parsing
 
-SatsPath strictly validates offers before allowing them into the profile:
+SatsPath validates offers before allowing them into the profile:
 
-- **Prefix validation**: `lno` for mainnet, `lnot` for testnet.
-- **Length checks**: Ensures the bech32 payload isn't prematurely truncated or synthetic.
-- **Network enforcement**: The expected network must match the prefix.
+- **Prefix validation**: Verifies that BOLT12 offer strings start with the `lno1` Bech32 prefix.
 
 _Future extensions will decode full TLV trees to validate expiry, unknown required feature bits, and amount constraints directly._
 

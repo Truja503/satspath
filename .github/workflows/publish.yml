@@ -4,13 +4,22 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   publish-crates:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: stable
       - name: Publish satspath-core
         run: cargo publish -p satspath-core --no-verify
         env:
@@ -26,16 +35,29 @@ jobs:
 
   publish-wasm:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: '20.x'
+          persist-credentials: false
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: stable
+      - name: Install wasm-pack
+        run: |
+          set -euo pipefail
+          VERSION="v0.12.1"
+          curl -sSL "https://github.com/rustwasm/wasm-pack/releases/download/${VERSION}/wasm-pack-${VERSION}-x86_64-unknown-linux-musl.tar.gz" -o wasm-pack.tar.gz
+          echo "7339ba3ad776bd5fc04dd5d6b9babe952648050a54226c08206fab4ffeec621f  wasm-pack.tar.gz" | sha256sum -c -
+          tar -xzf wasm-pack.tar.gz
+          sudo install -m 755 "wasm-pack-${VERSION}-x86_64-unknown-linux-musl/wasm-pack" /usr/local/bin/wasm-pack
+          rm -rf wasm-pack.tar.gz "wasm-pack-${VERSION}-x86_64-unknown-linux-musl"
+      - name: Setup Node
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: '20.18.0'
           registry-url: 'https://registry.npmjs.org'
       - name: Build WASM
         run: cd crates/satspath-wasm && wasm-pack build --target web --out-dir pkg

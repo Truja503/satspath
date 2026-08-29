@@ -1,4 +1,4 @@
-## Pull Request Summary
+# Pull Request Summary
 
 Please provide a short description of the changes in this PR.
 

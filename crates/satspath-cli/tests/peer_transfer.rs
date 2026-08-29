@@ -14,6 +14,7 @@ fn run(dir: &Path, args: &[&str]) -> (String, String, bool) {
         .args(args)
         .current_dir(dir)
         .env("SATSPATH_NOSTR_RELAYS", "")
+        .env("SATSPATH_PASSWORD", "")
         .output()
         .expect("failed to run satspath binary");
     (

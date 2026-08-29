@@ -1,4 +1,3 @@
-#![allow(warnings)]
 mod commands;
 
 use anyhow::Result;
