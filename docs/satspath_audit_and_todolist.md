@@ -47,11 +47,37 @@ Estas ramas ya están contenidas en `main` — su trabajo ya está ahí:
 ### 🔧 Plan de Limpieza (Comandos)
 
 ```bash
-# 1. Mergear la rama actual a main
-git checkout main
-git merge feat/satspath-receiver-flow --no-ff -m "feat: merge wallet + receiver flow into main"
+# 1. Mergear la rama actual a main, abortando si falla
+git checkout main || {
+  echo "No se pudo cambiar a main; se cancela la limpieza." >&2
+  exit 1
+}
+git merge feat/satspath-receiver-flow --no-ff -m "feat: merge wallet + receiver flow into main" || {
+  echo "Merge falló. Resuelva los conflictos antes de borrar cualquier rama." >&2
+  exit 1
+}
 
-# 2. Borrar ramas ya mergeadas (remotas)
+# 2. Respaldar las referencias de todas las ramas remotas antes de borrar
+backup="branch-tips-backup-$(date +%Y%m%d-%H%M%S)-$$.txt"
+tmp="${backup}.tmp"
+git ls-remote --heads origin > "$tmp" || {
+  rm -f "$tmp"
+  echo "No se pudo crear el respaldo remoto; se cancela la limpieza." >&2
+  exit 1
+}
+mv "$tmp" "$backup" || {
+  rm -f "$tmp"
+  echo "No se pudo publicar el respaldo; se cancela la limpieza." >&2
+  exit 1
+}
+
+# 3. Borrar de forma segura solo las ramas remotas contenidas en origin/main
+# Cambie DRY_RUN=0 para ejecutar la eliminación real
+DRY_RUN=1
+
+# Refrescar referencias de seguimiento remoto antes de evaluar la seguridad de borrado
+git fetch origin --prune || exit 1
+
 for b in \
   chore/remove-stray-scratch-files \
   codex/p2p-daemon-resolver \
@@ -68,19 +94,30 @@ for b in \
   fix/v0-priority-issues \
   feature/mainnet-preview-mode-v2 \
   feature/mainnet-ln-test \
-  feat/arkade-wallet-integration \
-  master; do
-  git push origin --delete "$b"
+  feat/arkade-wallet-integration; do
+  sha=$(git rev-parse --verify "origin/$b" 2>/dev/null) || continue
+  if git merge-base --is-ancestor "$sha" "origin/main" 2>/dev/null; then
+    if [ "$DRY_RUN" = "1" ]; then
+      echo "[DRY-RUN] SE BORRARÍA (contenida en main): $b ($sha)"
+    else
+      echo "Borrando rama remota: $b ($sha)"
+      git push --force-with-lease="refs/heads/$b:$sha" origin --delete "$b" || {
+        echo "Advertencia: no se pudo borrar $b (el ref remoto cambió); se omite." >&2
+      }
+    fi
+  else
+    echo "[OMITIDA] $b NO está contenida completamente en main"
+  fi
 done
 
-# 3. La rama feat/ark-vtxo-verification-integration tiene código interesante
-#    pero está basada en el master viejo. Revisar si vale cherry-pickear algo.
-#    Si no, borrar también.
+# 4. Manejo manual de master y ramas históricas:
+#    - 'feat/ark-vtxo-verification-integration' debe revisarse primero para cherry-picks.
+#    - 'master' solo debe borrarse tras confirmar que ningún commit pendiente depende de ella.
 
-# 4. Limpiar ramas locales
-git branch -d feat/satspath-receiver-flow fix/v0-priority-issues feat/swap-engine-ark-bridge checkout 2>/dev/null
+# 5. Limpiar ramas locales fusionadas
+git branch -d feat/satspath-receiver-flow fix/v0-priority-issues feat/swap-engine-ark-bridge 2>/dev/null || true
 
-# 5. Limpiar referencias locales obsoletas
+# 6. Limpiar referencias locales obsoletas
 git remote prune origin
 ```
 

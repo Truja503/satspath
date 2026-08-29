@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 # ML-KEM (Kyber) — NIST FIPS 203 standardized KEM
-ml-kem = { version = "0.2", features = ["deterministic"] }
+ml-kem = { version = "0.2", features = ["deterministic", "zeroize"] }
 
 # ML-DSA (Dilithium) — NIST FIPS 204 standardized digital signatures
 ml-dsa = "0.1"

@@ -101,7 +101,10 @@ pub fn hybrid_sign(message: &[u8], keypair: &HybridSigningKeyPair) -> HybridSign
 
 /// Verify a hybrid signature. Returns true ONLY if BOTH components verify.
 pub fn hybrid_verify(message: &[u8], sig: &HybridSignature, pubkey: &HybridPublicKey) -> bool {
-    if sig.suite != PqcSuite::MlDsa65Schnorr {
+    if sig.suite != PqcSuite::MlDsa65Schnorr
+        || pubkey.suite != PqcSuite::MlDsa65Schnorr
+        || sig.suite != pubkey.suite
+    {
         return false;
     }
 

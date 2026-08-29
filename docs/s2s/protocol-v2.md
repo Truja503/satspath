@@ -3,7 +3,7 @@
 **Status:** Draft / Normative Specification  
 **Parent Epic:** [#46](https://github.com/Truja503/satspath/issues/46)  
 **Issue:** [#48](https://github.com/Truja503/satspath/issues/48)  
-**Depends On:** [docs/s2s/trust-model-v2.md](file:///home/chelo/antigravity/PlanB/satspath/docs/s2s/trust-model-v2.md)
+**Depends On:** [trust-model-v2.md](./trust-model-v2.md)
 
 ---
 

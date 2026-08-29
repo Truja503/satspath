@@ -11,7 +11,6 @@ crates/satspath-core      protocol data types, signatures, resolvers, validation
 crates/satspath-router    quote response contract and route selection
 crates/satspath-cli       command-line reference client
 crates/satspathd          local daemon and HTTP API
-sdk/satspath-p2p          optional Pear/Holepunch transport
 docs/                     protocol and operational documentation
 ```
 
@@ -160,13 +159,13 @@ The CLI is a reference client for local development and protocol testing.
 
 ## P2P Transport Implementation
 
-Implemented in:
+Documented in:
 
 ```txt
-sdk/satspath-p2p/
+docs/wire_p2p.md
 ```
 
-This SDK is an optional transport. It publishes and resolves signed profiles over Pear/Holepunch. It must be treated as a resolver transport, not the whole protocol.
+This specification defines an optional transport. It publishes and resolves signed profiles over Pear/Holepunch. It must be treated as a resolver transport, not the whole protocol.
 
 Conformance requirements:
 

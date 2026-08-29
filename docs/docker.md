@@ -12,18 +12,18 @@
 │  docker-compose services                                        │
 │                                                                 │
 │  ┌──────────────────────┐     ┌────────────────────────────┐   │
-│  │  satspath-cli        │     │  ark-bridge (--profile     │   │
-│  │  Rust / Debian Slim  │────▶│  bridge)   Node 20 Slim    │   │
+│  │  satspath-cli        │     │  satspathd                 │   │
+│  │  Rust / Debian Slim  │     │  Rust / Debian Slim        │   │
 │  │  non-root uid:10001  │     │  non-root uid:10002        │   │
 │  │  read-only rootfs    │     │  read-only rootfs          │   │
 │  │  cap_drop: ALL       │     │  cap_drop: ALL             │   │
 │  └──────────────────────┘     └────────────────────────────┘   │
-│          │                                                      │
-│          ▼                                                      │
-│  ┌──────────────────────┐                                       │
-│  │  satspath-data       │  Named volume: .satspath/ registry    │
-│  │  (Docker volume)     │  survives container re-creation       │
-│  └──────────────────────┘                                       │
+│          │                                 │                    │
+│          ▼                                 ▼                    │
+│  ┌────────────────────────────────────────────────────────┐     │
+│  │  satspath_data (Docker volume)                         │     │
+│  │  Named volume: .satspath/ registry survives containers │     │
+│  └────────────────────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -32,11 +32,11 @@
 | Image                 | Base                    | Size target | Binary                    |
 | --------------------- | ----------------------- | ----------- | ------------------------- |
 | `satspath-cli`        | `debian:bookworm-slim`  | ~25 MB      | `/usr/local/bin/satspath` |
-| `satspath-ark-bridge` | `node:20-bookworm-slim` | ~120 MB     | `node dist/index.js`      |
+| `satspathd`           | `debian:bookworm-slim`  | ~30 MB      | `/usr/local/bin/satspathd`|
 
 Both images use:
 
-- **Non-root user** (UID 10001 / 10002)
+- **Non-root user** (UID 10001 for CLI, UID 10002 for daemon)
 - **Read-only root filesystem** (`read_only: true`)
 - **All capabilities dropped** (`cap_drop: ALL`)
 - **`no-new-privileges`** security option
@@ -51,13 +51,12 @@ Both images use:
 - Docker ≥ 24 (or Podman ≥ 4) with BuildKit enabled
 - `docker compose` v2 plugin (or `docker-compose` v1)
 
-### 1. Build all images
+### 1. Build the image
 
 ```bash
 make build
 # or manually:
 docker build -t satspath-cli:latest .
-docker build -t satspath-ark-bridge:latest -f ark-bridge/Dockerfile .
 ```
 
 ### 2. Initialize the registry
@@ -68,7 +67,7 @@ make init
 docker compose run --rm satspath-cli init
 ```
 
-This creates `.satspath/` inside the `satspath-data` named volume.
+This creates `.satspath/` inside the `satspath_data` named volume.
 
 ### 3. Register a profile
 
@@ -93,13 +92,11 @@ docker compose run --rm satspath-cli register user@example.com \
 docker compose run --rm satspath-cli quote user@example.com 21000
 ```
 
-### 5. Start the ARK bridge (optional)
-
-The bridge is only needed for Ark swap validation and is disabled by default.
+### 5. Start the SatsPath Daemon (satspathd)
 
 ```bash
-docker compose --profile bridge up -d ark-bridge
-docker compose --profile bridge logs -f ark-bridge
+docker compose up -d satspathd
+docker compose logs -f satspathd
 ```
 
 ---
@@ -108,17 +105,16 @@ docker compose --profile bridge logs -f ark-bridge
 
 ```bash
 make help          # Show all targets
-make build         # Build all images
-make build-cli     # Build CLI image only
-make build-bridge  # Build bridge image only
+make build         # Build CLI image
+make build-cli     # Build CLI image
 make run CMD="--help"  # Run any CLI command
 make shell         # Open a debug shell in the CLI container
-make up            # Start bridge in background
+make up            # Start daemon service in background
 make down          # Stop all services
 make logs          # Tail all service logs
-make scan          # Run Trivy vulnerability scan (requires trivy)
-make clean         # Remove images and volumes
-make smoke         # Build + verify --help / node --version
+make scan          # Run Trivy vulnerability scan on CLI & daemon
+make clean         # Remove built images and dangling layers
+make smoke         # Build + verify --help output
 ```
 
 ---
@@ -163,7 +159,7 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 - [ ] Push to a private registry (GHCR, ECR, etc.) — see `docker.yml` CI workflow
 - [ ] Pin base image digests (replace `bookworm-slim` tags with `sha256:...`)
 - [ ] Set `RUST_LOG` to `warn` in production
-- [ ] Mount `satspath-data` volume to a backed-up external path
+- [ ] Configure backup for `satspath_data` volume (e.g. `docker run --rm -v satspath_data:/data -v $(pwd):/backup debian:bookworm-slim tar czf /backup/satspath_data_$(date +%F).tar.gz -C /data .`)
 - [ ] Run `make scan` before each release to check for CVEs
 - [ ] Review CI SARIF reports in GitHub Security tab
 
@@ -174,14 +170,15 @@ This means typical CI rebuilds take **~30 seconds** instead of 10+ minutes.
 **`cargo: command not found` in CI**
 → The build runs inside the container; you don't need Cargo on the host.
 
-**`Error: no such service: ark-bridge`**
-→ Add `--profile bridge` flag: `docker compose --profile bridge up`.
-
 **`Permission denied: /data`**
-→ The `satspath-data` volume ownership may be wrong. Run:
+→ The `satspath_data` volume ownership may be wrong. Run an entrypoint override as root:
 
 ```bash
-docker compose run --rm --user root satspath-cli chown -R 10001:10001 /data
+# For CLI container (UID 10001):
+docker compose run --rm --entrypoint /bin/sh --user root satspath-cli -c "chown -R 10001:10001 /data && chmod -R 770 /data"
+
+# For Daemon container (UID 10002):
+docker compose run --rm --entrypoint /bin/sh --user root satspathd -c "chown -R 10002:10002 /data && chmod -R 770 /data"
 ```
 
 **Build fails on `is_multiple_of` (pre-existing)**

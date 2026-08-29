@@ -10,6 +10,9 @@ Rules:
 
 - Unknown receiver means invite only.
 - No funds move before the receiver publishes a signed public payment profile.
+- An invite may carry no `sender_signature`. Treat an unsigned invite as
+  unauthenticated. It proves neither sender identity nor sender intent.
+- Reject an invite whose `expires_at` has passed. Do not extend the expiry on claim.
 - SatsPath does not generate seed phrases.
 - SatsPath does not generate wallet private keys.
 - SatsPath does not email private material.

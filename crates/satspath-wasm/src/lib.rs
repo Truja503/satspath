@@ -24,7 +24,10 @@ mod topic;
 pub mod types;
 
 pub use bolt12::fetch_bolt12_invoice;
-pub use crypto::{canonical_profile_json, fingerprint_pubkey, verify_signed_profile};
+pub use crypto::{
+    canonical_profile_json, derive_identity_keypair_from_seed, fingerprint_pubkey,
+    verify_signed_profile,
+};
 pub use helpers::{identifier_hash, mask_identifier};
 pub use resolver::{
     Bip353Resolver, ChainResolver, HttpsWellKnownResolver, LocalRegistry, NostrNip05Resolver,
