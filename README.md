@@ -1,217 +1,282 @@
 # SatsPath
 
-**Self-Sovereign Bitcoin Payment Resolution & Multi-Rail Smart Routing Protocol (v2)**
+**Open-source Bitcoin payment discovery and routing protocol**
 
-> **CAUTION:**
-> **EXPERIMENTAL SOFTWARE — DO NOT USE WITH REAL FUNDS.**
-> SatsPath v2 is currently undergoing internal conformance testing (Issue #60). It must not be deployed for real economic activity until the v2 conformance suite is finalized and an external cryptographic audit gate is deliberately cleared.
+**One identity. Every path.**
+
+SatsPath maps a human-readable recipient identifier such as **alice@example.com** to a cryptographically signed payment profile, verifies it, discovers the receiver's available Bitcoin payment methods, and returns a wallet handoff for a compatible route.
+
+> **Experimental software**
+>
+> Mainnet payment execution is **not implemented**. SatsPath must not be used to move real funds. Internal v2 conformance work has been completed, but an independent external security / cryptographic review is still required before any production or real-funds claim.
+
+Website: https://satspath.com
 
 ---
 
-## 🧭 What is SatsPath?
+## What SatsPath does
 
-**SatsPath** is an open-source, non-custodial protocol that maps human-readable identifiers (e.g., `alice@domain.com` or `chelo@satspath.dev`) to **cryptographically signed payment profiles** across all major Bitcoin payment rails:
+A Bitcoin user should not need to know which payment rail another user supports before trying to pay them.
 
-- **⚡ Lightning Network:** Instant micro-payments via BOLT11 invoices, BOLT12 offers, and LNURL-pay.
-- **🏹 Ark Protocol:** Layer-2 payment URI preview and intent generation via virtual UTXOs (VTXOs) (execution preview-only).
-- **⛓️ Bitcoin On-Chain:** Standard BIP-21 addresses and privacy-preserving Silent Payments (BIP-352).
-
-SatsPath acts as a **zero-trust cryptographic GPS for Bitcoin payments**: it never holds custody of funds, never generates or accesses wallet spending keys (`xprv`/`tprv`), and never broadcasts financial transactions.
+SatsPath separates **identity and payment discovery** from **payment execution**:
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 1. Identity Key Derivation (BIP-39 Seed -> m/9737'/0' via HMAC-SHA512)     │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 2. S2S v2 Resolution & Client-Side Verification                             │
-│    • S2S v2 HTTPS / DNSSEC (BIP-353) / Nostr (NIP-05)                       │
-│    • secp256k1 Schnorr Signatures & Monotonic Sequence Validation           │
-│    • RFC 6962 Append-Only Merkle Transparency Logs + Witness Quorum         │
-│    • Bitcoin On-Chain Anchoring (OP_RETURN checkpoints)                     │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 3. Multi-Rail Smart Routing (satspath-router)                               │
-│    • Amount threshold scoring + Live mempool fee evaluation                 │
-│    • Automatic rail selection: Lightning (< 100k sats) | Ark | On-Chain     │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 4. Standard Payment Handoff (BOLT11/12 QR, Ark URI, BIP-21 URI)            │
-│    • Public payload handed to host wallet for native execution              │
-└─────────────────────────────────────────────────────────────────────────────┘
+Human-readable identity
+        |
+        v
+Resolver chain
+HTTPS / Nostr / BIP-353 / local
+        |
+        v
+Cryptographic verification
+signature / expiry / alias / trust state
+        |
+        v
+Payment capability discovery
+Lightning / on-chain / Ark / experimental methods
+        |
+        v
+Reference routing policy
+amount / fees / urgency / available methods
+        |
+        v
+Wallet handoff
+BOLT11 / Lightning pointer / BIP-21 / Ark pointer
+        |
+        v
+Host wallet executes the payment
 ```
+
+SatsPath does **not**:
+
+- hold custody of funds;
+- store wallet seeds or spending keys;
+- operate a Lightning node or Ark server;
+- sign mainnet transactions;
+- broadcast mainnet transactions;
+- execute mainnet swaps or Ark transfers.
+
+The protocol works with public payment data and leaves spending authority with the user's wallet.
 
 ---
 
-## 📦 Workspace Architecture & Crates
+## Current capability status
 
-The SatsPath repository is structured as a modular Rust workspace and TypeScript SDK:
+This table is the source of truth for public claims about the current implementation.
 
-| Crate / Package | Target | Description |
-| :--- | :--- | :--- |
-| **`crates/satspath-core`** | Rust / Native / FFI | Core protocol types, `secp256k1` Schnorr crypto, RFC 6962 Merkle transparency engine, SSRF protections, and resolver chain. |
-| **`crates/satspath-router`** | Rust / WASM | Intelligent multi-rail routing engine, live `mempool.space` fee evaluator, and Silent Payments support. |
-| **`crates/satspath-wasm`** | WASM / JS / TS | Lightweight WebAssembly bindings for Web, PWAs, and React Native mobile wallets. |
-| **`crates/satspath-cli`** | Rust Binary | Sovereign developer and node operator CLI (`satspath`). |
-| **`crates/satspathd`** | Server Daemon | Authoritative S2S v2 server with Bitcoin on-chain checkpoint anchoring and REST API (`/v2/resolve`, `/v2/namespace`). |
-| **`crates/satspath-witness`** | Server Daemon | Independent transparency witness auditing split-view attacks. |
-| **`crates/satspath-pqc`** | Rust Library | Post-quantum hybrid cryptography primitives (ML-KEM / Falcon experimental). |
-| **`sdk/`** | TypeScript (`pnpm`) | High-level TypeScript SDK packages (`@satspath/resolvers`, `@satspath/router`). |
+| Capability | Current status | Notes |
+| --- | --- | --- |
+| Signed payment profiles | **Implemented** | secp256k1 Schnorr signatures, canonical serialization, expiry and safety validation |
+| HTTPS resolver | **Active** | Resolves signed profiles over HTTPS with SSRF/network hardening |
+| Nostr resolver | **Active** | NIP-05 + kind 30078 resolution support |
+| BIP-353 / DNS | **Preview / experimental** | Resolver and DNS primitives exist; strict trust requires local DNSSEC validation |
+| Lightning Address / LNURL | **Implemented for discovery and handoff** | Can resolve public metadata and produce a wallet-facing payment payload |
+| BOLT11 | **Implemented for handoff paths** | Concrete invoices may be fetched through supported LNURL flows; SatsPath does not pay them |
+| BOLT12 | **Partial / experimental** | Data types and basic parsing exist; full offer handling and invoice fetching are not yet implemented |
+| Bitcoin on-chain / BIP-21 | **Implemented for handoff** | Address validation, fee-aware routing and BIP-21 payload generation |
+| Silent Payments | **Experimental** | Public pointer / routing support exists; spending execution remains outside SatsPath |
+| Ark | **Preview / testnet-oriented** | Receive pointers and routing exist; some execution paths are mocked or simulated; no mainnet Ark execution |
+| S2S v2 transparency / witnesses | **Internal conformance completed** | v2 security architecture exists; external review is still pending |
+| Mainnet payment execution | **Not implemented** | Deliberately outside the current safety boundary |
 
----
-
-## ⚡ Quickstart for Wallet Developers (`pnpm`)
-
-Integrate SatsPath resolution into your web app, PWA, or wallet frontend in minutes:
-
-### 1. Installation
-
-```bash
-pnpm add @satspath/wasm bip39
-# or modular TS packages
-pnpm add @satspath/resolvers @satspath/router
-```
-
-For full integration instructions, see [docs/SDK_QUICKSTART.md](docs/SDK_QUICKSTART.md) or use the [AI Vibe-Coding Master Prompt](docs/VIBECODE_INTEGRATION_PROMPT.md) for Cursor/Claude.
-
-### 2. Basic TypeScript Integration
-
-```typescript
-import init, { derive_identity_keypair_from_seed, quote } from '@satspath/wasm';
-import * as bip39 from 'bip39';
-
-// 1. Initialize WASM module
-await init();
-
-// 2. Deterministically derive SatsPath identity inside the trusted wallet boundary
-// Uses HMAC-SHA512 with domain separator "SatsPath Identity Key m/9737'/0'" and big-endian account index.
-// Seed/mnemonic remains private inside the wallet context and is never transmitted.
-const walletSeedMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-const seed = bip39.mnemonicToSeedSync(walletSeedMnemonic);
-const identity = derive_identity_keypair_from_seed(seed, 0);
-if (identity) {
-  console.log("SatsPath Identity Pubkey:", identity.pubkey_hex);
-}
-
-// 3. Resolve alias and quote the best payment route
-const quoteResult = await quote("chelo@satspath.dev", 25000n);
-
-if (quoteResult.status === "ok") {
-  console.log("Selected Rail:", quoteResult.selected_method.type); // "Lightning" | "Ark" | "Onchain"
-  console.log("Estimated Fee:", quoteResult.fee_sats, "sats");
-  console.log("Payment Payload:", quoteResult.qr); // Standard QR/URI for wallet execution
-}
-```
+If documentation, the website, or a presentation disagrees with this table, the more conservative status should be used until the implementation is verified.
 
 ---
 
-## 🛠️ CLI Usage (`satspath`)
+## Reference routing policy
 
-### Installation & Build
+The current router is a **reference policy**, not a claim that one globally optimal payment route exists.
+
+The policy currently:
+
+1. prefers Lightning for compatible smaller payments;
+2. evaluates live on-chain fee conditions and requested urgency when Lightning is not selected;
+3. uses on-chain when the configured fee threshold is acceptable;
+4. can fall back to Ark when an Ark receive method is available;
+5. returns no route when a safe compatible method cannot be produced.
+
+Routing logic lives in:
+
+```text
+crates/satspath-router/src/router.rs
+crates/satspath-router/src/scoring.rs
+crates/satspath-router/src/fees.rs
+crates/satspath-router/src/lightning.rs
+crates/satspath-router/src/onchain.rs
+crates/satspath-router/src/ark.rs
+```
+
+Future routing policies can consider additional dimensions such as privacy, reliability, liquidity, trust assumptions, and wallet preferences without changing the core identity-resolution model.
+
+---
+
+## Repository architecture
+
+SatsPath is organized as a Rust workspace with TypeScript / WASM integration surfaces.
+
+| Component | Purpose |
+| --- | --- |
+| **crates/satspath-core** | Protocol types, signatures, validation, resolver chain, identity and transparency primitives |
+| **crates/satspath-router** | Payment-method discovery, fee evaluation, routing and wallet-handoff generation |
+| **crates/satspath-cli** | Reference command-line client for development and protocol testing |
+| **crates/satspathd** | Local / authoritative daemon and HTTP API |
+| **crates/satspath-wasm** | WebAssembly bindings for web and wallet integrations |
+| **crates/satspath-witness** | Independent checkpoint witness / split-view detection infrastructure |
+| **crates/satspath-swaps** | Experimental, testnet-only execution scaffolding |
+| **crates/satspath-pqc** | Experimental post-quantum research primitives; not part of the production safety claim |
+| **sdk/** | TypeScript SDK packages and integration helpers |
+
+---
+
+## Quickstart
+
+### Build the Rust workspace
 
 ```bash
 git clone https://github.com/satspath/satspath.git
 cd satspath
-cargo build --release
-# Binary available at target/release/satspath
+
+cargo build --workspace
+cargo test --workspace --all-targets
 ```
 
-### Core Commands
-
-#### 1. Register a Profile
+For linting and formatting:
 
 ```bash
-satspath register chelo@satspath.dev --testnet
-```
-
-Generates identity keys, derives public addresses (Lightning, On-Chain, Ark), signs the profile with Schnorr `secp256k1`, and records it in the local transparency log.
-
-#### 2. Quote & Smart Route
-
-```bash
-# Micro-payment (< 100k sats) -> Routes to Lightning
-satspath quote chelo@satspath.dev 21000 --testnet
-
-# Large settlement (500k sats) -> Routes to On-Chain L1 with live fee calculation
-satspath quote chelo@satspath.dev 500000 --testnet
-```
-
-#### 3. Encode & Decode Universal Payment URIs
-
-```bash
-# Encode payment request
-satspath encode chelo@satspath.dev 50000 --memo "SatsPath MVP"
-
-# Decode payment URI
-satspath decode "satspath:v1:eyJ2ZXJzaW9uIjoxLCJhbGlhcyI6ImNoZWxvQHNhdHNwYXRoLmRldiIsImFtb3VudCI6NTAwMDB9"
-```
-
-#### 4. Authoritative Server Daemon (`satspathd`)
-
-Run the S2S v2 daemon locally or in Docker:
-
-```bash
-docker-compose up -d satspathd
-```
-
-Exposes:
-- `GET /.well-known/satspath-authority` — Signed namespace descriptor
-- `GET /v2/resolve?identifier=user@domain` / `POST /v2/resolve` — Proof-carrying `ResolutionEnvelope`
-- `GET /v2/health` — Checkpoint age and witness quorum health
-
----
-
-## 🔒 Security & Trust Model
-
-SatsPath v2 is built under strict **zero-trust, fail-closed security principles**:
-
-1. **Non-Custodial Architecture:** Identity keys are derived under BIP-32 path `m/9737'/0'` specifically isolated from Bitcoin wallet spending paths (`m/84'/0'/0'`, `m/86'/0'/0'`).
-2. **Cryptographic Identity Binding:** Every profile is signed with Schnorr `secp256k1`. Senders cryptographically verify that `canonical_identifier(requested) == profile.alias` before displaying or paying.
-3. **Tamper-Proof Merkle Transparency:** Mutations are appended to RFC 6962 Merkle trees. Nodes verify inclusion proofs against signed checkpoints anchored to the Bitcoin blockchain (`OP_RETURN`).
-4. **SSRF & Network Hardening:** All outbound resolver requests enforce strict DNS/IP validation, private/loopback IP blocking, port allowlisting, and trailing-dot normalization.
-5. **Universal Fallback (BIP-353):** Full backward compatibility with standard DNSSEC payment instructions.
-
----
-
-## 📚 Documentation Index
-
-- [⚡ SDK Quickstart (`pnpm`)](docs/SDK_QUICKSTART.md) — Fast integration guide for frontend/wallet devs.
-- [🤖 AI Vibe-Coding Integration Prompt](docs/VIBECODE_INTEGRATION_PROMPT.md) — Plug-and-play prompt for Cursor/Claude/Copilot.
-- [📐 Protocol Specification v2](docs/protocol.md) — Wire format, profile structures, and state transitions.
-- [🌐 S2S Protocol & Server v2](docs/s2s/server-v2.md) — Authoritative server and namespace endpoints.
-- [🛡️ Trust Model & Cryptographic Guarantees](docs/s2s/trust-model-v2.md) — Merkle proofs, witness quorums, and split-view prevention.
-- [🌳 Key Transparency & Bitcoin Anchoring](docs/key_transparency.md) — RFC 6962 log design and `OP_RETURN` anchor flow.
-- [🐳 Docker Deployment Guide](docs/docker.md) — Production container orchestration and security profiles.
-- [🔒 Mainnet Safety Policies](docs/mainnet_safety.md) — Security boundaries and non-custodial invariants.
-
----
-
-## 🧪 Testing & Continuous Integration
-
-Run the comprehensive test suite locally:
-
-```bash
-# Run all workspace unit & integration tests
-cargo test --workspace --all-features
-
-# Run formatting & linters
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 ```
 
-All pull requests are automatically validated on GitHub Actions with:
-- `CI / Test workspace` (Rust stable workspace tests & linters)
-- `CI / Bitcoin Core regtest anchor` (Live Bitcoin node OP_RETURN anchoring)
-- `Codacy Security Scan` (Static security analysis)
-- `Docker Build & Scan` (Container image vulnerability scanning)
+### Wallet / SDK integration
+
+Start with:
+
+- [SDK Quickstart](docs/SDK_QUICKSTART.md)
+- [Protocol specification](docs/protocol.md)
+- [Implementation mapping](docs/implementations.md)
+- [Resolver architecture](docs/resolvers.md)
+
+The SDK and WASM packages are experimental. Check package/release status before depending on a registry publication in production.
 
 ---
 
-## 📄 License
+## CLI
 
-Licensed under the MIT License or Apache-2.0 License at your option.
+The CLI is a reference client. It is designed for development, testing, and safe payment-preview / wallet-handoff flows.
+
+Common areas include:
+
+```text
+satspath register
+satspath quote
+satspath preview
+satspath pay
+satspath dns
+satspath peer
+```
+
+Exact flags and supported modes evolve with the protocol. Use **--help** and the documentation for the current build.
+
+Mainnet preview may inspect public payment data, but **mainnet execution does not exist**.
+
+---
+
+## Security model
+
+SatsPath is designed around a strict separation between **payment identity** and **wallet spending authority**.
+
+### Core guarantees
+
+- Protocol identity keys are separate from Bitcoin wallet spending keys.
+- Public payment profiles are signed before they are used for routing.
+- Invalid, stale, ambiguous, or unsafe profile data should fail closed.
+- Resolver transports do not automatically become trust anchors.
+- Public resolver requests include SSRF and network-boundary protections.
+- Mainnet payment execution is intentionally outside the current implementation.
+
+### v2 security work
+
+The v2 architecture adds work around:
+
+- append-only transparency logs;
+- signed checkpoints;
+- witness quorum / split-view detection;
+- namespace and domain authority;
+- replay / rollback resistance;
+- server-to-server proof-carrying resolution;
+- stronger adversarial and conformance testing.
+
+Internal v2 conformance work tracked in [Issue #60](https://github.com/satspath/satspath/issues/60) is complete.
+
+That does **not** mean SatsPath is externally audited. An independent security / cryptographic review remains a release gate before production or real-funds claims.
+
+See:
+
+- [Mainnet safety](docs/mainnet_safety.md)
+- [Key transparency](docs/key_transparency.md)
+- [S2S trust model v2](docs/s2s/trust-model-v2.md)
+- [S2S server protocol v2](docs/s2s/server-v2.md)
+
+---
+
+## Protocol scope
+
+The currently documented stable protocol surface in [docs/protocol.md](docs/protocol.md) is still the v1 payment-discovery and wallet-handoff model.
+
+The repository also contains v2 security and server-to-server work. Until v2 is formally released and externally reviewed, documentation should distinguish between:
+
+- **implemented stable / reference behavior**;
+- **preview or experimental behavior**;
+- **v2 security architecture**;
+- **future production claims**.
+
+This distinction is intentional. SatsPath should be useful without pretending unfinished payment rails are finished.
+
+---
+
+## Project origin
+
+SatsPath began during the **Plan ₿ Summer School 2026 in Lugano**, where the project placed **second in the hackathon**.
+
+The project has since evolved from a hackathon prototype into an open-source effort focused on Bitcoin payment identity, capability discovery, verification, and routing.
+
+The long-term goal is not to become another wallet or another payment rail. It is to provide infrastructure that wallets and applications can use to discover **how** a recipient can be paid while preserving wallet sovereignty.
+
+---
+
+## Documentation
+
+Useful entry points:
+
+- [Protocol specification](docs/protocol.md)
+- [Architecture](docs/architecture.md)
+- [Implementation mapping](docs/implementations.md)
+- [Resolvers](docs/resolvers.md)
+- [BIP-353 DNS resolution](docs/bip353_dns_resolution.md)
+- [Mainnet safety](docs/mainnet_safety.md)
+- [Key transparency](docs/key_transparency.md)
+- [Docker deployment](docs/docker.md)
+- [SDK Quickstart](docs/SDK_QUICKSTART.md)
+
+---
+
+## Contributing
+
+SatsPath is open source. Contributions should keep implementation, tests, and public claims aligned.
+
+Before opening a PR:
+
+1. link the relevant issue;
+2. explain security and documentation impact;
+3. run formatting, linting, and tests;
+4. avoid introducing mainnet execution claims without a separately reviewed safety design;
+5. update capability status when implementation reality changes.
+
+---
+
+## License
+
+The repository currently includes the **MIT License**. See [LICENSE](LICENSE).
+
+> Note: workspace package metadata should remain consistent with the license files shipped in the repository.
+
