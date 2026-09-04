@@ -115,7 +115,7 @@ if (quoteResult.status === "ok") {
 ### Installation & Build
 
 ```bash
-git clone https://github.com/marchelo23/satspath.git
+git clone https://github.com/satspath/satspath.git
 cd satspath
 cargo build --release
 # Binary available at target/release/satspath
